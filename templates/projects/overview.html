@@ -1,0 +1,279 @@
+{% extends "projects/project_base.html" %}
+{% load pcc_tags static %}
+{% block project_content %}
+
+{# ------------------------------------------------------- health (PRD §9.1) #}
+<div class="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+    <div class="rounded-xl border bg-card p-4 text-card-foreground shadow-sm">
+        <div class="flex items-center justify-between">
+            <p class="text-sm text-muted-foreground">Schedule</p>
+            <span class="size-2 rounded-full {{ health.schedule|level_dot }}"></span>
+        </div>
+        <p class="mt-2 text-xl font-semibold">{{ health.schedule|level_label }}</p>
+        {% if project.actual_end_date %}
+        <p class="mt-1 text-xs text-muted-foreground">Selesai {{ project.actual_end_date|date:"d M Y" }}</p>
+        {% endif %}
+    </div>
+    <div class="rounded-xl border bg-card p-4 text-card-foreground shadow-sm">
+        <p class="text-sm text-muted-foreground">Progress</p>
+        <p class="mt-2 text-xl font-semibold tabular-nums">{{ health.progress|pct }}</p>
+        <p class="mt-1 text-xs text-muted-foreground">plan {{ health.planned|pct }}</p>
+    </div>
+    <div class="rounded-xl border bg-card p-4 text-card-foreground shadow-sm">
+        <p class="text-sm text-muted-foreground">Issues</p>
+        <a href="{% url 'projects:project_issues' project.pk %}" class="mt-2 inline-flex items-center gap-2 text-xl font-semibold">
+            {{ health.open_issues }} <span class="text-base font-normal text-muted-foreground">open</span>
+        </a>
+        <p class="mt-1 text-xs text-muted-foreground">{{ health.critical_issues }} critical</p>
+    </div>
+    <div class="rounded-xl border bg-card p-4 text-card-foreground shadow-sm">
+        <p class="text-sm text-muted-foreground">Risk</p>
+        <p class="mt-2 text-xl font-semibold">{{ health.risk_count }} <span class="text-base font-normal text-muted-foreground">high/critical</span></p>
+        <p class="mt-1 text-xs text-muted-foreground">top: {{ health.risk_top_severity|default:"—" }}</p>
+    </div>
+</div>
+
+{# --------------------------------------------- progress + current phase #}
+<div class="mt-4 grid gap-4 lg:grid-cols-3">
+    <div class="lg:col-span-2">
+        <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
+            <div class="flex flex-wrap items-center justify-between gap-3 border-b px-6 py-4">
+                <div>
+                    <h2 class="text-base font-semibold">Plan vs Actual Progress</h2>
+                    <p class="text-sm text-muted-foreground">Planned progress curve vs actual progress.</p>
+                </div>
+                <a href="{% url 'projects:project_progress' project.pk %}" class="text-sm font-medium underline-offset-4 hover:underline">Detail progress →</a>
+            </div>
+            <div class="p-4">
+                {% if project.planned_progress is None %}
+                <div class="flex flex-col items-center justify-center gap-2 py-10 text-center">
+                    <p class="text-sm text-muted-foreground">Belum ada baseline progress.</p>
+                    <a href="{% url 'projects:project_progress' project.pk %}" class="text-sm font-medium hover:underline">Atur planned progress →</a>
+                </div>
+                {% else %}
+                <div class="flex items-center justify-end gap-4 text-xs text-muted-foreground pb-2">
+                    <span class="inline-flex items-center gap-1.5"><span class="h-0.5 w-4 rounded bg-slate-400"></span> Planned</span>
+                    <span class="inline-flex items-center gap-1.5"><span class="h-0.5 w-4 rounded bg-emerald-600"></span> Actual</span>
+                </div>
+                <div class="relative h-56">
+                    <canvas id="progress-chart"></canvas>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="space-y-4">
+        <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
+            <div class="border-b px-5 py-4">
+                <h2 class="text-base font-semibold">Current Phase</h2>
+            </div>
+            <div class="p-5">
+                {% with phase=project.effective_current_phase %}
+                {% if phase %}
+                <div class="flex items-baseline justify-between">
+                    <span class="text-xs font-medium text-muted-foreground">Phase {{ phase.sequence }}</span>
+                    <span class="text-xs font-medium text-muted-foreground">{{ phase.get_status_display|upper }}</span>
+                </div>
+                <p class="mt-1 text-lg font-medium">{{ phase.name }}</p>
+                {% if phase.progress is not None %}
+                <div class="mt-3 flex items-baseline justify-between text-sm">
+                    <span class="text-muted-foreground">Progress</span>
+                    <span class="font-semibold tabular-nums">{{ phase.progress|pct }}</span>
+                </div>
+                <c-progress class="mt-1.5" value="{{ phase.progress }}" min="0" max="100"></c-progress>
+                {% endif %}
+                <p class="mt-3 text-xs text-muted-foreground">
+                    {{ phase.start_date|date:"d M"|default:"—" }} → {{ phase.end_date|date:"d M Y"|default:"—" }}
+                </p>
+                {% else %}
+                <p class="text-sm text-muted-foreground">Belum ada phase.</p>
+                {% endif %}
+                {% endwith %}
+            </div>
+        </div>
+
+        <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
+            <div class="border-b px-5 py-4">
+                <h2 class="text-base font-semibold">Next Milestone</h2>
+            </div>
+            <div class="p-5">
+                {% with ms=project.next_milestone %}
+                {% if ms %}
+                <p class="text-lg font-medium">{{ ms.name }}</p>
+                <p class="mt-1 text-sm text-muted-foreground">Target: {{ ms.date|date:"d F Y" }}</p>
+                <div class="mt-3">
+                    <c-badge variant="outline" class="{{ ms.status|status_style }}">{{ ms.get_status_display }}</c-badge>
+                </div>
+                {% else %}
+                <p class="text-sm text-muted-foreground">Tidak ada milestone.</p>
+                <a href="{% url 'projects:project_milestones' project.pk %}" class="mt-2 inline-block text-sm font-medium hover:underline">Kelola milestone →</a>
+                {% endif %}
+                {% endwith %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{# ------------------------------------------- current work + next up #}
+<div class="mt-4 grid gap-4 lg:grid-cols-2">
+    <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
+        <div class="flex items-center justify-between border-b px-5 py-4">
+            <h2 class="text-base font-semibold">Currently Working On</h2>
+            <span class="text-xs text-muted-foreground">{{ current_work|length }} tasks</span>
+        </div>
+        <div class="divide-y">
+            {% for task in current_work %}
+            <a href="{% url 'work:task_detail' task.pk %}" class="block px-5 py-3 transition-colors hover:bg-accent/50">
+                <div class="flex items-center justify-between gap-3">
+                    <p class="font-medium">{{ task.title }}</p>
+                    <span class="text-xs font-medium text-blue-700">{{ task.progress|floatformat:0 }}%</span>
+                </div>
+                <div class="mt-1.5 flex items-center gap-3 text-xs text-muted-foreground">
+                    <span class="inline-flex items-center gap-1">{{ task.assignee.pcc_profile.name|default:task.assignee.username|default:"Unassigned" }}</span>
+                    {% if task.due_date %}<span class="inline-flex items-center gap-1 {% if task.is_overdue %}font-medium text-red-600{% endif %}">Due: {{ task.due_date|date:"d M" }}{% if task.is_overdue %} (overdue){% endif %}</span>{% endif %}
+                </div>
+                <c-progress class="mt-2" value="{{ task.progress }}" min="0" max="100"></c-progress>
+            </a>
+            {% empty %}
+            <p class="px-5 py-8 text-center text-sm text-muted-foreground">Tidak ada task in progress.</p>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
+        <div class="flex items-center justify-between border-b px-5 py-4">
+            <h2 class="text-base font-semibold">Next Up</h2>
+            <span class="text-xs text-muted-foreground">berikutnya</span>
+        </div>
+        <div class="divide-y">
+            {% for task in next_up %}
+            <a href="{% url 'work:task_detail' task.pk %}" class="block px-5 py-3 transition-colors hover:bg-accent/50">
+                <div class="flex items-center gap-3">
+                    <span class="text-sm font-medium text-muted-foreground">{{ forloop.counter }}.</span>
+                    <span class="min-w-0 flex-1 truncate font-medium">{{ task.title }}</span>
+                    <c-badge variant="outline" class="{{ task.status|status_style }}">{{ task.get_status_display }}</c-badge>
+                </div>
+                <div class="mt-1.5 flex items-center gap-3 pl-7 text-xs text-muted-foreground">
+                    {% if task.assignee %}<span>{{ task.assignee.pcc_profile.name|default:task.assignee.username }}</span>{% endif %}
+                    {% if task.due_date %}<span>Due: {{ task.due_date|date:"d M" }}</span>{% endif %}
+                </div>
+            </a>
+            {% empty %}
+            <p class="px-5 py-8 text-center text-sm text-muted-foreground">Semua task sudah dikerjakan.</p>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+{# ---------------------------------------------- issues + activity #}
+<div class="mt-4 grid gap-4 lg:grid-cols-3">
+    <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
+        <div class="flex items-center justify-between border-b px-5 py-4">
+            <h2 class="text-base font-semibold">Open Issues</h2>
+            <a href="{% url 'work:issue_create' %}?project={{ project.pk }}" class="inline-flex items-center gap-1 text-sm font-medium hover:underline">
+                <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+                Report
+            </a>
+        </div>
+        <div class="divide-y">
+            {% for issue in open_issues %}
+            <a href="{% url 'work:issue_update' issue.pk %}" class="block px-5 py-3 transition-colors hover:bg-accent/50">
+                <div class="flex items-center gap-2">
+                    <c-badge variant="outline" class="{{ issue.severity|status_style }}">{{ issue.get_severity_display }}</c-badge>
+                    <span class="min-w-0 flex-1 truncate font-medium">{{ issue.title }}</span>
+                </div>
+                <div class="mt-1 flex items-center gap-2 pl-1 text-xs text-muted-foreground">
+                    <span class="inline-flex items-center gap-1">{{ issue.get_status_display }}</span>
+                    {% if issue.due_date %}<span>· Due {{ issue.due_date|date:"d M" }}</span>{% endif %}
+                </div>
+            </a>
+            {% empty %}
+            <p class="px-5 py-8 text-center text-sm text-muted-foreground">Tidak ada issue terbuka. 👍</p>
+            {% endfor %}
+            <a href="{% url 'projects:project_issues' project.pk %}" class="block px-5 py-2.5 text-center text-xs font-medium text-muted-foreground hover:text-foreground">Semua issues →</a>
+        </div>
+    </div>
+
+    <div class="lg:col-span-2 rounded-xl border bg-card text-card-foreground shadow-sm">
+        <div class="flex items-center justify-between border-b px-5 py-4">
+            <h2 class="text-base font-semibold">Recent Activity</h2>
+            <a href="{% url 'projects:project_activity' project.pk %}" class="text-sm font-medium hover:underline">Lihat semua →</a>
+        </div>
+        <ul class="divide-y">
+            {% for event in activities %}
+            <li class="flex items-start gap-3 px-5 py-3">
+                <span class="mt-1 flex size-7 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold uppercase">
+                    {{ event.actor.pcc_profile.name|default:event.actor.username|default:"?"|slice:":1" }}
+                </span>
+                <div class="min-w-0">
+                    <p class="text-sm">
+                        <span class="font-medium">{{ event.actor.pcc_profile.name|default:event.actor.username|default:"System" }}</span>
+                        <span class="text-muted-foreground">{{ event.message }}</span>
+                    </p>
+                    <p class="text-xs text-muted-foreground">{{ event.created_at|timesince }} ago</p>
+                </div>
+            </li>
+            {% empty %}
+            <li class="px-5 py-8 text-center text-sm text-muted-foreground">Belum ada aktivitas.</li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+{% if project.planned_progress is not None %}
+<script src="{% static 'vendor/chart.umd.min.js' %}"></script>
+{{ chart|json_script:"progress-chart-data" }}
+<script>
+(function () {
+    const data = JSON.parse(document.getElementById('progress-chart-data').textContent);
+    new Chart(document.getElementById('progress-chart'), {
+        type: 'line',
+        data: {
+            labels: data.labels,
+            datasets: [
+                {
+                    label: 'Planned',
+                    data: data.planned,
+                    borderColor: '#94a3b8',
+                    backgroundColor: 'rgba(148,163,184,0.1)',
+                    pointRadius: 3,
+                    borderWidth: 2,
+                    tension: 0.3,
+                },
+                {
+                    label: 'Actual',
+                    data: data.actual,
+                    borderColor: '#059669',
+                    backgroundColor: 'rgba(5,150,105,0.1)',
+                    pointRadius: 3,
+                    borderWidth: 2,
+                    tension: 0.3,
+                },
+            ],
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: (c) => ` ${c.dataset.label}: ${c.parsed.y ?? 0}%`,
+                    },
+                },
+            },
+            scales: {
+                y: { min: 0, max: 100, ticks: { callback: (v) => v + '%' }, grid: { color: 'rgba(100,116,139,0.12)' } },
+                x: { grid: { display: false }, ticks: { maxRotation: 45, maxTicksLimit: 10 } },
+            },
+        },
+    });
+})();
+</script>
+{% endif %}
+{% endblock %}

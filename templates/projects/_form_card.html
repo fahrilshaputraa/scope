@@ -1,0 +1,25 @@
+{% load pcc_tags %}
+<div class="mx-auto max-w-2xl">
+    <a href="{{ back_url }}" class="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">
+        <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7M5 12h14"/></svg>
+        Kembali
+    </a>
+    <div class="mt-4 overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm">
+        <div class="border-b px-6 py-4">
+            <h1 class="text-lg font-semibold tracking-tight">{{ title }}</h1>
+            {% if subtitle %}<p class="mt-0.5 text-sm text-muted-foreground">{{ subtitle }}</p>{% endif %}
+        </div>
+        <form method="post" class="grid gap-4 p-6">
+            {% csrf_token %}
+            {% include "_form_fields.html" %}
+            <div class="flex items-center justify-end gap-3 border-t pt-4">
+                <a href="{{ back_url }}"
+                   class="inline-flex h-9 items-center rounded-md border bg-background px-4 text-sm font-medium shadow-xs hover:bg-accent hover:text-accent-foreground">Batal</a>
+                <button type="submit"
+                        class="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/90">
+                    {{ submit_label|default:"Simpan" }}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>

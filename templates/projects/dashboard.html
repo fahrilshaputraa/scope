@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% load pcc_tags %}
+{% block title %}Dashboard — Project Control Center{% endblock %}
+{% block content %}
+<div class="flex flex-wrap items-end justify-between gap-4">
+    <div>
+        <h1 class="text-2xl font-semibold tracking-tight">Dashboard</h1>
+        <p class="mt-1 text-sm text-muted-foreground">Overview seluruh project yang sedang berjalan.</p>
+    </div>
+    <a href="{% url 'projects:project_create' %}"
+       class="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/90">
+        <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+        New Project
+    </a>
+</div>
+
+{# ------------------------------------------------------ summary cards #}
+<div class="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+    <a href="{% url 'projects:project_list' %}" class="rounded-xl border bg-card p-4 text-card-foreground shadow-sm transition-colors hover:bg-accent/50">
+        <p class="text-sm text-muted-foreground">Total Projects</p>
+        <p class="mt-1 text-2xl font-semibold tabular-nums">{{ counts.total }}</p>
+        <p class="mt-1 text-xs text-muted-foreground">semua project</p>
+    </a>
+    <a href="{% url 'projects:project_list' %}?status=on_track" class="rounded-xl border bg-card p-4 text-card-foreground shadow-sm transition-colors hover:bg-accent/50">
+        <p class="text-sm text-muted-foreground">On Track</p>
+        <p class="mt-1 flex items-center gap-2 text-2xl font-semibold tabular-nums">{{ counts.on_track }}
+            <span class="size-2 rounded-full bg-emerald-500"></span></p>
+        <p class="mt-1 text-xs text-muted-foreground">sesuai rencana</p>
+    </a>
+    <a href="{% url 'projects:project_list' %}?status=at_risk" class="rounded-xl border bg-card p-4 text-card-foreground shadow-sm transition-colors hover:bg-accent/50">
+        <p class="text-sm text-muted-foreground">At Risk</p>
+        <p class="mt-1 flex items-center gap-2 text-2xl font-semibold tabular-nums">{{ counts.at_risk }}
+            <span class="size-2 rounded-full bg-amber-500"></span></p>
+        <p class="mt-1 text-xs text-muted-foreground">butuh perhatian</p>
+    </a>
+    <a href="{% url 'projects:project_list' %}?status=delayed" class="rounded-xl border bg-card p-4 text-card-foreground shadow-sm transition-colors hover:bg-accent/50">
+        <p class="text-sm text-muted-foreground">Delayed</p>
+        <p class="mt-1 flex items-center gap-2 text-2xl font-semibold tabular-nums">{{ counts.delayed }}
+            <span class="size-2 rounded-full bg-red-500"></span></p>
+        <p class="mt-1 text-xs text-muted-foreground">terlambat dari plan</p>
+    </a>
+</div>
+
+{# ------------------------------------------------------ project overview #}
+<div class="mt-6 overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm">
+    <div class="flex items-center justify-between gap-4 border-b px-6 py-4">
+        <div>
+            <h2 class="text-base font-semibold">Project Overview</h2>
+            <p class="text-sm text-muted-foreground">Ringkasan plan vs actual seluruh project.</p>
+        </div>
+        <a href="{% url 'projects:project_list' %}" class="text-sm font-medium text-foreground underline-offset-4 hover:underline">Lihat semua →</a>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="border-b bg-muted/40">
+                    <th class="h-10 px-6 text-left font-medium text-muted-foreground">Project</th>
+                    <th class="h-10 px-4 text-left font-medium text-muted-foreground">PM</th>
+                    <th class="h-10 px-4 text-left font-medium text-muted-foreground">Current Phase</th>
+                    <th class="h-10 px-4 text-right font-medium text-muted-foreground">Planned</th>
+                    <th class="h-10 px-4 text-right font-medium text-muted-foreground">Actual</th>
+                    <th class="h-10 px-4 text-right font-medium text-muted-foreground">Variance</th>
+                    <th class="h-10 px-6 text-left font-medium text-muted-foreground">Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in rows %}
+                <tr class="border-b transition-colors hover:bg-muted/40">
+                    <td class="px-6 py-3">
+                        <a href="{% url 'projects:project_detail' row.project.pk %}" class="font-medium text-foreground hover:underline">
+                            {{ row.project.name }}
+                        </a>
+                        <span class="ml-2 rounded bg-muted px-1.5 py-0.5 text-xs font-medium tabular-nums text-muted-foreground">{{ row.project.code }}</span>
+                        <div class="mt-0.5 text-xs text-muted-foreground">
+                            {{ row.project.start_date|date:"d M Y" }} → {{ row.project.target_end_date|date:"d M Y" }}
+                        </div>
+                    </td>
+                    <td class="px-4 py-3 text-muted-foreground">{{ row.project.manager.pcc_profile.name|default:row.project.manager.username|default:"—" }}</td>
+                    <td class="px-4 py-3">
+                        {% if row.project.effective_current_phase %}
+                        <span class="text-foreground">{{ row.project.effective_current_phase.name }}</span>
+                        {% else %}
+                        <span class="text-muted-foreground">—</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-4 py-3 text-right tabular-nums">{{ row.planned|pct }}</td>
+                    <td class="px-4 py-3 text-right font-medium tabular-nums">{{ row.actual|pct }}</td>
+                    <td class="px-4 py-3 text-right">
+                        <span class="font-medium tabular-nums {{ row.variance|comp }}">
+                            {% if row.variance > 0 %}+{% endif %}{{ row.variance|pct }}
+                        </span>
+                    </td>
+                    <td class="px-6 py-3">
+                        <c-badge variant="outline" class="{{ row.project.status|status_style }}">{{ row.project.get_status_display }}</c-badge>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" class="px-6 py-12 text-center text-sm text-muted-foreground">
+                        Belum ada project. Buat project pertama Anda.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

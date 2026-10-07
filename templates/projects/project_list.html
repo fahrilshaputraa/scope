@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+{% load pcc_tags %}
+{% block title %}Projects — Project Control Center{% endblock %}
+{% block content %}
+<div class="flex flex-wrap items-end justify-between gap-4">
+    <div>
+        <h1 class="text-2xl font-semibold tracking-tight">Projects</h1>
+        <p class="mt-1 text-sm text-muted-foreground">Seluruh project di workspace.</p>
+    </div>
+    {% if can_create %}
+    <a href="{% url 'projects:project_create' %}"
+       class="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/90">
+        <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        New Project
+    </a>
+    {% endif %}
+</div>
+
+{# ------------------------------------------------------------ filters #}
+<form method="get" class="mt-6 rounded-xl border bg-card p-4 shadow-sm">
+    <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <div>
+            <label for="q" class="text-xs font-medium text-muted-foreground">Search</label>
+            <input id="q" name="q" value="{{ filters.q }}" placeholder="Nama / code project"
+                   class="mt-1 flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
+        </div>
+        <div>
+            <label for="status" class="text-xs font-medium text-muted-foreground">Status</label>
+            <select id="status" name="status" class="mt-1 flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm">
+                <option value="">Semua status</option>
+                {% for value, label in status_choices %}
+                <option value="{{ value }}" {% if filters.status == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label for="pm" class="text-xs font-medium text-muted-foreground">Project Manager</label>
+            <select id="pm" name="pm" class="mt-1 flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm">
+                <option value="">Semua PM</option>
+                {% for pm in pms %}
+                <option value="{{ pm.username }}" {% if filters.pm == pm.username %}selected{% endif %}>{{ pm.pcc_profile.name|default:pm.username }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label for="team" class="text-xs font-medium text-muted-foreground">Team</label>
+            <select id="team" name="team" class="mt-1 flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm">
+                <option value="">Semua team</option>
+                {% for team in teams %}
+                <option value="{{ team }}" {% if filters.team == team %}selected{% endif %}>{{ team }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="flex items-end gap-2">
+            <button type="submit" class="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/90">
+                Filter
+            </button>
+            {% if filters.q or filters.status or filters.pm or filters.team %}
+            <a href="{% url 'projects:project_list' %}" class="inline-flex h-9 items-center rounded-md border bg-background px-3 text-sm font-medium shadow-xs hover:bg-accent">Reset</a>
+            {% endif %}
+        </div>
+    </div>
+</form>
+
+{# ----------------------------------------------------- view toggle #}
+<div class="mt-4 flex items-center justify-between">
+    <p class="text-sm text-muted-foreground">{{ rows|length }} project ditemukan</p>
+    <div class="flex rounded-md border bg-card p-0.5 shadow-sm">
+        <a href="?view=list{% if filters.q %}&q={{ filters.q }}{% endif %}{% if filters.status %}&status={{ filters.status }}{% endif %}{% if filters.pm %}&pm={{ filters.pm }}{% endif %}{% if filters.team %}&team={{ filters.team }}{% endif %}"
+           class="inline-flex items-center gap-1.5 rounded px-2.5 py-1.5 text-sm {% if view == 'list' %}bg-accent text-accent-foreground{% else %}text-muted-foreground hover:text-foreground{% endif %}">
+            <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
+            List
+        </a>
+        <a href="?view=card{% if filters.q %}&q={{ filters.q }}{% endif %}{% if filters.status %}&status={{ filters.status }}{% endif %}{% if filters.pm %}&pm={{ filters.pm }}{% endif %}{% if filters.team %}&team={{ filters.team }}{% endif %}"
+           class="inline-flex items-center gap-1.5 rounded px-2.5 py-1.5 text-sm {% if view == 'card' %}bg-accent text-accent-foreground{% else %}text-muted-foreground hover:text-foreground{% endif %}">
+            <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+            Card
+        </a>
+    </div>
+</div>
+
+{# ------------------------------------------------------- list view #}
+{% if view == 'list' %}
+<div class="mt-3 overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm">
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="border-b bg-muted/40">
+                    <th class="h-10 px-6 text-left font-medium text-muted-foreground">Project</th>
+                    <th class="h-10 px-4 text-left font-medium text-muted-foreground">PM</th>
+                    <th class="h-10 px-4 text-left font-medium text-muted-foreground">Phase</th>
+                    <th class="h-10 px-4 text-right font-medium text-muted-foreground">Planned</th>
+                    <th class="h-10 px-4 text-right font-medium text-muted-foreground">Actual</th>
+                    <th class="h-10 px-4 text-right font-medium text-muted-foreground">Variance</th>
+                    <th class="h-10 px-6 text-left font-medium text-muted-foreground">Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in rows %}
+                <tr class="border-b transition-colors hover:bg-muted/40">
+                    <td class="px-6 py-3">
+                        <a href="{% url 'projects:project_detail' row.project.pk %}" class="font-medium hover:underline">
+                            {{ row.project.name }}
+                        </a>
+                        <span class="ml-2 rounded bg-muted px-1.5 py-0.5 text-xs font-medium tabular-nums text-muted-foreground">{{ row.project.code }}</span>
+                        <div class="mt-0.5 text-xs text-muted-foreground">{{ row.project.start_date|date:"d M Y" }} → {{ row.project.target_end_date|date:"d M Y" }}</div>
+                    </td>
+                    <td class="px-4 py-3 text-muted-foreground">{{ row.project.manager.pcc_profile.name|default:row.project.manager.username|default:"—" }}</td>
+                    <td class="px-4 py-3">{{ row.project.effective_current_phase.name|default:"—" }}</td>
+                    <td class="px-4 py-3 text-right tabular-nums">{{ row.planned|pct }}</td>
+                    <td class="px-4 py-3 text-right font-medium tabular-nums">{{ row.actual|pct }}</td>
+                    <td class="px-4 py-3 text-right font-medium tabular-nums {{ row.variance|comp }}">
+                        {% if row.variance > 0 %}+{% endif %}{{ row.variance|pct }}
+                    </td>
+                    <td class="px-6 py-3">
+                        <c-badge variant="outline" class="{{ row.project.status|status_style }}">{{ row.project.get_status_display }}</c-badge>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" class="px-6 py-12 text-center text-sm text-muted-foreground">Tidak ada project yang cocok dengan filter.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+{# ------------------------------------------------------- card view #}
+<div class="mt-3 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+    {% for row in rows %}
+    <a href="{% url 'projects:project_detail' row.project.pk %}"
+       class="group rounded-xl border bg-card p-5 text-card-foreground shadow-sm transition-all hover:shadow-md">
+        <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+                <p class="truncate font-medium group-hover:underline">{{ row.project.name }}</p>
+                <p class="mt-0.5 text-xs text-muted-foreground">
+                    <span class="rounded bg-muted px-1.5 py-0.5 font-medium tabular-nums">{{ row.project.code }}</span>
+                    <span class="ml-1.5">{{ row.project.start_date|date:"d M Y" }} → {{ row.project.target_end_date|date:"d M Y" }}</span>
+                </p>
+            </div>
+            <c-badge variant="outline" class="{{ row.project.status|status_style }}">{{ row.project.get_status_display }}</c-badge>
+        </div>
+        {% if row.project.description %}
+        <p class="mt-3 line-clamp-2 text-sm text-muted-foreground">{{ row.project.description }}</p>
+        {% endif %}
+        <div class="mt-3 space-y-1.5 text-sm">
+            <div class="flex justify-between text-xs">
+                <span class="text-muted-foreground">Planned <span class="tabular-nums">{{ row.planned|pct }}</span></span>
+                <span class="text-muted-foreground">Actual <span class="font-medium tabular-nums">{{ row.actual|pct }}</span></span>
+            </div>
+            <c-progress class="h-1.5" value="{{ row.actual }}" min="0" max="100"></c-progress>
+        </div>
+        <div class="mt-3 flex items-center justify-between text-xs text-muted-foreground">
+            <span>PM: {{ row.project.manager.pcc_profile.name|default:row.project.manager.username|default:"—" }}</span>
+            <span class="font-medium {{ row.variance|comp }}">
+                {% if row.variance > 0 %}+{% endif %}{{ row.variance|pct }}
+            </span>
+        </div>
+    </a>
+    {% empty %}
+    <div class="col-span-full rounded-xl border border-dashed bg-card p-12 text-center text-sm text-muted-foreground">
+        Tidak ada project yang cocok dengan filter.
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

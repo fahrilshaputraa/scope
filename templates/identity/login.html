@@ -1,0 +1,91 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Sign in — Project Control Center</title>
+    <link rel="stylesheet" href="{% static 'css/output.css' %}">
+</head>
+<body class="flex min-h-screen items-center justify-center bg-background p-4 text-foreground antialiased">
+    <div class="w-full max-w-sm">
+        <div class="mb-6 flex flex-col items-center gap-2">
+            <span class="flex size-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+                <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h7v7H3zM14 3h7v4h-7zM14 11h7v10h-7zM3 14h7v7H3z"/></svg>
+            </span>
+            <div class="text-center leading-tight">
+                <h1 class="text-lg font-semibold">Project Control Center</h1>
+                <p class="text-sm text-muted-foreground">Project management & progress monitoring</p>
+            </div>
+        </div>
+
+        <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
+            <div class="p-6">
+                {% if entra_enabled %}
+                    {% if dev_login %}
+                        <div class="space-y-4">
+                            <a href="{% url 'identity:authorize' %}{% if next %}?next={{ next|urlencode }}{% endif %}"
+                               class="flex w-full items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/90">
+                                Sign in with Microsoft
+                            </a>
+                            <div class="flex items-center gap-3 text-xs text-muted-foreground">
+                                <span class="h-px flex-1 bg-border"></span>atau<span class="h-px flex-1 bg-border"></span>
+                            </div>
+                            <form method="post" action="{% url 'identity:dev' %}" class="space-y-3">
+                                {% csrf_token %}
+                                <input type="hidden" name="next" value="{{ next }}">
+                                <div class="space-y-1">
+                                    <label for="username" class="text-sm font-medium">Username (dev)</label>
+                                    <input id="username" name="username" required
+                                           placeholder="contoh: fahril"
+                                           class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
+                                </div>
+                                <button type="submit"
+                                        class="w-full rounded-md border bg-background px-4 py-2 text-sm font-medium shadow-xs hover:bg-accent hover:text-accent-foreground">
+                                    Masuk (dev only)
+                                </button>
+                            </form>
+                        </div>
+                    {% else %}
+                        <a href="{% url 'identity:authorize' %}{% if next %}?next={{ next|urlencode }}{% endif %}"
+                           class="flex w-full items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90">
+                            Sign in with Microsoft
+                        </a>
+                    {% endif %}
+                {% elif dev_form %}
+                    <form method="post" action="{% url 'identity:dev' %}" class="space-y-3">
+                        {% csrf_token %}
+                        <input type="hidden" name="next" value="{{ next }}">
+                        <div class="space-y-1">
+                            <label for="username" class="text-sm font-medium">Username</label>
+                            <input id="username" name="username" required
+                                   placeholder="login dev, contoh: fahril"
+                                   class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
+                        </div>
+                        <div class="space-y-1">
+                            <label for="role" class="text-sm font-medium">Role</label>
+                            <select id="role" name="role"
+                                    class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm">
+                                {% for value, label in roles %}
+                                    <option value="{{ value }}">{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <button type="submit"
+                                class="w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/90">
+                            Masuk
+                        </button>
+                    </form>
+                    <p class="mt-3 text-center text-xs text-muted-foreground">Mode development — Entra ID belum dikonfigurasi.</p>
+                {% else %}
+                    <p class="text-sm text-muted-foreground">Authentication is not configured yet.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <p class="mt-4 text-center text-xs text-muted-foreground">
+            Internal workspace — © 2026
+        </p>
+    </div>
+</body>
+</html>

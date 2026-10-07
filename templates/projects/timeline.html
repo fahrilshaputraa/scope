@@ -1,0 +1,100 @@
+{% extends "projects/project_base.html" %}
+{% load pcc_tags static %}
+{% block project_content %}
+
+<div class="mt-6 grid gap-4 lg:grid-cols-4">
+    <div class="lg:col-span-3">
+        <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
+            <div class="flex flex-wrap items-center justify-between gap-3 border-b px-6 py-4">
+                <div>
+                    <h2 class="text-base font-semibold">Timeline (Waterfall / Gantt)</h2>
+                    <p class="text-sm text-muted-foreground">Mulai-selesai tiap task. Drag untuk mengubah tanggal.</p>
+                </div>
+                <div class="flex items-center gap-1 rounded-md border bg-background p-0.5 text-xs" id="gantt-zoom">
+                    <button type="button" data-mode="Day" class="rounded px-2 py-1 hover:bg-accent">Day</button>
+                    <button type="button" data-mode="Week" class="rounded px-2 py-1 font-medium hover:bg-accent">Week</button>
+                    <button type="button" data-mode="Month" class="rounded px-2 py-1 hover:bg-accent">Month</button>
+                    <button type="button" data-mode="today" class="ml-1 rounded px-2 py-1 font-medium hover:bg-accent">Hari ini</button>
+                </div>
+            </div>
+            <div class="p-4">
+                {% if gantt_tasks %}
+                <div id="gantt" class="overflow-x-auto"></div>
+                {% else %}
+                <p class="py-10 text-center text-sm text-muted-foreground">
+                    Belum ada task. Buat task dulu untuk melihat timeline.
+                </p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="space-y-4">
+        <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
+            <div class="flex items-center justify-between border-b px-5 py-4">
+                <h2 class="text-base font-semibold">Phases</h2>
+                {% if can_manage %}
+                <a href="{% url 'projects:phase_create' project.pk %}" class="inline-flex items-center gap-1 text-sm font-medium hover:underline">
+                    <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+                    Tambah
+                </a>
+                {% endif %}
+            </div>
+            <div class="divide-y">
+                {% for phase in phases %}
+                <div class="px-5 py-3">
+                    <div class="flex items-center justify-between gap-2">
+                        <div class="min-w-0">
+                            <p class="truncate font-medium">P{{ phase.sequence }} · {{ phase.name }}</p>
+                            <p class="text-xs text-muted-foreground">
+                                {% if phase.start_date %}{{ phase.start_date|date:"d M" }} → {{ phase.end_date|date:"d M Y" }}{% else %}no date{% endif %}
+                            </p>
+                        </div>
+                        <c-badge variant="outline" class="{{ phase.status|status_style }}">{{ phase.get_status_display }}</c-badge>
+                    </div>
+                    {% if phase.progress is not None %}<c-progress class="mt-2" value="{{ phase.progress }}" min="0" max="100"></c-progress>{% endif %}
+                </div>
+                {% empty %}
+                <p class="px-5 py-8 text-center text-sm text-muted-foreground">Belum ada phase.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'vendor/frappe-gantt.umd.js' %}"></script>
+{{ gantt_tasks|json_script:"gantt-data" }}
+<script>
+(function () {
+    const tasks = JSON.parse(document.getElementById('gantt-data').textContent);
+    const el = document.getElementById('gantt');
+    if (!el || !tasks.length) return;
+    const gantt = new Gantt('#gantt', tasks, {
+        view_mode: 'Week',
+        today_button: true,
+        language: 'en',
+        popup_on: 'hover',
+        readonly_dates: !JSON.parse('{{ can_manage|yesno:"false,true" }}'),
+        on_date_change: function (task, start, end) {
+            fetch(`/tasks/${task.id}/dates/`, {
+                method: 'PATCH',
+                headers: { 'X-CSRFToken': document.querySelector('meta[name=csrf-token]').content },
+                body: new URLSearchParams({ start: start.toISOString().slice(0, 10), end: end.toISOString().slice(0, 10) }),
+            }).then(r => r.json()).catch(() => {});
+        },
+        on_progress_change: function (task, progress) {
+            fetch(`/tasks/${task.id}/status/`, { method: 'PATCH' }).catch(() => {});
+        },
+    });
+    document.querySelectorAll('#gantt-zoom [data-mode]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            if (btn.dataset.mode === 'today') { gantt.scrollToday && gantt.scrollToday(); return; }
+            gantt.change_view_mode(btn.dataset.mode);
+        });
+    });
+})();
+</script>
+{% endblock %}

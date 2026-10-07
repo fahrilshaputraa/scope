@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.pytest_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+
+# Django
+db.sqlite3
+media/
+staticfiles/
+*.log
+
+# Env
+.env
+.env.local
+
+# Frontend build
+node_modules/
+static/css/output.css
+
+# Editors
+.vscode/
+.idea/
+.DS_Store

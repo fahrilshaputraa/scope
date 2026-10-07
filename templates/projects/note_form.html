@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} — Project Control Center{% endblock %}
+{% block content %}
+{% url 'projects:project_notes' project.pk as list_url %}
+{% include "projects/_form_card.html" with back_url=list_url title=title subtitle=project.name %}
+{% endblock %}

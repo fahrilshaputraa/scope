@@ -1,0 +1,20 @@
+{% for field in form.hidden_fields %}{{ field }}{% endfor %}
+{% if form.non_field_errors %}
+<div class="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+    {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+</div>
+{% endif %}
+{% for field in form.visible_fields %}
+<div class="grid gap-1.5">
+    <label for="{{ field.id_for_label }}"
+           class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+        {{ field.label }}
+        {% if field.field.required %}<span class="text-red-500">*</span>{% endif %}
+    </label>
+    {{ field }}
+    {% if field.help_text %}<p class="text-xs text-muted-foreground">{{ field.help_text }}</p>{% endif %}
+    {% for error in field.errors %}
+    <p class="text-xs font-medium text-red-600">{{ error }}</p>
+    {% endfor %}
+</div>
+{% endfor %}

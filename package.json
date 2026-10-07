@@ -1,0 +1,13 @@
+{
+  "name": "pcc",
+  "private": true,
+  "scripts": {
+    "css:build": "tailwindcss -i input.css -o static/css/output.css --minify",
+    "css:watch": "tailwindcss -i input.css -o static/css/output.css --watch"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "^4",
+    "tailwindcss": "^4",
+    "tw-animate-css": "^1"
+  }
+}

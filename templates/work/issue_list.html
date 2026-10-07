@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% load pcc_tags %}
+{% block title %}Issues — Project Control Center{% endblock %}
+{% block content %}
+<div class="flex flex-wrap items-end justify-between gap-4">
+    <div>
+        <h1 class="text-2xl font-semibold tracking-tight">Issues</h1>
+        <p class="mt-1 text-sm text-muted-foreground">Semua issue & blocker di seluruh project.</p>
+    </div>
+    <a href="{% url 'work:issue_create' %}"
+       class="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/90">
+        <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        Report Issue
+    </a>
+</div>
+
+{# -------------------------------------------------------------- filter #}
+<div class="mt-6 flex items-center gap-1 rounded-lg border bg-card p-1 shadow-sm w-max">
+    <a href="{% url 'work:issue_list' %}?status=open"
+       class="rounded-md px-3 py-1.5 text-sm font-medium {% if filter == 'open' %}bg-primary text-primary-foreground shadow-sm{% else %}text-muted-foreground hover:text-foreground{% endif %}">
+        Open <span class="tabular-nums">({{ open_count }})</span>
+    </a>
+    <a href="{% url 'work:issue_list' %}?status=resolved"
+       class="rounded-md px-3 py-1.5 text-sm font-medium {% if filter == 'resolved' %}bg-primary text-primary-foreground shadow-sm{% else %}text-muted-foreground hover:text-foreground{% endif %}">Resolved</a>
+    <a href="{% url 'work:issue_list' %}?status=all"
+       class="rounded-md px-3 py-1.5 text-sm font-medium {% if filter == 'all' %}bg-primary text-primary-foreground shadow-sm{% else %}text-muted-foreground hover:text-foreground{% endif %}">All</a>
+</div>
+
+<div class="mt-4 overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm">
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="border-b bg-muted/40">
+                    <th class="h-10 px-6 text-left font-medium text-muted-foreground">Issue</th>
+                    <th class="h-10 px-4 text-left font-medium text-muted-foreground">Project</th>
+                    <th class="h-10 px-4 text-left font-medium text-muted-foreground">Severity</th>
+                    <th class="h-10 px-4 text-left font-medium text-muted-foreground">Status</th>
+                    <th class="h-10 px-4 text-left font-medium text-muted-foreground">Owner</th>
+                    <th class="h-10 px-6 text-right font-medium text-muted-foreground">Due</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for issue in issues %}
+                <tr class="border-b transition-colors hover:bg-muted/40">
+                    <td class="px-6 py-3">
+                        <a href="{% url 'work:issue_update' issue.pk %}" class="font-medium hover:underline">{{ issue.title }}</a>
+                        {% if issue.description %}
+                        <p class="mt-0.5 line-clamp-1 max-w-md text-xs text-muted-foreground">{{ issue.description }}</p>
+                        {% endif %}
+                    </td>
+                    <td class="px-4 py-3">
+                        <a href="{% url 'projects:project_detail' issue.project.pk %}" class="text-muted-foreground hover:text-foreground hover:underline">{{ issue.project.code }}</a>
+                    </td>
+                    <td class="px-4 py-3">
+                        <c-badge variant="outline" class="{{ issue.severity|status_style }}">{{ issue.get_severity_display }}</c-badge>
+                    </td>
+                    <td class="px-4 py-3">
+                        <c-badge variant="outline" class="{{ issue.status|status_style }}">{{ issue.get_status_display }}</c-badge>
+                    </td>
+                    <td class="px-4 py-3 text-muted-foreground">{{ issue.owner.pcc_profile.name|default:issue.owner.username|default:"—" }}</td>
+                    <td class="px-6 py-3 text-right tabular-nums text-muted-foreground">{{ issue.due_date|date:"d M Y"|default:"—" }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="px-6 py-12 text-center text-sm text-muted-foreground">
+                        Tidak ada issue{% if filter != 'all' %} dengan status ini{% endif %}.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
