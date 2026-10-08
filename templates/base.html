@@ -39,12 +39,7 @@
                     <a href="{% url 'projects:timeline_global' %}"
                        class="{% nav_active '/timeline' %}" title="Jadwal" aria-label="Jadwal"><svg viewBox="0 0 24 24"><path d="M3 5h12M8 12h13M3 19h10M3 3v4M8 10v4M3 17v4" /></svg><span class="nav-label">Jadwal</span></a>
                     <a href="{% url 'projects:note_list' %}"
-                       class="{% nav_active '/notes' %}" title="Catatan" aria-label="Catatan"><svg viewBox="0 0 24 24"><path d="M6 3h14v18H6zM3 7h5M3 12h5M3 17h5M11 8h5M11 12h5" /></svg><span class="nav-label">Catatan</span></a></nav><button type="button"
-        class="rail-toggle"
-        data-rail-toggle
-        aria-pressed="false"
-        aria-label="Perluas sidebar"
-        title="Perluas sidebar"><svg data-rail-icon="expand" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 5 7 7-7 7M13 5l7 7-7 7"/></svg><svg data-rail-icon="collapse" viewBox="0 0 24 24" aria-hidden="true"><path d="m18 5-7 7 7 7M11 5l-7 7 7 7"/></svg><span class="nav-label">Perluas</span></button>
+                       class="{% nav_active '/notes' %}" title="Catatan" aria-label="Catatan"><svg viewBox="0 0 24 24"><path d="M6 3h14v18H6zM3 7h5M3 12h5M3 17h5M11 8h5M11 12h5" /></svg><span class="nav-label">Catatan</span></a></nav>
                 <div class="workspace-account"><a class="workspace-settings {% nav_active '/auth/settings' %}"
    href="{% url 'identity:settings' %}"
    title="Pengaturan"
@@ -53,19 +48,24 @@
         @click="sidebarOpen = !sidebarOpen; if(sidebarOpen) $nextTick(() => document.querySelector('#main-sidebar a').focus())"
         :aria-expanded="sidebarOpen"
         aria-controls="main-sidebar"
-        aria-label="Buka navigasi"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16" /></svg></button><span class="breadcrumb-home">Workspace</span>{% if project %}<span class="breadcrumb-separator">/</span><a href="{% url 'projects:project_detail' project.pk %}">{{ project.code }}</a>{% elif task %}<span class="breadcrumb-separator">/</span><a href="{% url 'projects:project_detail' task.project_id %}">{{ task.project.code }}</a>{% else %}<span class="breadcrumb-separator">/</span><span>Scope</span>{% endif %}</div><div class="header-tools"><form method="get"
+        aria-label="Buka navigasi"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16" /></svg></button><button type="button"
+        class="rail-toggle"
+        data-rail-toggle
+        aria-pressed="true"
+        aria-label="Perkecil sidebar"
+        title="Perkecil sidebar"><svg data-rail-icon="expand" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/><path d="m14 9 3 3-3 3"/></svg><svg data-rail-icon="collapse" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/><path d="m17 9-3 3 3 3"/></svg></button><span class="breadcrumb-home">Workspace</span>{% if project %}<span class="breadcrumb-separator">/</span><a href="{% url 'projects:project_detail' project.pk %}">{{ project.code }}</a>{% elif task %}<span class="breadcrumb-separator">/</span><a href="{% url 'projects:project_detail' task.project_id %}">{{ task.project.code }}</a>{% else %}<span class="breadcrumb-separator">/</span><span>Scope</span>{% endif %}</div><div class="header-tools"><form method="get"
       action="{% url 'projects:project_list' %}"
-      class="header-search"><svg viewBox="0 0 24 24"><circle cx="10" cy="10" r="6" /><path d="m15 15 5 5" /></svg><label class="sr-only" for="workspace-search">Cari project</label><input id="workspace-search"
+      class="header-search"
+      role="search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="10" r="6" /><path d="m15 15 5 5" /></svg><label class="sr-only" for="workspace-search">Cari project</label><div class="search-field"><input id="workspace-search"
        name="q"
        placeholder="Cari project atau kode…"
-       autocomplete="off"></form><button type="button"
-        class="icon-button theme-toggle"
-        data-theme-toggle
-        title="Tema: Sistem"
-        aria-label="Ganti tema"><svg class="theme-icon" data-theme-icon="light" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5M17.5 17.5 19 19M19 5l-1.5 1.5M6.5 17.5 5 19"/></svg><svg class="theme-icon" data-theme-icon="dark" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg><svg class="theme-icon" data-theme-icon="system" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg></button><time class="header-date">{{ workspace_date|date:'d M Y' }}</time><a class="icon-button header-logout"
-   href="{% url 'identity:logout' %}"
-   title="Keluar"
-   aria-label="Keluar dari akun"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4H4v16h5m6-13 5 5-5 5M8 12h12"/></svg></a><a class="header-profile" href="{% url 'identity:profile' %}" aria-label="Profil akun">{{ request.user.first_name|default:request.user.username|slice:':1'|upper }}</a></div></header>
+       autocomplete="off"
+       aria-autocomplete="list"
+       aria-controls="nav-search-results"
+       hx-get="{% url 'projects:nav_search' %}"
+       hx-trigger="input changed delay:200ms, focus"
+       hx-target="#nav-search-results"
+       hx-swap="innerHTML"><div class="search-suggest" id="nav-search-results" role="listbox" aria-label="Saran pencarian"></div></div></form><time class="header-date">{{ workspace_date|date:'d M Y' }}</time><details class="project-add-menu account-menu"><summary class="header-profile" title="Akun" aria-label="Menu akun">{{ request.user.first_name|default:request.user.username|slice:':1'|upper }}</summary><div class="project-add-options account-menu-options"><div class="account-menu-head"><span class="account-menu-avatar">{{ request.user.first_name|default:request.user.username|slice:':1'|upper }}</span><span class="account-menu-id"><strong>{{ request.user|person_name }}</strong><small>{{ request.user.pcc_profile.get_role_display|default:'Project Member' }}</small></span></div><a class="account-menu-item" href="{% url 'identity:profile' %}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>Profil</span></a><div class="account-menu-theme"><span class="account-menu-label">Tema</span><div class="theme-seg" role="group" aria-label="Mode tema"><button type="button" data-theme-choice="light"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5M17.5 17.5 19 19M19 5l-1.5 1.5M6.5 17.5 5 19"/></svg><span>Terang</span></button><button type="button" data-theme-choice="dark"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg><span>Gelap</span></button><button type="button" data-theme-choice="system"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg><span>Sistem</span></button></div></div><hr class="account-menu-sep"><a class="account-menu-item account-menu-logout" href="{% url 'identity:logout' %}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4H4v16h5m6-13 5 5-5 5M8 12h12"/></svg><span>Keluar</span></a></div></details></div></header>
                 <main id="main-content" class="workspace-content">{% if messages %}<div class="mb-5 space-y-2">{% for message in messages %}<div role="status"
      class="workspace-message {% if message.tags == 'error' %}is-error{% endif %}">{{ message }}<button @click="$el.parentElement.remove()" aria-label="Tutup pesan">×</button></div>{% endfor %}</div>{% endif %}<div id="interaction-status"
      class="workspace-message mb-4 hidden"

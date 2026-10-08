@@ -79,8 +79,8 @@ uv run manage.py snapshot_progress
 ```
 
 Reports menyediakan CSV, XLSX, dan PDF untuk summary, progress, timeline,
-task, issue, dan milestone. UI mengikuti DESIGN.md (Ramp): kanvas Bone, panel putih, border tipis,
-aksen chartreuse untuk aksi dan state aktif, font Inter lokal berbobot 400, dan komponen native,
+task, issue, dan milestone. UI mengikuti DESIGN.md (Precision): kanvas netral terang, panel putih dengan hairline,
+satu aksen violet untuk aksi dan state aktif, font Inter lokal, dan komponen native,
 serta tabel dan board dengan scroll lokal; tidak menggunakan shadcn/Cotton.
 Lihat [DESIGN.md](DESIGN.md) untuk aturan visual.
 
@@ -92,7 +92,7 @@ apps/
   identity/      # auth (Entra ID SSO), roles
   projects/      # project, phase, milestone, progress, notes, decisions, activity
   work/          # task, issue, comments
-templates/       # global templates (base layout)
+templates/       # base + partials/, projects/{portfolio,project,forms,presentation,partials}/, work/, identity/
 static/          # css, js, vendor libs
 tests/           # pytest
 ```

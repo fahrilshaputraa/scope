@@ -105,6 +105,7 @@ urlpatterns = [
         views.decision_delete,
         name="decision_delete",
     ),
+    path("search/suggest/", views.nav_search, name="nav_search"),
     # Global pages
     path("notes/", views.note_list, name="note_list"),
     path("timeline/", views.timeline_global, name="timeline_global"),

@@ -12,6 +12,11 @@
             button.setAttribute('aria-label', `Tema ${label}. Klik untuk ganti tema.`);
             button.setAttribute('title', `Tema: ${label}`);
         });
+        document.querySelectorAll('[data-theme-choice]').forEach(button => {
+            const on = button.dataset.themeChoice === preference;
+            button.setAttribute('aria-pressed', String(on));
+            button.classList.toggle('is-active', on);
+        });
     }
     function apply() {
         root.dataset.theme = preference === 'system' ? (system.matches ? 'dark' : 'light') : preference;
@@ -20,9 +25,10 @@
         paintControls();
         if (window.Chart) {
             const styles = getComputedStyle(root);
-            const ink = styles.getPropertyValue('--color-ink').trim();
             const ash = styles.getPropertyValue('--color-ash').trim();
             const border = styles.getPropertyValue('--color-hairline').trim();
+            const brand = styles.getPropertyValue('--color-violet').trim();
+            const surface = styles.getPropertyValue('--color-paper').trim();
             Chart.defaults.color = ash;
             Object.values(Chart.instances).forEach(chart => {
                 chart.options.color = ash;
@@ -31,8 +37,12 @@
                     if (scale.grid) scale.grid.color = border;
                 });
                 chart.data.datasets.forEach(dataset => {
-                    dataset.borderColor = /planned|rencana/i.test(dataset.label) ? ash : ink;
-                    if (typeof dataset.backgroundColor === 'string') dataset.backgroundColor = /planned|rencana/i.test(dataset.label) ? ash : ink;
+                    const planned = /planned|rencana/i.test(dataset.label);
+                    const color = planned ? ash : brand;
+                    dataset.borderColor = color;
+                    if ('pointBorderColor' in dataset) dataset.pointBorderColor = color;
+                    dataset.pointBackgroundColor = planned ? surface : brand;
+                    if (typeof dataset.backgroundColor === 'string') dataset.backgroundColor = color;
                 });
                 if (chart.options.plugins?.legend?.labels) chart.options.plugins.legend.labels.color = ash;
                 chart.update('none');
@@ -47,10 +57,11 @@
     window.ScopeTheme = { set, current: () => preference };
     apply();
     system.addEventListener('change', () => { if (preference === 'system') apply(); });
-    document.addEventListener('DOMContentLoaded', () => {
-        document.querySelectorAll('[data-theme-toggle]').forEach(button => {
-            button.addEventListener('click', () => set(modes[(modes.indexOf(preference) + 1) % modes.length]));
-        });
-        paintControls();
+    document.addEventListener('click', event => {
+        const choice = event.target.closest('[data-theme-choice]');
+        if (choice) { set(choice.dataset.themeChoice); return; }
+        const toggle = event.target.closest('[data-theme-toggle]');
+        if (toggle) set(modes[(modes.indexOf(preference) + 1) % modes.length]);
     });
+    document.addEventListener('DOMContentLoaded', paintControls);
 })();

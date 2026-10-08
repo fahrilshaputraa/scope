@@ -71,7 +71,7 @@ def plan_import(request, pk=None):
                 "projects:project_tasks" if result["tasks"] else "projects:project_detail",
                 pk=result["project"].pk,
             )
-    return render(request, "projects/plan_import.html", {"form": form, "project": project})
+    return render(request, "projects/forms/plan_import.html", {"form": form, "project": project})
 
 
 def json_download(payload, filename):

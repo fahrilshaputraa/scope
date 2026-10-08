@@ -1,11 +1,11 @@
-{% extends "projects/project_base.html" %}
+{% extends "projects/_base.html" %}
 {% load static %}
 {% block project_content %}
 <section class="pcc-panel mt-6" data-fullscreen-panel="Timeline saat ini">
     <div class="pcc-section border-b visualization-toolbar"><div><h2 class="text-lg">Timeline saat ini</h2><p class="mt-1 text-sm text-muted-foreground">{{ timeline_start|date:"d M Y" }} — {{ timeline_end|date:"d M Y" }} · Klik task atau bar untuk update progress.</p></div><div data-visualization-actions><div class="flex flex-wrap gap-1" data-timeline-controls><button class="pcc-button pcc-button-secondary" data-timeline-scale="1" aria-pressed="true">Seluruh project</button><button class="pcc-button pcc-button-secondary" data-timeline-scale="2" aria-pressed="false">Lebih dekat</button><button class="pcc-button pcc-button-secondary" data-timeline-today>Hari ini</button></div></div></div>
-    {% include "projects/_task_timeline.html" %}
+    {% include "projects/partials/_task_timeline.html" %}
 </section>
 <details class="pcc-panel mt-6"><summary class="pcc-section cursor-pointer">Phase project</summary><div class="pcc-section border-t"><div class="flex flex-wrap gap-3">{% if can_manage %}<a data-project-action class="pcc-button pcc-button-secondary" href="{% url 'projects:phase_create' project.pk %}">Tambah phase</a><form method="post" action="{% url 'projects:capture_baseline' project.pk %}" data-confirm="Simpan jadwal saat ini sebagai baseline? Baseline dan kurva planned sebelumnya akan diganti.">{% csrf_token %}<button class="pcc-button pcc-button-secondary">Simpan baseline jadwal</button></form>{% endif %}</div><p class="mt-3 text-sm text-muted-foreground">Phase mengelompokkan pekerjaan. Baseline menyimpan tanggal pembanding sebelum jadwal berubah.</p></div><div class="divide-y">{% for phase in phases %}<div class="pcc-section flex flex-wrap justify-between gap-3 text-sm"><span>{{ phase.sequence }} · {{ phase.name }}</span><span>{{ phase.start_date|date:"d M"|default:"Tanpa tanggal" }} — {{ phase.end_date|date:"d M Y"|default:"Tanpa tanggal" }}</span>{% if can_manage %}<a data-project-action class="underline" href="{% url 'projects:phase_edit' project.pk phase.pk %}">Edit phase</a>{% endif %}</div>{% empty %}<p class="pcc-section text-sm">Belum ada phase.</p>{% endfor %}</div></details>
-<details class="pcc-panel mt-6"><summary class="pcc-section cursor-pointer">Perubahan tanggal dari baseline</summary>{% include "projects/_timeline_comparison.html" %}</details>
+<details class="pcc-panel mt-6"><summary class="pcc-section cursor-pointer">Perubahan tanggal dari baseline</summary>{% include "projects/partials/_timeline_comparison.html" %}</details>
 {% endblock %}
 {% block extra_js %}<script src="{% static 'js/task-timeline.js' %}"></script>{% endblock %}

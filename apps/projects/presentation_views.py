@@ -166,7 +166,7 @@ def presentation(request, pk):
             pass
     return render(
         request,
-        "projects/presentation_setup.html",
+        "projects/presentation/setup.html",
         {
             **project_context(request, project, "overview"),
             "form": form,
@@ -308,7 +308,7 @@ def presentation_play(request, pk):
     )
     return render(
         request,
-        "projects/presentation_play.html",
+        "projects/presentation/play.html",
         {
             "project": project,
             "slides": presentation_slides(project, sections, start, end),
@@ -379,7 +379,7 @@ def board_column(request, pk, column_id=None):
         return redirect("projects:project_tasks", pk=pk)
     return render(
         request,
-        "projects/board_form.html",
+        "projects/forms/board_form.html",
         {
             "form": form,
             "title": "Edit kolom" if column_id else "Tambah kolom Kanban",
@@ -418,7 +418,7 @@ def feedback_edit(request, pk, column_id, card_id=None):
         return redirect("projects:project_tasks", pk=pk)
     return render(
         request,
-        "projects/board_form.html",
+        "projects/forms/board_form.html",
         {
             "form": form,
             "title": "Edit feedback" if card_id else "Tambah feedback",

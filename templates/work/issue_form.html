@@ -3,9 +3,9 @@
 {% block content %}
     {% if project %}
         {% url 'projects:project_issues' project.pk as list_url %}
-        {% include "projects/_form_card.html" with back_url=list_url title=title subtitle=project.name %}
+        {% include "partials/_form_card.html" with back_url=list_url title=title subtitle=project.name %}
     {% else %}
         {% url 'work:issue_list' as list_url %}
-        {% include "projects/_form_card.html" with back_url=list_url title=title subtitle="Pilih project tempat issue terjadi" %}
+        {% include "partials/_form_card.html" with back_url=list_url title=title subtitle="Pilih project tempat issue terjadi" %}
     {% endif %}
 {% endblock %}

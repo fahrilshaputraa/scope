@@ -1,4 +1,4 @@
-{% extends "projects/project_base.html" %}
+{% extends "projects/_base.html" %}
 {% load pcc_tags static %}
 {% block project_content %}
     {# ------------------------------------------------------- variance summary #}
@@ -36,7 +36,7 @@
                 <h2 class="text-base font-normal">Rencana vs progress</h2>
                 <p class="text-sm text-muted-foreground">Planned progress curve (baseline) vs actual progress snapshot.</p>
             </div>
-            <div class="flex items-center gap-1 rounded-md border bg-background p-0.5 text-xs">
+            <div class="flex items-center gap-2" data-visualization-actions><div class="flex items-center gap-1 rounded-md border bg-background p-0.5 text-xs">
                 <button type="button"
                         data-zoom="10"
                         class="rounded-md px-2 py-1 font-normal hover:bg-accent">2W</button>
@@ -50,12 +50,12 @@
                         data-zoom="all"
                         class="rounded-md px-2 py-1 font-normal hover:bg-accent">All</button>
             </div>
-        </div>
+        </div></div>
         <div class="p-4">
             {% if chart_has_plan %}
                 <div class="flex items-center justify-end gap-4 pb-2 text-xs text-muted-foreground">
-                    <span class="inline-flex items-center gap-1.5"><span class="h-0.5 w-4 rounded-md bg-border"></span> Planned</span>
-                    <span class="inline-flex items-center gap-1.5"><span class="h-0.5 w-4 rounded-md bg-foreground"></span> Actual</span>
+                    <span class="inline-flex items-center gap-1.5"><span class="h-0.5 w-4 rounded-md bg-muted-foreground"></span> Rencana</span>
+                    <span class="inline-flex items-center gap-1.5"><span class="h-0.5 w-4 rounded-md bg-primary"></span> Actual</span>
                 </div>
                 <div class="relative h-80" data-chart-frame>
                     <canvas id="progress-chart"
@@ -210,5 +210,5 @@
     </div>
 {% endblock %}
 {% block extra_js %}
-    {% include "projects/_progress_chart.html" %}
+    {% include "projects/partials/_progress_chart.html" %}
 {% endblock %}

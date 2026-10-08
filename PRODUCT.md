@@ -18,7 +18,7 @@ An internal project management workspace with daily PM review and management rep
 PRD.md is the requirements authority. The user requested completion of missing workflows, default local accounts with minor login changes, and a replacement UI without shadcn. Use native HTML/CSS and existing Django routing rather than adding another frontend framework.
 
 ## Brand Commitments
-Scope. Latest user direction: follow the Ramp style reference in DESIGN.md, sourced by the user from Refero. Bone canvas, Paper surfaces, hairline borders, Ink/Ash typography in weight 400, and chartreuse reserved for primary actions and active states. Inter is an approved Lausanne substitute. Keep all existing navigation menus. Contextual forms and confirmations open in a right-hand drawer, full width on mobile. Simplify actions and form entry; treat the project as the working hub.
+Scope. Latest user direction: follow the Precision design system in DESIGN.md: light-first, hairline surfaces, neutral canvas, one violet accent reserved for primary actions and active states, and self-hosted Inter. Keep all existing navigation menus. Contextual forms and confirmations open in a right-hand drawer, full width on mobile. Simplify actions and form entry; treat the project as the working hub.
 
 ## Usability Commitments
 - Users should complete ordinary project actions without training or jumping between pages.

@@ -15,7 +15,7 @@ from apps.identity.permissions import (
     can_report_issue,
     visible_projects,
 )
-from apps.work.models import TASK_STATUS_LABELS, TaskStatus
+from apps.work.models import TASK_STATUS_LABELS, Task, TaskStatus
 
 from .forms import BaselinePointForm, DecisionForm, MilestoneForm, NoteForm, PhaseForm, ProjectForm
 from .models import (
@@ -128,7 +128,7 @@ def dashboard(request: HttpRequest) -> HttpResponse:
     attention.sort(key=lambda row: (-row["priority"], row["project"].target_end_date))
     return render(
         request,
-        "projects/dashboard.html",
+        "projects/portfolio/dashboard.html",
         {
             "rows": rows,
             "can_create": can_create_project(request.user),
@@ -239,7 +239,7 @@ def project_list(request: HttpRequest) -> HttpResponse:
     )
     return render(
         request,
-        "projects/project_list.html",
+        "projects/portfolio/list.html",
         {
             "rows": rows,
             "view": view,
@@ -304,7 +304,7 @@ def project_detail(request: HttpRequest, pk: int) -> HttpResponse:
 
     return render(
         request,
-        "projects/overview.html",
+        "projects/project/overview.html",
         {
             **project_context(request, project, "overview"),
             "health": health,
@@ -387,7 +387,7 @@ def project_create(request: HttpRequest) -> HttpResponse:
         return redirect("projects:project_detail", pk=project.pk)
     return render(
         request,
-        "projects/project_form.html",
+        "projects/forms/project_form.html",
         {"form": form, "project": None, "title": "Buat project"},
     )
 
@@ -411,7 +411,7 @@ def project_edit(request: HttpRequest, pk: int) -> HttpResponse:
         return redirect("projects:project_detail", pk=pk)
     return render(
         request,
-        "projects/project_form.html",
+        "projects/forms/project_form.html",
         {"form": form, "project": project, "title": f"Edit {project.code}"},
     )
 
@@ -435,7 +435,7 @@ def project_progress(request: HttpRequest, pk: int) -> HttpResponse:
     recent_snapshots = snapshots[-14:]
     return render(
         request,
-        "projects/progress.html",
+        "projects/project/progress.html",
         {
             **project_context(request, project, "progress"),
             "baseline": baseline,
@@ -460,7 +460,7 @@ def project_timeline(request: HttpRequest, pk: int) -> HttpResponse:
         row["can_edit"] = can_edit_task(request.user, row["task"])
     return render(
         request,
-        "projects/timeline.html",
+        "projects/project/timeline.html",
         {
             **project_context(request, project, "timeline"),
             **data,
@@ -495,7 +495,7 @@ def project_tasks(request: HttpRequest, pk: int) -> HttpResponse:
     columns = [(status, by_status[status]) for status in TaskStatus.values]
     return render(
         request,
-        "projects/tasks.html",
+        "projects/project/tasks.html",
         {
             **project_context(request, project, "tasks"),
             "columns": columns,
@@ -522,7 +522,7 @@ def project_issues(request: HttpRequest, pk: int) -> HttpResponse:
     )
     return render(
         request,
-        "projects/issues.html",
+        "projects/project/issues.html",
         {
             **project_context(request, project, "issues"),
             "open_issues": open_issues,
@@ -540,7 +540,7 @@ def project_milestones(request: HttpRequest, pk: int) -> HttpResponse:
     milestones = project.milestones.select_related("owner").all()
     return render(
         request,
-        "projects/milestones.html",
+        "projects/project/milestones.html",
         {
             **project_context(request, project, "milestones"),
             "milestones": milestones,
@@ -563,7 +563,7 @@ def project_notes(request: HttpRequest, pk: int) -> HttpResponse:
         entries = [entry for entry in entries if entry["kind"] == selected]
     return render(
         request,
-        "projects/notes.html",
+        "projects/project/notes.html",
         {
             **project_context(request, project, "notes"),
             "notes": notes,
@@ -580,7 +580,7 @@ def project_activity(request: HttpRequest, pk: int) -> HttpResponse:
     activities = project.activities.select_related("actor").all()
     return render(
         request,
-        "projects/activity.html",
+        "projects/project/activity.html",
         {
             **project_context(request, project, "activity"),
             "activities": activities,
@@ -602,7 +602,7 @@ def note_list(request: HttpRequest) -> HttpResponse:
     notes = notes[:50]
     return render(
         request,
-        "projects/notes_global.html",
+        "projects/portfolio/notes.html",
         {"notes": notes, "q": q},
     )
 
@@ -614,7 +614,7 @@ def timeline_global(request: HttpRequest) -> HttpResponse:
         {"project": p, "actual": actual_progress(p), "planned": planned_progress_on(p)}
         for p in projects
     ]
-    return render(request, "projects/timeline_global.html", {"rows": rows})
+    return render(request, "projects/portfolio/timeline.html", {"rows": rows})
 
 
 @login_required
@@ -657,7 +657,7 @@ def reports(request: HttpRequest) -> HttpResponse:
     }
     return render(
         request,
-        "projects/reports.html",
+        "projects/portfolio/reports.html",
         {
             "rows": rows,
             "today": timezone.localdate(),
@@ -719,7 +719,7 @@ def phase_create(request: HttpRequest, pk: int) -> HttpResponse:
         return _tab_redirect(pk, "timeline")
     return render(
         request,
-        "projects/phase_form.html",
+        "projects/forms/phase_form.html",
         {"form": form, "project": project, "title": "Tambah tahap"},
     )
 
@@ -747,7 +747,7 @@ def milestone_create(request: HttpRequest, pk: int) -> HttpResponse:
         return _tab_redirect(pk, "milestones")
     return render(
         request,
-        "projects/milestone_form.html",
+        "projects/forms/milestone_form.html",
         {"form": form, "project": project, "title": "Tambah milestone"},
     )
 
@@ -781,7 +781,7 @@ def milestone_update(request: HttpRequest, pk: int, mid: int) -> HttpResponse:
         return _tab_redirect(pk, "milestones")
     return render(
         request,
-        "projects/milestone_form.html",
+        "projects/forms/milestone_form.html",
         {"form": form, "project": project, "title": milestone.name},
     )
 
@@ -890,7 +890,7 @@ def note_create(request: HttpRequest, pk: int) -> HttpResponse:
         return _tab_redirect(pk, "notes")
     return render(
         request,
-        "projects/note_form.html",
+        "projects/forms/note_form.html",
         {"form": form, "project": project, "title": "Tambah catatan"},
     )
 
@@ -911,7 +911,7 @@ def note_edit(request: HttpRequest, pk: int, nid: int) -> HttpResponse:
         return _tab_redirect(pk, "notes")
     return render(
         request,
-        "projects/note_form.html",
+        "projects/forms/note_form.html",
         {"form": form, "project": project, "title": note.title},
     )
 
@@ -946,7 +946,7 @@ def decision_create(request: HttpRequest, pk: int) -> HttpResponse:
         return _tab_redirect(pk, "notes")
     return render(
         request,
-        "projects/decision_form.html",
+        "projects/forms/decision_form.html",
         {"form": form, "project": project, "title": "Catat keputusan"},
     )
 
@@ -980,7 +980,7 @@ def project_members(request, pk):
         return redirect("projects:project_members", pk=pk)
     return render(
         request,
-        "projects/members.html",
+        "projects/project/members.html",
         {**project_context(request, project, "members"), "form": form},
     )
 
@@ -1011,7 +1011,7 @@ def risk_edit(request, pk, rid=None):
         return redirect("projects:project_issues", pk=pk)
     return render(
         request,
-        "projects/risk_form.html",
+        "projects/forms/risk_form.html",
         {"project": project, "form": form, "title": "Risiko project"},
     )
 
@@ -1054,6 +1054,28 @@ def phase_edit(request, pk, phase_id):
         return _tab_redirect(pk, "timeline")
     return render(
         request,
-        "projects/phase_form.html",
+        "projects/forms/phase_form.html",
         {"project": project, "form": form, "title": "Edit tahap"},
+    )
+
+
+@login_required
+def nav_search(request: HttpRequest) -> HttpResponse:
+    """Live suggestions for the workspace navbar search (projects + tasks)."""
+    query = request.GET.get("q", "").strip()
+    projects, tasks = [], []
+    if query:
+        scope = visible_projects(request.user)
+        projects = list(
+            scope.filter(Q(name__icontains=query) | Q(code__icontains=query)).order_by("name")[:6]
+        )
+        tasks = list(
+            Task.objects.filter(project__in=scope.values("pk"), title__icontains=query)
+            .select_related("project")
+            .order_by("title")[:5]
+        )
+    return render(
+        request,
+        "projects/partials/_nav_search_results.html",
+        {"query": query, "projects": projects, "tasks": tasks},
     )

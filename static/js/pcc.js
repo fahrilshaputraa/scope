@@ -269,3 +269,26 @@ PCC.initVisualizations = function(root = document) {
 };
 PCC.initVisualizations();
 
+
+// Navbar search suggestions: htmx fetches, this keeps the dropdown tidy.
+PCC.initNavSearch = function(root = document) {
+    const form = root.querySelector('.header-search');
+    if (!form || form.dataset.searchReady) return;
+    form.dataset.searchReady = 'true';
+    const results = form.querySelector('#nav-search-results');
+    const input = form.querySelector('#workspace-search');
+    if (!results || !input) return;
+    const clear = () => results.replaceChildren();
+    input.addEventListener('keydown', event => {
+        if (event.key === 'Escape') { clear(); input.blur(); return; }
+        const items = [...results.querySelectorAll('.search-suggest-item')];
+        if (!items.length || (event.key !== 'ArrowDown' && event.key !== 'ArrowUp')) return;
+        event.preventDefault();
+        const current = items.indexOf(document.activeElement);
+        const next = event.key === 'ArrowDown' ? current + 1 : current - 1;
+        (items[next] || (event.key === 'ArrowDown' ? items[0] : items.at(-1))).focus();
+    });
+    form.addEventListener('submit', clear);
+    document.addEventListener('click', event => { if (!form.contains(event.target)) clear(); });
+};
+PCC.initNavSearch();

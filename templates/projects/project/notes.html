@@ -1,4 +1,4 @@
-{% extends "projects/project_base.html" %}
+{% extends "projects/_base.html" %}
 {% load pcc_tags %}
 {% block project_content %}
 <div class="mt-6 visualization-toolbar"><div><h2 class="text-lg">Catatan & keputusan</h2><p class="mt-1 text-sm text-muted-foreground">Catatan menyimpan informasi. Keputusan mencatat pilihan yang disepakati beserta alasannya.</p></div>{% if can_manage %}<div class="flex flex-wrap gap-2"><a data-project-action class="pcc-button" href="{% url 'projects:note_create' project.pk %}">Tulis catatan</a><a data-project-action class="pcc-button pcc-button-secondary" href="{% url 'projects:decision_create' project.pk %}">Catat keputusan</a></div>{% endif %}</div>

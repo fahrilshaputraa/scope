@@ -1,4 +1,4 @@
-{% extends "projects/project_base.html" %}
+{% extends "projects/_base.html" %}
 {% load pcc_tags static %}
 {% block project_content %}
     <div class="mt-6 flex flex-wrap items-center justify-between gap-3">
@@ -35,7 +35,7 @@
                 <div class="mt-2 flex min-h-24 flex-1 flex-col gap-2 kanban-column p-2"
                      data-cards>
                     {% for task in tasks %}
-                        {% include "projects/_kanban_task.html" %}
+                        {% include "projects/partials/_kanban_task.html" %}
                     {% empty %}
                         <p class="flex-1 py-6 text-center text-xs text-muted-foreground">Drop task di sini</p>
                     {% endfor %}
@@ -46,7 +46,7 @@
         <div class="flex w-72 shrink-0 flex-col" data-custom-column="{{ column.pk }}">
          <div class="kanban-column-heading flex items-center justify-between gap-2 px-3 py-3"><span class="text-sm">{{ column.title }}</span>{% if can_manage %}<a data-project-action class="text-xs text-muted-foreground" href="{% url 'projects:board_column_edit' project.pk column.pk %}">Edit</a>{% endif %}</div>
          <div class="mt-2 flex min-h-24 flex-1 flex-col gap-2 kanban-column p-2" data-cards>
-          {% for task in column.board_tasks %}{% include "projects/_kanban_task.html" %}{% endfor %}
+          {% for task in column.board_tasks %}{% include "projects/partials/_kanban_task.html" %}{% endfor %}
           {% for card in column.feedback_cards.all %}<article class="kanban-card p-3" data-feedback-id="{{ card.pk }}" data-draggable="{{ can_manage|yesno:'true,false' }}"><div class="flex items-center justify-between gap-2"><span class="text-xs text-muted-foreground">Feedback · {{ card.get_status_display }}</span>{% if can_manage %}<a data-project-action class="text-xs" href="{% url 'projects:feedback_edit' project.pk column.pk card.pk %}">Edit</a>{% endif %}</div><h3 class="mt-2 text-sm">{{ card.title }}</h3>{% if card.description %}<p class="mt-2 text-xs text-muted-foreground whitespace-pre-line">{{ card.description }}</p>{% endif %}<p class="mt-3 text-xs text-muted-foreground">{{ card.owner|person_name|default:"PIC belum ditentukan" }}{% if card.due_date %} · {{ card.due_date|date:"d M" }}{% endif %}</p>{% if card.linked_task %}<a class="mt-2 block text-xs underline" href="{% url 'work:task_detail' card.linked_task.pk %}">{{ card.linked_task.title }} · {{ card.linked_task.display_progress|floatformat:0 }}%</a>{% endif %}{% if can_manage and custom_columns|length > 1 %}<label class="sr-only" for="feedback-column-{{ card.pk }}">Kolom feedback {{ card.title }}</label><select id="feedback-column-{{ card.pk }}" class="pcc-field mt-3 text-xs" data-feedback-column-select data-feedback-id-select="{{ card.pk }}" data-current="{{ column.pk }}">{% for destination in custom_columns %}<option value="{{ destination.pk }}" {% if destination.pk == column.pk %}selected{% endif %}>{{ destination.title }}</option>{% endfor %}</select>{% endif %}</article>{% endfor %}
           {% if can_manage %}<a data-project-action class="pcc-button pcc-button-secondary text-xs" href="{% url 'projects:feedback_create' project.pk column.pk %}">+ Tambah feedback</a>{% endif %}
           {% if not column.board_tasks and not column.feedback_cards.all %}<p class="py-4 text-center text-xs text-muted-foreground">Feedback dan task untuk pembahasan tambahan.</p>{% endif %}

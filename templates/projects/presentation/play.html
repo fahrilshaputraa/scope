@@ -17,4 +17,4 @@
  </section>{% endfor %}
  </main>
  <footer class="presentation-navigation"><span class="slide-snapshot">Data {{ captured_at|date:"d M Y · H:i" }} · {% now "T" %}</span><div><button type="button" data-slide-prev aria-label="Slide sebelumnya">← <span>Sebelumnya</span></button><label class="sr-only" for="slide-jump">Pilih slide</label><select id="slide-jump" data-slide-jump>{% for slide in slides %}<option value="{{ forloop.counter0 }}">{{ forloop.counter }} · {{ slide.title }}{% if slide.pages > 1 %} ({{ slide.page }}/{{ slide.pages }}){% endif %}</option>{% endfor %}</select><button type="button" data-slide-next aria-label="Slide berikutnya"><span>Berikutnya</span> →</button></div><span class="slide-counter" aria-live="polite" data-slide-counter></span></footer>
-</div>{% if chart_has_plan %}{% include "projects/_progress_chart.html" %}{% endif %}</body></html>
+</div>{% if chart_has_plan %}{% include "projects/partials/_progress_chart.html" %}{% endif %}</body></html>
