@@ -2,6 +2,12 @@
 {% load pcc_tags %}
 {% block title %}Dashboard — Scope{% endblock %}
 {% block content %}
+{% if can_create %}
+<aside class="workspace-announcement" aria-label="Import rencana project">
+  <p>Sudah punya rencana project? Import dari file JSON.</p>
+  <a data-project-action href="{% url 'projects:plan_import_new' %}">Import rencana <span aria-hidden="true">↗</span></a>
+</aside>
+{% endif %}
 <div class="flex flex-wrap items-center justify-between gap-4">
   <div><h1 class="dashboard-page-title">Ringkasan project</h1><p class="dashboard-page-subtitle">Lihat yang perlu ditindaklanjuti, lalu lanjutkan pekerjaan Anda.</p></div>
   <div class="flex flex-wrap gap-2"><a class="pcc-button" href="{% url 'work:my_tasks' %}">Pekerjaan saya</a>{% if can_create %}<a data-project-action class="pcc-button pcc-button-secondary" href="{% url 'projects:project_create' %}"><span aria-hidden="true">＋</span> Buat project</a>{% endif %}</div>

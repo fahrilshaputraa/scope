@@ -2,9 +2,9 @@
     const root = document.documentElement;
     const key = 'scope-rail';
     const states = ['collapsed', 'expanded'];
-    let state = 'collapsed';
-    try { state = localStorage.getItem(key) || 'collapsed'; } catch { /* Private storage can be unavailable. */ }
-    if (!states.includes(state)) state = 'collapsed';
+    let state = 'expanded';
+    try { state = localStorage.getItem(key) || 'expanded'; } catch { /* Private storage can be unavailable. */ }
+    if (!states.includes(state)) state = 'expanded';
     function paint() {
         root.dataset.rail = state;
         document.querySelectorAll('[data-rail-toggle]').forEach(button => {
