@@ -1,69 +1,9 @@
-{% extends "base.html" %}
-{% load pcc_tags %}
-{% block title %}Reports — Project Control Center{% endblock %}
+{% extends "base.html" %}{% load pcc_tags %}
+{% block title %}Laporan portfolio — Scope{% endblock %}
 {% block content %}
-<div class="flex flex-wrap items-end justify-between gap-4">
-    <div>
-        <h1 class="text-2xl font-semibold tracking-tight">Management Report</h1>
-        <p class="mt-1 text-sm text-muted-foreground">Ringkasan status & health seluruh project · {{ "now"|date:"d F Y" }}</p>
-    </div>
-    <button type="button" onclick="window.print()"
-            class="inline-flex h-9 items-center gap-2 rounded-md border bg-background px-3 text-sm font-medium shadow-xs hover:bg-accent">
-        <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v8H6z"/></svg>
-        Print / Export PDF
-    </button>
-</div>
-
-{# -------------------------------------------------------- summary strip #}
-<div class="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4 print:hidden">
-    <div class="rounded-xl border bg-card p-4 shadow-sm">
-        <p class="text-sm text-muted-foreground">Total Projects</p>
-        <p class="mt-1 text-2xl font-semibold tabular-nums">{{ rows|length }}</p>
-    </div>
-    <div class="rounded-xl border bg-card p-4 shadow-sm">
-        <p class="text-sm text-muted-foreground">On Track</p>
-        <p class="mt-1 text-2xl font-semibold tabular-nums">{{ rows|group_count:"on_track" }}</p>
-    </div>
-    <div class="rounded-xl border bg-card p-4 shadow-sm">
-        <p class="text-sm text-muted-foreground">At Risk / Delayed</p>
-        <p class="mt-1 text-2xl font-semibold tabular-nums">{{ rows|group_count:"risk" }}</p>
-    </div>
-    <div class="rounded-xl border bg-card p-4 shadow-sm">
-        <p class="text-sm text-muted-foreground">Completed</p>
-        <p class="mt-1 text-2xl font-semibold tabular-nums">{{ rows|group_count:"completed" }}</p>
-    </div>
-</div>
-
-{# ------------------------------------------------------------- report #}
-<div class="mt-6 overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm">
-    <div class="grid grid-cols-2 gap-3 border-b px-6 py-4 sm:grid-cols-4 print:border-b">
-        {% for row in rows %}
-        {% with p=row.project h=row.health %}
-        <div class="rounded-lg border p-3">
-            <div class="flex items-start justify-between gap-2">
-                <div class="min-w-0">
-                    <p class="truncate text-sm font-medium">{{ p.name }}</p>
-                    <p class="text-[10px] font-medium tabular-nums text-muted-foreground">{{ p.code }}</p>
-                </div>
-                <c-badge variant="outline" class="{{ p.status|status_style }}">{{ p.get_status_display }}</c-badge>
-            </div>
-            <dl class="mt-2 grid grid-cols-2 gap-x-2 gap-y-1 text-xs">
-                <dt class="text-muted-foreground">Progress</dt><dd class="text-right font-medium tabular-nums">{{ row.actual|pct }}</dd>
-                <dt class="text-muted-foreground">Planned</dt><dd class="text-right tabular-nums text-muted-foreground">{{ row.planned|pct }}</dd>
-                <dt class="text-muted-foreground">Variance</dt>
-                <dd class="text-right font-medium tabular-nums {{ row.variance|comp }}">{% if row.variance > 0 %}+{% endif %}{{ row.variance|pct }}</dd>
-                <dt class="text-muted-foreground">Schedule</dt><dd class="text-right">{{ h.schedule|level_label }}</dd>
-                <dt class="text-muted-foreground">Issues</dt><dd class="text-right tabular-nums">{{ h.open_issues }} open</dd>
-                <dt class="text-muted-foreground">Risk</dt><dd class="text-right tabular-nums">{{ h.risk_count }} high</dd>
-            </dl>
-            {% if h.schedule == "delayed" or h.variance <= -10 %}
-            <p class="mt-2 rounded bg-red-50 px-2 py-1 text-[10px] font-medium text-red-700">{{ h.schedule|level_label }} — perlu perhatian</p>
-            {% endif %}
-        </div>
-        {% endwith %}
-        {% empty %}
-        <p class="col-span-full py-12 text-center text-sm text-muted-foreground">Belum ada project.</p>
-        {% endfor %}
-    </div>
-</div>
+<div class="visualization-toolbar"><div><h1 class="text-2xl">Laporan portfolio</h1><p class="mt-2 text-sm text-muted-foreground">Seluruh project yang dapat Anda akses · {{ today|date:"d M Y" }}</p></div><button class="pcc-button pcc-button-secondary print-hidden" onclick="window.print()">Cetak laporan</button></div>
+<dl class="report-totals mt-6"><div><dt>Total project</dt><dd>{{ totals.projects }}</dd></div><div><dt>Selesai</dt><dd>{{ totals.completed }}</dd></div><div><dt>Perlu perhatian</dt><dd>{{ totals.attention }}</dd></div><div><dt>Issue terbuka</dt><dd>{{ totals.issues }}</dd></div><div><dt>Task terhambat</dt><dd>{{ totals.blocked }}</dd></div></dl>
+<section class="pcc-panel mt-6" data-fullscreen-panel="Portfolio project"><div class="pcc-section border-b visualization-toolbar"><div><h2 class="text-lg">Peta seluruh project</h2><p class="mt-1 text-sm text-muted-foreground">{{ portfolio_start|date:"d M Y" }} — {{ portfolio_end|date:"d M Y" }} · Bandingkan rentang waktu dan progress.</p></div><div data-visualization-actions></div></div><div class="timeline-legend"><span><i class="swatch-future"></i>Rentang project</span><span><i class="swatch-plan"></i>Rencana sampai hari ini</span><span><i class="swatch-actual"></i>Actual</span></div><div class="portfolio-map-scroll"><div class="portfolio-map"><div class="task-timeline-row timeline-axis"><div class="timeline-task-label">Project</div><div class="flex justify-between text-xs text-muted-foreground"><span>{{ portfolio_start|date:"d M Y" }}</span><span>{{ portfolio_end|date:"d M Y" }}</span></div></div>{% for row in rows %}<div class="task-timeline-row"><div class="timeline-task-label"><a href="{% url 'projects:project_detail' row.project.pk %}">{{ row.project.name }}</a><p>{{ row.project.status|status_label }} · Actual {{ row.actual|pct }} / Rencana {{ row.planned|pct }}</p></div><div class="task-time-track"><a class="task-time-bar" href="{% url 'projects:project_detail' row.project.pk %}" style="left:{{ row.left }}%;width:{{ row.width }}%" aria-label="{{ row.project.name }}: actual {{ row.actual|pct }}, rencana {{ row.planned|pct }}"><span class="task-plan-fill" style="width:{{ row.planned|default:0|floatformat:'2u' }}%"></span><span class="task-actual-fill" style="width:{{ row.actual|floatformat:'2u' }}%"></span></a></div></div>{% empty %}<p class="pcc-section text-sm">Belum ada project yang dapat diakses.</p>{% endfor %}</div></div></section>
+<section class="pcc-panel mt-6"><div class="pcc-section border-b"><h2 class="text-lg">Perbandingan kondisi project</h2><p class="mt-1 text-sm text-muted-foreground">Deviasi = actual − rencana, dalam poin persentase. Status project ditetapkan PM.</p></div><div class="overflow-x-auto"><table class="pcc-table portfolio-table"><thead><tr><th>Project / PM</th><th>Status</th><th>Progress</th><th>Deviasi (%)</th><th>Target</th><th>Task selesai</th><th>Hambatan / issue</th></tr></thead><tbody>{% for row in rows %}<tr><td><a class="underline" href="{% url 'projects:project_detail' row.project.pk %}">{{ row.project.name }}</a><p class="mt-1 text-xs text-muted-foreground">{{ row.project.code }} · {{ row.project.manager|person_name|default:"Belum ada PM" }}</p></td><td><span class="{{ row.project.status|status_style }}">{{ row.project.status|status_label }}</span></td><td><p class="tabular-nums">{{ row.actual|pct }}</p><progress class="pcc-progress mt-2" value="{{ row.actual }}" max="100" aria-label="Progress {{ row.project.name }}"></progress><p class="mt-1 text-xs text-muted-foreground">Rencana {{ row.planned|pct }}</p></td><td class="tabular-nums">{% if row.variance is not None %}{{ row.variance|floatformat:2 }}%{% else %}Tanpa baseline{% endif %}</td><td>{{ row.project.target_end_date|date:"d M Y" }}</td><td>{{ row.done }} / {{ row.task_count }}</td><td><a class="underline" href="{% url 'projects:project_detail' row.project.pk %}#project-blockers">{{ row.blocked }} terhambat</a><p class="mt-2"><a class="underline" href="{% url 'projects:project_issues' row.project.pk %}">{{ row.health.open_issues }} issue · {{ row.health.critical_issues }} kritis</a></p></td></tr>{% empty %}<tr><td colspan="7">Belum ada project.</td></tr>{% endfor %}</tbody></table></div></section>
+<details class="pcc-panel mt-6 print-hidden"><summary class="pcc-section cursor-pointer">Unduh data laporan</summary><form method="get" action="{% url 'projects:export_report' %}" class="pcc-section border-t flex flex-wrap items-end gap-4"><label class="text-sm">Project<select class="pcc-field mt-1" name="project"><option value="">Seluruh project</option>{% for row in rows %}<option value="{{ row.project.pk }}">{{ row.project.name }}</option>{% endfor %}</select></label><label class="text-sm">Isi laporan<select class="pcc-field mt-1" name="dataset"><option value="summary">Ringkasan project</option><option value="progress">Riwayat progress</option><option value="timeline">Timeline & baseline</option><option value="tasks">Daftar task</option><option value="issues">Daftar issue</option><option value="milestones">Milestones</option></select></label><label class="text-sm">Format<select class="pcc-field mt-1" name="format"><option value="pdf">PDF</option><option value="xlsx">Excel (.xlsx)</option><option value="csv">CSV</option></select></label><button class="pcc-button">Unduh laporan</button></form></details>
 {% endblock %}

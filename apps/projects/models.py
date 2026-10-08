@@ -1,6 +1,8 @@
 from decimal import Decimal
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
 _DP = Decimal("0.01")
@@ -66,6 +68,9 @@ class Project(models.Model):
         on_delete=models.SET_NULL,
         related_name="managed_projects",
     )
+    members = models.ManyToManyField(
+        settings.AUTH_USER_MODEL, blank=True, related_name="member_projects"
+    )
     team = models.CharField(max_length=100, blank=True)
     start_date = models.DateField()
     target_end_date = models.DateField()
@@ -81,7 +86,13 @@ class Project(models.Model):
         related_name="+",
     )
     # Manual PM adjustment untuk actual progress (PRD §10.4); NULL = hitung dari task.
-    progress_override = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    progress_override = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -90,6 +101,13 @@ class Project(models.Model):
 
     def __str__(self):
         return f"{self.code} — {self.name}"
+
+    def clean(self):
+        super().clean()
+        if self.start_date and self.target_end_date and self.target_end_date < self.start_date:
+            raise ValidationError({"target_end_date": "Tanggal akhir harus setelah tanggal mulai."})
+        if self.current_phase_id and self.current_phase.project_id != self.pk:
+            raise ValidationError({"current_phase": "Phase harus berasal dari project yang sama."})
 
     # --- Progress (dihitung live, PRD §10/§11/§12/§32) ---
 
@@ -165,6 +183,11 @@ class Phase(models.Model):
     def __str__(self):
         return f"P{self.sequence} — {self.name}"
 
+    def clean(self):
+        super().clean()
+        if self.start_date and self.end_date and self.end_date < self.start_date:
+            raise ValidationError({"end_date": "Tanggal selesai phase harus setelah mulai."})
+
     @property
     def progress(self):
         """Weighted progress task dalam phase ini (%)."""
@@ -172,7 +195,7 @@ class Phase(models.Model):
         weighted = 0
         for task in self.tasks.filter(parent_task__isnull=True):
             total_weight += task.weight
-            weighted += task.progress * task.weight
+            weighted += task.display_progress * task.weight
         if total_weight <= 0:
             return None
         return (weighted / total_weight).quantize(_DP)
@@ -205,11 +228,11 @@ class Milestone(models.Model):
 class ProgressBaselinePoint(models.Model):
     """Titik planned progress baseline (PRD §11) — membentuk planned progress curve."""
 
-    project = models.ForeignKey(
-        Project, on_delete=models.CASCADE, related_name="baseline_points"
-    )
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="baseline_points")
     date = models.DateField()
-    planned_percent = models.DecimalField(max_digits=5, decimal_places=2)
+    planned_percent = models.DecimalField(
+        max_digits=5, decimal_places=2, validators=[MinValueValidator(0), MaxValueValidator(100)]
+    )
     label = models.CharField(max_length=100, blank=True)
 
     class Meta:
@@ -312,3 +335,103 @@ class ActivityEvent(models.Model):
 
     def __str__(self):
         return f"[{self.action}] {self.message}"
+
+
+class Risk(models.Model):
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="risks")
+    title = models.CharField(max_length=200)
+    severity = models.CharField(
+        max_length=20,
+        choices=[("low", "Low"), ("medium", "Medium"), ("high", "High"), ("critical", "Critical")],
+        default="medium",
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=[("open", "Open"), ("mitigated", "Mitigated"), ("closed", "Closed")],
+        default="open",
+    )
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL
+    )
+    mitigation = models.TextField(blank=True)
+    due_date = models.DateField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["due_date", "id"]
+
+    def __str__(self):
+        return self.title
+
+
+class PlanningImport(models.Model):
+    """Remember imported planning files so retrying doesn't duplicate work."""
+
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="planning_imports")
+    fingerprint = models.CharField(max_length=64)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    summary = models.JSONField(default=dict)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["project", "fingerprint"], name="unique_project_plan_import"
+            )
+        ]
+
+
+class BoardColumn(models.Model):
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="board_columns")
+    title = models.CharField(max_length=100)
+    order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["order", "pk"]
+
+    def __str__(self):
+        return self.title
+
+
+class FeedbackCard(models.Model):
+    """Discussion content, deliberately separate from weighted project tasks."""
+
+    column = models.ForeignKey(BoardColumn, on_delete=models.CASCADE, related_name="feedback_cards")
+    title = models.CharField(max_length=200)
+    description = models.TextField(blank=True)
+    status = models.CharField(
+        max_length=20,
+        choices=[("open", "Perlu dibahas"), ("agreed", "Disepakati"), ("done", "Selesai")],
+        default="open",
+    )
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL
+    )
+    due_date = models.DateField(null=True, blank=True)
+    linked_task = models.ForeignKey(
+        "work.Task", null=True, blank=True, on_delete=models.SET_NULL, related_name="feedback_cards"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["created_at", "pk"]
+
+    def clean(self):
+        super().clean()
+        if (
+            self.linked_task_id
+            and self.column_id
+            and self.linked_task.project_id != self.column.project_id
+        ):
+            raise ValidationError({"linked_task": "Pilih task dari project yang sama."})
+
+
+class PresentationConfig(models.Model):
+    project = models.OneToOneField(
+        Project, on_delete=models.CASCADE, related_name="presentation_config"
+    )
+    sections = models.JSONField(default=list, blank=True)
+    period_start = models.DateField(null=True, blank=True)
+    period_end = models.DateField(null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)

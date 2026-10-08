@@ -1,0 +1,45 @@
+{
+  "brand": "Scope",
+  "tagline": "Project workspace",
+  "brief": "Satu ruang untuk rencana project dan pekerjaan tim. Identitas profesional, ringkas, dan jelas.",
+  "adjectives": [
+    "professional",
+    "clear",
+    "dependable",
+    "calm"
+  ],
+  "criteria": "Terbaca pada16px, satu warna, dan laporan profesional.",
+  "industry": "saas",
+  "brand_color": "#0075de",
+  "greyscale": false,
+  "nav": [
+    "Projects",
+    "Tasks",
+    "Reports"
+  ],
+  "mockups": [
+    "website",
+    "favicon-tab",
+    "app-icon",
+    "business-card",
+    "social",
+    "sticker"
+  ],
+  "concepts": [
+    {
+      "name": "Shared corner",
+      "symbol": "scope-symbol.svg",
+      "lockup": "scope-horizontal.svg",
+      "idea": "Dua sudut bertemu dalam satu ruang kerja.",
+      "rationale": [
+        "Siluet sederhana untuk ukuran kecil.",
+        "Ruang terbuka menggambarkan koordinasi.",
+        "Geometri tegas untuk konteks profesional."
+      ]
+    }
+  ],
+  "recommendation": "Arah A disetujui pengguna; nama Scope dipilih pengguna.",
+  "next_steps": [
+    "Gunakan aset di sidebar, login, favicon, dan laporan."
+  ]
+}

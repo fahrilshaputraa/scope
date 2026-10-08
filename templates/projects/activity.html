@@ -1,37 +1,34 @@
 {% extends "projects/project_base.html" %}
 {% load pcc_tags %}
 {% block project_content %}
-
-<div class="mt-6">
-    <h2 class="text-lg font-semibold tracking-tight">Activity Log</h2>
-    <p class="text-sm text-muted-foreground">Riwayat perubahan project secara kronologis.</p>
-</div>
-
-<div class="mt-4">
-    {% for event in activities %}
-    <div class="relative flex gap-4 pb-8 last:pb-0">
-        {% if not forloop.last %}
-        <span class="absolute left-[15px] top-9 h-full w-px bg-border"></span>
-        {% endif %}
-        <span class="mt-0.5 z-10 flex size-8 shrink-0 items-center justify-center rounded-full border bg-card text-xs font-semibold uppercase shadow-sm">
-            {{ event.actor.pcc_profile.name|default:event.actor.username|default:"S"|slice:":1" }}
-        </span>
-        <div class="min-w-0 flex-1 rounded-xl border bg-card p-4 text-card-foreground shadow-sm">
-            <div class="flex flex-wrap items-baseline justify-between gap-2">
-                <p class="text-sm font-medium">
-                    <span class="text-muted-foreground">{{ event.actor.pcc_profile.name|default:event.actor.username|default:"System" }}</span>
-                </p>
-                <span class="text-xs text-muted-foreground">{{ event.created_at|date:"d M Y H:i" }} · {{ event.created_at|timesince }} ago</span>
+    <div class="mt-6">
+        <h2 class="text-lg font-normal tracking-tight">Activity Log</h2>
+        <p class="text-sm text-muted-foreground">Riwayat perubahan project secara kronologis.</p>
+    </div>
+    <div class="mt-4">
+        {% for event in activities %}
+            <div class="relative flex gap-4 pb-8 last:pb-0">
+                {% if not forloop.last %}
+                    <span class="absolute left-[15px] top-9 h-full w-px bg-border"></span>
+                {% endif %}
+                <span class="mt-0.5 z-10 flex size-8 shrink-0 items-center justify-center rounded-full border bg-card text-xs font-normal uppercase shadow-sm">
+                    {{ event.actor|person_name|default:"S"|slice:":1" }}
+                </span>
+                <div class="min-w-0 flex-1 rounded-xl border bg-card p-4 text-card-foreground shadow-sm">
+                    <div class="flex flex-wrap items-baseline justify-between gap-2">
+                        <p class="text-sm font-normal">
+                            <span class="text-muted-foreground">{{ event.actor|person_name|default:"System" }}</span>
+                        </p>
+                        <span class="text-xs text-muted-foreground">{{ event.created_at|date:"d M Y H:i" }} · {{ event.created_at|timesince }} ago</span>
+                    </div>
+                    <p class="mt-1 text-sm text-muted-foreground">{{ event.message }}</p>
+                    {% if event.action %}<span class="mt-2 inline-block rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-normal text-muted-foreground">{{ event.action }}</span>{% endif %}
+                </div>
             </div>
-            <p class="mt-1 text-sm text-muted-foreground">{{ event.message }}</p>
-            {% if event.action %}<span class="mt-2 inline-block rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">{{ event.action }}</span>{% endif %}
-        </div>
+        {% empty %}
+            <div class="rounded-xl border border-dashed bg-card px-6 py-14 text-center">
+                <p class="text-sm text-muted-foreground">Belum ada aktivitas untuk project ini.</p>
+            </div>
+        {% endfor %}
     </div>
-    {% empty %}
-    <div class="rounded-xl border border-dashed bg-card px-6 py-14 text-center">
-        <p class="text-sm text-muted-foreground">Belum ada aktivitas untuk project ini.</p>
-    </div>
-    {% endfor %}
-</div>
-
 {% endblock %}

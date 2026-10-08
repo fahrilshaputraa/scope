@@ -2,7 +2,9 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import login as django_login
 from django.contrib.auth import logout as django_logout
+from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.forms import AuthenticationForm, PasswordChangeForm, UserCreationForm
 from django.contrib.auth.models import User
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect, render
@@ -10,7 +12,9 @@ from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.cache import never_cache
 
-from .models import Role, UserProfile
+from apps.form_widgets import style_form
+
+from .models import Role
 from .oidc import get_entra_client
 from .services import upsert_user_from_claims
 
@@ -24,24 +28,21 @@ def _safe_next(request, default="projects:dashboard") -> str:
     return reverse(default)
 
 
-def dev_login_allowed() -> bool:
-    """Login dev hanya bila Entra ID belum dikonfigurasi atau DEBUG."""
-    return settings.DEBUG or not settings.AZURE_ENABLED
-
-
 @never_cache
 def login_view(request: HttpRequest) -> HttpResponse:
     if request.user.is_authenticated:
         return redirect("projects:dashboard")
+    form = AuthenticationForm(request, data=request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        django_login(request, form.get_user())
+        return redirect(_safe_next(request))
     return render(
         request,
         "identity/login.html",
         {
+            "form": form,
             "entra_enabled": settings.AZURE_ENABLED,
-            "dev_login": dev_login_allowed(),
-            "dev_form": dev_login_allowed() and not settings.AZURE_ENABLED,
-            "roles": Role.choices,
-            "next": request.GET.get("next", ""),
+            "next": request.GET.get("next") or request.POST.get("next", ""),
         },
     )
 
@@ -86,39 +87,65 @@ def logout_view(request: HttpRequest) -> HttpResponse:
     return redirect("identity:login")
 
 
-@never_cache
-def dev_login_view(request: HttpRequest) -> HttpResponse:
-    if not dev_login_allowed():
-        return redirect("identity:login")
+@login_required
+def profile_view(request: HttpRequest) -> HttpResponse:
+    return render(request, "identity/profile.html")
+
+
+@login_required
+def settings_view(request):
+    from django import forms
+
+    class ProfileForm(forms.ModelForm):
+        class Meta:
+            model = User
+            fields = ["first_name", "last_name", "email"]
+
+    profile_form = ProfileForm(
+        request.POST if request.POST.get("action") == "profile" else None, instance=request.user
+    )
+    password_form = PasswordChangeForm(
+        request.user, request.POST if request.POST.get("action") == "password" else None
+    )
+    style_form(profile_form)
+    style_form(password_form)
     if request.method == "POST":
-        username = (request.POST.get("username") or "").strip()
-        role = request.POST.get("role", Role.MEMBER)
-        if role not in Role.values:
-            role = Role.MEMBER
-        if not username:
-            messages.error(request, "Username wajib diisi.")
-            return redirect("identity:dev")
-        user, _ = User.objects.get_or_create(username=username)
-        profile, _ = UserProfile.objects.get_or_create(user=user)
-        if profile.role != role:
-            profile.role = role
-            profile.save(update_fields=["role", "updated_at"])
-        django_login(request, user, backend="django.contrib.auth.backends.ModelBackend")
-        messages.success(request, f"Dev login sebagai {username} ({profile.get_role_display()})")
-        return redirect(_safe_next(request))
+        if request.POST.get("action") == "profile" and profile_form.is_valid():
+            profile_form.save()
+            messages.success(request, "Profil disimpan.")
+            return redirect("identity:settings")
+        if request.POST.get("action") == "password" and password_form.is_valid():
+            user = password_form.save()
+            update_session_auth_hash(request, user)
+            messages.success(request, "Password diperbarui.")
+            return redirect("identity:settings")
     return render(
         request,
-        "identity/login.html",
-        {
-            "entra_enabled": False,
-            "dev_login": True,
-            "dev_form": True,
-            "roles": Role.choices,
-            "next": request.GET.get("next", ""),
-        },
+        "identity/settings.html",
+        {"profile_form": profile_form, "password_form": password_form},
     )
 
 
 @login_required
-def profile_view(request: HttpRequest) -> HttpResponse:
-    return render(request, "identity/profile.html")
+def user_create(request):
+    from django import forms
+    from django.core.exceptions import PermissionDenied
+
+    if not request.user.is_staff:
+        raise PermissionDenied
+
+    class LocalUserForm(UserCreationForm):
+        role = forms.ChoiceField(choices=Role.choices, initial=Role.MEMBER)
+
+        class Meta(UserCreationForm.Meta):
+            fields = ["username", "first_name", "last_name", "email"]
+
+    form = LocalUserForm(request.POST or None)
+    style_form(form)
+    if request.method == "POST" and form.is_valid():
+        user = form.save()
+        user.pcc_profile.role = form.cleaned_data["role"]
+        user.pcc_profile.save()
+        messages.success(request, f"Akun {user.username} dibuat.")
+        return redirect("identity:settings")
+    return render(request, "identity/user_form.html", {"form": form})

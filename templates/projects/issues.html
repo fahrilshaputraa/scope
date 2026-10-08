@@ -1,79 +1,9 @@
 {% extends "projects/project_base.html" %}
 {% load pcc_tags %}
 {% block project_content %}
-
-<div class="mt-6 flex flex-wrap items-center justify-between gap-3">
-    <div>
-        <h2 class="text-lg font-semibold tracking-tight">Issues & Blockers</h2>
-        <p class="text-sm text-muted-foreground">Hambatan dan risiko yang mengganggu progress project.</p>
-    </div>
-    <a href="{% url 'work:issue_create' %}?project={{ project.pk }}"
-       class="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/90">
-        <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
-        Report Issue
-    </a>
-</div>
-
-{# ------------------------------------------------------------ open issues #}
-<div class="mt-4 overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm">
-    <div class="flex items-center justify-between gap-3 border-b px-6 py-4">
-        <div>
-            <h3 class="text-base font-semibold">Open Issues</h3>
-            <p class="text-sm text-muted-foreground">{{ open_issues|length }} belum diselesaikan.</p>
-        </div>
-    </div>
-    <div class="divide-y">
-        {% for issue in open_issues %}
-        <a href="{% url 'work:issue_update' issue.pk %}" class="flex items-start gap-4 px-6 py-4 transition-colors hover:bg-accent/40">
-            <c-badge variant="outline" class="mt-0.5 shrink-0 {{ issue.severity|status_style }}">{{ issue.get_severity_display }}</c-badge>
-            <div class="min-w-0 flex-1">
-                <div class="flex flex-wrap items-center gap-2">
-                    <p class="font-medium">{{ issue.title }}</p>
-                    <c-badge variant="outline" class="{{ issue.status|status_style }}">{{ issue.get_status_display }}</c-badge>
-                </div>
-                {% if issue.description %}
-                <p class="mt-1 line-clamp-2 text-sm text-muted-foreground">{{ issue.description }}</p>
-                {% endif %}
-                <div class="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                    {% if issue.owner %}<span>Owner: {{ issue.owner.pcc_profile.name|default:issue.owner.username }}</span>{% endif %}
-                    {% if issue.task %}<span>Task: {{ issue.task.title }}</span>{% endif %}
-                    {% if issue.due_date %}<span>Due: {{ issue.due_date|date:"d M Y" }}</span>{% endif %}
-                    <span>Reported: {{ issue.created_at|date:"d M Y" }}</span>
-                </div>
-            </div>
-        </a>
-        {% empty %}
-        <div class="px-6 py-12 text-center">
-            <p class="text-sm text-muted-foreground">Tidak ada issue terbuka. 🎉</p>
-        </div>
-        {% endfor %}
-    </div>
-</div>
-
-{# --------------------------------------------------------- resolved issues #}
-{% if resolved_issues %}
-<div class="mt-4 overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm">
-    <div class="border-b px-6 py-4">
-        <h3 class="text-base font-semibold">Resolved</h3>
-        <p class="text-sm text-muted-foreground">Issue yang sudah diselesaikan, terbaru dulu.</p>
-    </div>
-    <div class="divide-y">
-        {% for issue in resolved_issues %}
-        <div class="flex items-start gap-4 px-6 py-3 opacity-70">
-            <c-badge variant="outline" class="mt-0.5 shrink-0 {{ issue.status|status_style }}">{{ issue.get_status_display }}</c-badge>
-            <div class="min-w-0 flex-1">
-                <p class="text-sm font-medium line-through decoration-muted-foreground/50">{{ issue.title }}</p>
-                <div class="mt-0.5 text-xs text-muted-foreground">
-                    {% if issue.resolved_at %}Resolved {{ issue.resolved_at|date:"d M Y" }}{% endif %}
-                    {% if issue.resolution %}
-                    <span class="mt-1 block">{{ issue.resolution }}</span>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-        {% endfor %}
-    </div>
-</div>
-{% endif %}
-
+<div class="mt-6 visualization-toolbar"><div><h2 class="text-lg">Issue project</h2><p class="mt-1 text-sm text-muted-foreground">Masalah yang sudah terjadi, siapa yang menangani, dan status penyelesaiannya.</p></div>{% if can_report %}<a data-project-action class="pcc-button" href="{% url 'work:issue_create' %}?project={{ project.pk }}">Laporkan issue</a>{% endif %}</div>
+<nav class="issue-filters mt-4" aria-label="Filter dampak issue"><a href="?severity=all" {% if selected_severity == 'all' %}aria-current="page"{% endif %}>Semua terbuka</a><a href="?severity=critical" {% if selected_severity == 'critical' %}aria-current="page"{% endif %}>Kritis ({{ issue_counts.critical|default:0 }})</a><a href="?severity=high" {% if selected_severity == 'high' %}aria-current="page"{% endif %}>Tinggi ({{ issue_counts.high|default:0 }})</a><a href="?severity=medium" {% if selected_severity == 'medium' %}aria-current="page"{% endif %}>Sedang</a><a href="?severity=low" {% if selected_severity == 'low' %}aria-current="page"{% endif %}>Rendah</a></nav>
+<section class="pcc-panel mt-4"><div class="pcc-section border-b"><h2>Issue terbuka · {{ open_issues|length }}</h2>{% if can_manage %}<p class="mt-1 text-sm text-muted-foreground">Sebagai PM, gunakan Update issue untuk mengubah status atau mencatat penyelesaian.</p>{% endif %}</div>{% for issue in open_issues %}{% include "projects/_issue_row.html" %}{% empty %}<p class="pcc-section text-sm text-muted-foreground">Tidak ada issue terbuka untuk filter ini.</p>{% endfor %}</section>
+<details class="pcc-panel mt-6"><summary class="pcc-section cursor-pointer">Issue selesai · {{ resolved_issues|length }} terbaru</summary>{% for issue in resolved_issues %}{% include "projects/_issue_row.html" %}{% empty %}<p class="pcc-section text-sm">Belum ada issue diselesaikan.</p>{% endfor %}</details>
+<details class="pcc-panel mt-6"><summary class="pcc-section cursor-pointer">Risiko project · {{ risks|length }}</summary><div class="pcc-section border-t"><p class="text-sm text-muted-foreground">Risiko adalah potensi masalah yang belum terjadi. Issue adalah masalah yang sudah terjadi.</p>{% if can_manage %}<a data-project-action class="pcc-button pcc-button-secondary mt-3" href="{% url 'projects:risk_create' project.pk %}">Tambah risiko</a>{% endif %}</div>{% for risk in risks %}<div class="pcc-section border-t"><p>{% if can_manage %}<a data-project-action class="underline" href="{% url 'projects:risk_edit' project.pk risk.pk %}">{{ risk.title }}</a>{% else %}{{ risk.title }}{% endif %} · {{ risk.severity|severity_label }}</p><p class="mt-2 text-sm text-muted-foreground">{{ risk.mitigation|default:"Mitigasi belum dicatat." }}</p></div>{% empty %}<p class="pcc-section text-sm">Belum ada risiko tercatat.</p>{% endfor %}</details>
 {% endblock %}

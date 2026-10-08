@@ -26,3 +26,9 @@ static/css/output.css
 .vscode/
 .idea/
 .DS_Store
+
+# Local tooling / agent artifacts
+.commandcode/
+.impeccable/
+.playwright-mcp/
+/*.png

@@ -1,59 +1,53 @@
 """Template tag & filter PCC: class warna status, format percent, dll."""
 
 from django import template
+from django.utils.safestring import mark_safe
+
+from apps.richtext import render_html, strip_html
 
 register = template.Library()
 
+
+@register.filter
+def rich(value):
+    """HTML ter-sanitasi (aman) untuk catatan & deskripsi kaya."""
+    return mark_safe(render_html(value))
+
+
+@register.filter
+def plain(value):
+    """Teks polos tanpa tag, untuk preview/kartu ringkas."""
+    return strip_html(value)
+
 STATUS_STYLES = {
-    # Project
-    "planning": "border-blue-200 bg-blue-50 text-blue-700",
-    "on_track": "border-emerald-200 bg-emerald-50 text-emerald-700",
-    "at_risk": "border-amber-200 bg-amber-50 text-amber-700",
-    "delayed": "border-red-200 bg-red-50 text-red-700",
-    "completed": "border-slate-200 bg-slate-100 text-slate-700",
-    "on_hold": "border-slate-200 bg-slate-100 text-slate-600",
-    "cancelled": "border-slate-200 bg-slate-100 text-slate-400",
-    # Task status (kanban)
-    "backlog": "border-slate-200 bg-slate-100 text-slate-500",
-    "todo": "border-slate-200 bg-slate-100 text-slate-700",
-    "in_progress": "border-blue-200 bg-blue-50 text-blue-700",
-    "blocked": "border-red-200 bg-red-50 text-red-700",
-    "review": "border-violet-200 bg-violet-50 text-violet-700",
-    "done": "border-emerald-200 bg-emerald-50 text-emerald-700",
-    # Issue status
-    "open": "border-red-200 bg-red-50 text-red-700",
-    "resolved": "border-emerald-200 bg-emerald-50 text-emerald-700",
-    "closed": "border-slate-200 bg-slate-100 text-slate-500",
-    # Milestone status
-    "upcoming": "border-blue-200 bg-blue-50 text-blue-700",
-    # Variance level
-    "ahead": "border-emerald-200 bg-emerald-50 text-emerald-700",
-    "unknown": "border-slate-200 bg-slate-100 text-slate-500",
-    # Priority / severity
-    "critical": "border-red-200 bg-red-50 text-red-700",
-    "high": "border-orange-200 bg-orange-50 text-orange-700",
-    "medium": "border-amber-200 bg-amber-50 text-amber-700",
-    "low": "border-slate-200 bg-slate-100 text-slate-600",
-    "not_started": "border-slate-200 bg-slate-100 text-slate-500",
+    **dict.fromkeys(
+        ["on_track", "ahead", "done", "completed", "resolved", "mitigated"],
+        "pcc-status pcc-status-success",
+    ),
+    **dict.fromkeys(["at_risk", "high", "medium", "on_hold"], "pcc-status pcc-status-warning"),
+    **dict.fromkeys(["delayed", "blocked", "critical", "open"], "pcc-status pcc-status-danger"),
+    **dict.fromkeys(
+        ["in_progress", "planning", "upcoming", "review"], "pcc-status pcc-status-info"
+    ),
 }
 
 LEVEL_DOT = {
-    "ahead": "bg-emerald-500",
-    "on_track": "bg-emerald-500",
-    "at_risk": "bg-amber-500",
-    "delayed": "bg-red-500",
-    "unknown": "bg-slate-300",
+    "ahead": "bg-foreground",
+    "on_track": "bg-foreground",
+    "at_risk": "bg-foreground",
+    "delayed": "bg-foreground",
+    "unknown": "bg-border",
 }
 
 
 @register.filter
 def status_style(status):
-    return STATUS_STYLES.get(status, "border-slate-200 bg-slate-100 text-slate-600")
+    return STATUS_STYLES.get(status, "pcc-status pcc-status-neutral")
 
 
 @register.filter
 def level_dot(level):
-    return LEVEL_DOT.get(level, "bg-slate-300")
+    return LEVEL_DOT.get(level, "bg-border")
 
 
 @register.filter
@@ -84,9 +78,9 @@ def comp(value):
         return "text-muted-foreground"
     v = float(value)
     if v > 0:
-        return "text-emerald-600"
+        return "text-foreground"
     if v < 0:
-        return "text-red-600"
+        return "text-foreground"
     return "text-muted-foreground"
 
 
@@ -94,12 +88,12 @@ def comp(value):
 def level_label(level):
     """Label manusiawi untuk variance level."""
     return {
-        "ahead": "Ahead",
-        "on_track": "On Track",
-        "at_risk": "At Risk",
-        "delayed": "Delayed",
-        "unknown": "Unknown",
-    }.get(level, "No Baseline")
+        "ahead": "Lebih cepat",
+        "on_track": "Sesuai rencana",
+        "at_risk": "Perlu perhatian",
+        "delayed": "Tertinggal",
+        "unknown": "Belum ada rencana",
+    }.get(level, "Belum ada rencana")
 
 
 @register.filter
@@ -147,3 +141,56 @@ def initials(user):
     parts = name.split()
     letters = "".join(p[0] for p in parts[:2])
     return letters.upper()
+
+
+@register.filter
+def person_name(user):
+    """Render optional users without resolving attributes on None in templates."""
+    if user is None:
+        return ""
+    profile = getattr(user, "pcc_profile", None)
+    return profile.name if profile else user.get_full_name() or user.username
+
+
+@register.filter
+def status_label(status):
+    """Plain-language UI labels; stored statuses and permissions stay unchanged."""
+    return {
+        "on_track": "Sesuai rencana",
+        "ahead": "Lebih cepat",
+        "at_risk": "Perlu perhatian",
+        "delayed": "Terlambat",
+        "planning": "Dalam perencanaan",
+        "on_hold": "Ditunda",
+        "completed": "Selesai",
+        "cancelled": "Dibatalkan",
+        "backlog": "Belum dijadwalkan",
+        "todo": "Siap dikerjakan",
+        "in_progress": "Sedang dikerjakan",
+        "blocked": "Terhambat",
+        "review": "Menunggu pemeriksaan",
+        "done": "Selesai",
+        "open": "Terbuka",
+        "resolved": "Diselesaikan",
+        "closed": "Ditutup",
+        "upcoming": "Akan datang",
+    }.get(str(status), status)
+
+
+@register.filter
+def variance_summary(value):
+    if value is None:
+        return "Rencana progress belum ditetapkan."
+    number = float(value)
+    if number == 0:
+        return "Progress sesuai rencana."
+    gap = f"{abs(number):.2f}".replace(".", ",")
+    direction = "di bawah" if number < 0 else "di atas"
+    return f"{gap} poin persentase {direction} rencana."
+
+
+@register.filter
+def severity_label(value):
+    return {"critical": "Kritis", "high": "Tinggi", "medium": "Sedang", "low": "Rendah"}.get(
+        value, value
+    )

@@ -5,6 +5,10 @@ from . import views
 app_name = "work"
 
 urlpatterns = [
+    path("tasks/<int:pk>/progress/", views.task_progress, name="task_progress"),
+    path("tasks/<int:pk>/attachments/", views.attachment_upload, name="attachment_upload"),
+    path("attachments/<int:pk>/download/", views.attachment_download, name="attachment_download"),
+    path("attachments/<int:pk>/delete/", views.attachment_delete, name="attachment_delete"),
     path("my-tasks/", views.my_tasks, name="my_tasks"),
     # Tasks
     path("tasks/new/", views.task_create, name="task_create"),

@@ -1,0 +1,20 @@
+{% load pcc_tags %}
+<div class="overflow-x-auto">
+    <div class="min-w-[640px]">
+        <div class="grid grid-cols-[220px_1fr] border-b p-3 text-xs text-muted-foreground">
+            <span>Task / phase</span>
+            <div class="flex justify-between"><span>{{ timeline_start|date:"d M Y" }}</span><span>{{ timeline_end|date:"d M Y" }}</span></div>
+        </div>
+        {% for row in timeline_rows %}{% if row.phase_heading %}<div class="border-b bg-muted/40 px-4 py-2 text-xs font-normal">{{ row.task.phase.name|default:"Tanpa phase" }}</div>{% endif %}<div class="grid grid-cols-[220px_1fr] items-center border-b px-3 py-1 text-xs"><div class="pr-4"><a class="block truncate font-normal hover:underline"
+   href="{% url 'work:task_detail' row.task.pk %}">{{ row.task.title }}</a><span class="text-muted-foreground">{{ row.task.display_progress|floatformat:0 }}%{% if row.task.schedule_deviation is not None %} · {% if row.task.schedule_deviation > 0 %}+{% endif %}{{ row.task.schedule_deviation }} hari{% endif %}</span></div><div class="timeline-track"
+     aria-label="{{ row.task.title }}: {{ row.task.start_date|date:'d M' }} sampai {{ row.task.due_date|date:'d M' }}; progress {{ row.task.display_progress }}%"><div class="timeline-bar"
+     style="left:{{ row.left }}%;
+            width:{{ row.width }}%"><span style="width:{{ row.task.display_progress|floatformat:0 }}%"></span></div>{% if row.baseline %}<div class="timeline-baseline"
+     style="left:{{ row.baseline.left }}%;
+            width:{{ row.baseline.width }}%"></div>{% endif %}{% if timeline_today is not None %}<div class="timeline-today" style="left:{{ timeline_today }}%"></div>{% endif %}</div></div>{% empty %}<p class="p-5 text-sm text-muted-foreground">Tambahkan task dan jadwal untuk melihat timeline.</p>{% endfor %}
+        {% for row in timeline_milestones %}<div class="grid grid-cols-[220px_1fr] items-center border-b px-3 py-1 text-xs"><div class="pr-4"><p class="font-normal">{{ row.milestone.name }}</p><p class="text-muted-foreground">{{ row.milestone.date|date:"d M Y" }} · {{ row.milestone.get_status_display }}</p></div><div class="timeline-track"><span class="timeline-milestone"
+      style="left:{{ row.left }}%"
+      aria-label="Milestone {{ row.milestone.name }}"></span>{% if timeline_today is not None %}<div class="timeline-today" style="left:{{ timeline_today }}%"></div>{% endif %}</div></div>{% endfor %}
+    </div>
+</div>
+<div class="flex flex-wrap gap-5 px-4 py-3 text-xs text-muted-foreground"><span>Bar: actual timeline & progress</span><span>Garis bawah: baseline</span><span>Garis vertikal: hari ini</span><span>Diamond: milestone</span></div>

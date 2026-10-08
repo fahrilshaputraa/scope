@@ -1,126 +1,73 @@
+{% load pcc_tags %}
 {% load static nav_tags %}
 <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%2318181b'/><rect x='22' y='22' width='22' height='22' rx='4' fill='%23e11d48'/><rect x='56' y='22' width='22' height='14' rx='4' fill='%23e11d48'/><rect x='56' y='42' width='22' height='36' rx='4' fill='%23e11d48'/><rect x='22' y='56' width='22' height='22' rx='4' fill='%23e11d48'/></svg>">
-    <meta name="csrf-token" content="{{ csrf_token }}">
-    <title>{% block title %}Project Control Center{% endblock %}</title>
-    <link rel="stylesheet" href="{% static 'css/output.css' %}">
-    <link rel="stylesheet" href="{% static 'vendor/frappe-gantt.css' %}">
-    <script src="{% static 'vendor/htmx.min.js' %}" defer></script>
-    <script src="{% static 'vendor/alpine.min.js' %}" defer></script>
-    {% block extra_head %}{% endblock %}
-</head>
-<body class="min-h-screen bg-background text-foreground antialiased">
-<div class="flex min-h-screen">
-
-    {# ============================== SIDEBAR ============================== #}
-    <aside
-        x-data="{ open: false }"
-        x-show="$dispatch('sidebar-toggle') ? true : open"
-        @sidebar-toggle.window="open = $event.detail ?? open"
-        class="fixed inset-y-0 left-0 z-40 flex w-60 flex-col border-r border-sidebar-border bg-sidebar transition-transform max-md:-translate-x-full md:translate-x-0"
-        :class="open ? 'translate-x-0' : 'max-md:-translate-x-full'"
-    >
-        <a href="{% url 'projects:dashboard' %}" class="flex h-14 items-center gap-2.5 border-b border-sidebar-border px-4">
-            <span class="flex size-7 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground">
-                <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h7v7H3zM14 3h7v4h-7zM14 11h7v10h-7zM3 14h7v7H3z"/></svg>
-            </span>
-            <span class="flex flex-col leading-tight">
-                <span class="text-sm font-semibold text-sidebar-foreground">Project Control</span>
-                <span class="text-[11px] text-sidebar-foreground/60">Center</span>
-            </span>
-        </a>
-
-        <nav class="flex-1 space-y-0.5 overflow-y-auto p-2 text-sm">
-            <a href="{% url 'projects:dashboard' %}"
-               class="flex items-center gap-2.5 rounded-md px-2.5 py-2 transition-colors {% nav_active '/' %}">
-                <svg class="size-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
-                Dashboard
-            </a>
-            <a href="{% url 'projects:project_list' %}"
-               class="flex items-center gap-2.5 rounded-md px-2.5 py-2 transition-colors {% nav_active '/projects' %}">
-                <svg class="size-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/><path d="M8 10v4"/><path d="M12 10v2"/><path d="M16 10v6"/></svg>
-                Projects
-            </a>
-            <a href="{% url 'work:my_tasks' %}"
-               class="flex items-center gap-2.5 rounded-md px-2.5 py-2 transition-colors {% nav_active '/my-tasks' %}">
-                <svg class="size-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/></svg>
-                My Tasks
-            </a>
-            <a href="{% url 'work:issue_list' %}"
-               class="flex items-center gap-2.5 rounded-md px-2.5 py-2 transition-colors {% nav_active '/issues' %}">
-                <svg class="size-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 20h16a2 2 0 0 0 1.73-2Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
-                Issues
-            </a>
-            <a href="{% url 'projects:timeline_global' %}"
-               class="flex items-center gap-2.5 rounded-md px-2.5 py-2 transition-colors {% nav_active '/timeline' %}">
-                <svg class="size-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h12"/><path d="M3 12h18"/><path d="M3 19h8"/><path d="M18 3v6"/><path d="M14 16v6"/></svg>
-                Timeline
-            </a>
-            <a href="{% url 'projects:note_list' %}"
-               class="flex items-center gap-2.5 rounded-md px-2.5 py-2 transition-colors {% nav_active '/notes' %}">
-                <svg class="size-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13.4 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7.4"/><path d="M2 6h4"/><path d="M2 10h4"/><path d="M2 14h4"/><path d="M2 18h4"/><path d="M21.4 2.6a2 2 0 0 0-2.8 0L11 10.2V13h2.8l7.6-7.6a2 2 0 0 0 0-2.8Z"/></svg>
-                Notes
-            </a>
-            <a href="{% url 'projects:reports' %}"
-               class="flex items-center gap-2.5 rounded-md px-2.5 py-2 transition-colors {% nav_active '/reports' %}">
-                <svg class="size-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M7 16v-4"/><path d="M12 16V8"/><path d="M17 16v-7"/></svg>
-                Reports
-            </a>
-        </nav>
-
-        <div class="border-t border-sidebar-border p-2">
-            <a href="{% url 'identity:profile' %}"
-               class="flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm transition-colors {% nav_active '/auth/profile' %}">
-                <span class="flex size-7 shrink-0 items-center justify-center rounded-full bg-sidebar-accent text-xs font-semibold uppercase text-sidebar-accent-foreground">
-                    {{ request.user.first_name|default:request.user.username|slice:":1" }}
-                </span>
-                <span class="min-w-0 flex-1 leading-tight">
-                    <span class="block truncate font-medium text-sidebar-foreground">{{ request.user.pcc_profile.name|default:request.user.username }}</span>
-                    <span class="block truncate text-[11px] text-sidebar-foreground/60">{{ request.user.pcc_profile.get_role_display|default:"" }}</span>
-                </span>
-            </a>
-            <a href="{% url 'identity:logout' %}"
-               class="flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent/60 hover:text-sidebar-foreground">
-                <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>
-                Sign out
-            </a>
-        </div>
-    </aside>
-
-    {# ============================== CONTENT ============================== #}
-    <div class="flex min-w-0 flex-1 flex-col md:pl-60">
-        <header class="sticky top-0 z-30 flex h-14 items-center gap-3 border-b bg-background/95 px-4 backdrop-blur md:hidden">
-            <button @click="$dispatch('sidebar-toggle', {detail: true})"
-                    class="rounded-md p-1.5 hover:bg-accent" aria-label="Open menu">
-                <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
-            </button>
-            <span class="text-sm font-semibold">Project Control Center</span>
-        </header>
-
-        <main class="mx-auto w-full max-w-[1500px] flex-1 px-4 py-6 md:px-8">
-            {% if messages %}
-                <div class="mb-4 space-y-2" x-data x-init="$nextTick(() => $el.querySelectorAll('[data-flash]').forEach((n, i) => setTimeout(() => n.remove(), 5000 + i * 200)))">
-                    {% for message in messages %}
-                        <div data-flash
-                             class="flex items-start justify-between gap-4 rounded-md border px-4 py-2.5 text-sm shadow-xs
-                                    {% if message.tags == 'error' %}border-destructive/30 bg-destructive/10 text-destructive
-                                    {% elif message.tags == 'success' %}border-emerald-600/30 bg-emerald-600/10 text-emerald-700
-                                    {% else %}border-border bg-card text-card-foreground{% endif %}">
-                            <span>{{ message }}</span>
-                            <button @click="$el.parentElement.remove()" class="text-muted-foreground hover:text-foreground" aria-label="Dismiss">&times;</button>
-                        </div>
-                    {% endfor %}
-                </div>
-            {% endif %}
-
-            {% block content %}{% endblock %}
-        </main>
-    </div>
-</div>
-{% block extra_js %}{% endblock %}
-</body>
-</html>
+<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="csrf-token" content="{{ csrf_token }}"><script src="{% static 'js/theme.js' %}"></script><script src="{% static 'js/shell.js' %}"></script><title>{% block title %}Scope{% endblock %}</title><link rel="icon" type="image/svg+xml" href="{% static 'brand/scope-favicon.svg' %}"><link rel="icon" sizes="any" href="{% static 'brand/scope-favicon.ico' %}"><link rel="apple-touch-icon" href="{% static 'brand/scope-apple-touch-icon.png' %}"><link rel="stylesheet" href="{% static 'css/output.css' %}"><script src="{% static 'vendor/alpine.min.js' %}" defer></script><script src="{% static 'vendor/htmx.min.js' %}" defer></script><script src="{% static 'js/pcc.js' %}" defer></script><script src="{% static 'js/editor.js' %}" defer></script><script src="{% static 'js/presentation.js' %}" defer></script>{% block extra_head %}{% endblock %}</head>
+    <body>
+        <a class="skip-link" href="#main-content">Lewati navigasi</a>
+        <div class="workspace-shell"
+             x-data="{ sidebarOpen: false, mobile: window.innerWidth < 768 }"
+             @resize.window="mobile = window.innerWidth < 768"
+         x-effect="document.body.style.overflow = sidebarOpen && mobile ? 'hidden' : ''"
+         @keydown.tab.window="if (sidebarOpen && mobile) PCC.trapSidebar($event)"
+         @keydown.escape.window="if (sidebarOpen) { sidebarOpen = false; $nextTick(() => document.querySelector('.mobile-menu').focus()); }">
+            <button class="sidebar-backdrop"
+                    x-cloak
+                    x-show="sidebarOpen"
+                    @click="sidebarOpen = false; $nextTick(() => document.querySelector('.mobile-menu').focus())"
+                    aria-label="Tutup navigasi"></button>
+            <aside id="main-sidebar"
+                   class="workspace-sidebar"
+                   :class="sidebarOpen ? 'is-open' : ''"
+               :inert="mobile && !sidebarOpen"
+               :aria-hidden="mobile && !sidebarOpen">
+                <a class="workspace-brand"
+                   href="{% url 'projects:dashboard' %}"
+                   title="Scope"
+                   aria-label="Scope Dashboard"><img src="{% static 'brand/scope-symbol.svg' %}" width="28" height="28" alt=""><span class="nav-label"><strong>Scope</strong><small>Project workspace</small></span></a>
+                <nav class="workspace-nav" aria-label="Navigasi utama">
+                    <p class="nav-group-label">Menu utama</p>
+                    <a href="{% url 'projects:dashboard' %}" class="{% nav_active '/' %}" title="Dashboard" aria-label="Dashboard"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></svg><span class="nav-label">Dashboard</span></a>
+                    <a href="{% url 'projects:project_list' %}"
+                       class="{% nav_active '/projects' %}" title="Projects" aria-label="Projects"><svg viewBox="0 0 24 24"><path d="M3 7h7l2 3h9v10H3zM3 7V4h7l2 3h9v3" /></svg><span class="nav-label">Projects</span></a>
+                    <a href="{% url 'projects:reports' %}"
+                       class="{% nav_active '/reports' %}" title="Laporan" aria-label="Laporan"><svg viewBox="0 0 24 24"><path d="M4 3v18h17M9 17v-5M14 17V8M19 17V4" /></svg><span class="nav-label">Laporan</span></a>
+                    <p class="nav-group-label">Pekerjaan tim</p>
+                    <a href="{% url 'work:my_tasks' %}"
+                       class="{% nav_active '/my-tasks' '/tasks' %}" title="Pekerjaan saya" aria-label="Pekerjaan saya"><svg viewBox="0 0 24 24"><path d="m3 6 2 2 4-4M13 6h8m-18 9 2 2 4-4M13 15h8M13 21h8" /></svg><span class="nav-label">Pekerjaan saya</span></a>
+                    <a href="{% url 'work:issue_list' %}"
+                       class="{% nav_active '/issues' %}" title="Masalah" aria-label="Masalah"><svg viewBox="0 0 24 24"><path d="m12 3 10 18H2zM12 9v5M12 17v1" /></svg><span class="nav-label">Masalah</span></a>
+                    <a href="{% url 'projects:timeline_global' %}"
+                       class="{% nav_active '/timeline' %}" title="Jadwal" aria-label="Jadwal"><svg viewBox="0 0 24 24"><path d="M3 5h12M8 12h13M3 19h10M3 3v4M8 10v4M3 17v4" /></svg><span class="nav-label">Jadwal</span></a>
+                    <a href="{% url 'projects:note_list' %}"
+                       class="{% nav_active '/notes' %}" title="Catatan" aria-label="Catatan"><svg viewBox="0 0 24 24"><path d="M6 3h14v18H6zM3 7h5M3 12h5M3 17h5M11 8h5M11 12h5" /></svg><span class="nav-label">Catatan</span></a></nav><button type="button"
+        class="rail-toggle"
+        data-rail-toggle
+        aria-pressed="false"
+        aria-label="Perluas sidebar"
+        title="Perluas sidebar"><svg data-rail-icon="expand" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 5 7 7-7 7M13 5l7 7-7 7"/></svg><svg data-rail-icon="collapse" viewBox="0 0 24 24" aria-hidden="true"><path d="m18 5-7 7 7 7M11 5l-7 7 7 7"/></svg><span class="nav-label">Perluas</span></button>
+                <div class="workspace-account"><a class="workspace-settings {% nav_active '/auth/settings' %}"
+   href="{% url 'identity:settings' %}"
+   title="Pengaturan"
+   aria-label="Pengaturan"><svg viewBox="0 0 24 24"><path d="M12 3v3m0 12v3M3 12h3m12 0h3M6 6l2 2m8 8 2 2M6 18l2-2M16 8l2-2" /><circle cx="12" cy="12" r="5" /></svg><span class="nav-label">Pengaturan</span></a><div class="account-profile"><a class="account-avatar" href="{% url 'identity:profile' %}" title="Profil" aria-label="Profil akun">{{ request.user.first_name|default:request.user.username|slice:':1'|upper }}</a><a class="account-name" href="{% url 'identity:profile' %}"><strong>{{ request.user|person_name }}</strong><small>{{ request.user.pcc_profile.get_role_display|default:'Project Member' }}</small></a></div></div></aside>
+            <div class="workspace-body" :inert="mobile && sidebarOpen"><header class="workspace-header"><div class="workspace-breadcrumb"><button class="mobile-menu"
+        @click="sidebarOpen = !sidebarOpen; if(sidebarOpen) $nextTick(() => document.querySelector('#main-sidebar a').focus())"
+        :aria-expanded="sidebarOpen"
+        aria-controls="main-sidebar"
+        aria-label="Buka navigasi"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16" /></svg></button><span class="breadcrumb-home">Workspace</span>{% if project %}<span class="breadcrumb-separator">/</span><a href="{% url 'projects:project_detail' project.pk %}">{{ project.code }}</a>{% elif task %}<span class="breadcrumb-separator">/</span><a href="{% url 'projects:project_detail' task.project_id %}">{{ task.project.code }}</a>{% else %}<span class="breadcrumb-separator">/</span><span>Scope</span>{% endif %}</div><div class="header-tools"><form method="get"
+      action="{% url 'projects:project_list' %}"
+      class="header-search"><svg viewBox="0 0 24 24"><circle cx="10" cy="10" r="6" /><path d="m15 15 5 5" /></svg><label class="sr-only" for="workspace-search">Cari project</label><input id="workspace-search"
+       name="q"
+       placeholder="Cari project atau kode…"
+       autocomplete="off"></form><button type="button"
+        class="icon-button theme-toggle"
+        data-theme-toggle
+        title="Tema: Sistem"
+        aria-label="Ganti tema"><svg class="theme-icon" data-theme-icon="light" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5M17.5 17.5 19 19M19 5l-1.5 1.5M6.5 17.5 5 19"/></svg><svg class="theme-icon" data-theme-icon="dark" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg><svg class="theme-icon" data-theme-icon="system" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg></button><time class="header-date">{{ workspace_date|date:'d M Y' }}</time><a class="icon-button header-logout"
+   href="{% url 'identity:logout' %}"
+   title="Keluar"
+   aria-label="Keluar dari akun"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4H4v16h5m6-13 5 5-5 5M8 12h12"/></svg></a><a class="header-profile" href="{% url 'identity:profile' %}" aria-label="Profil akun">{{ request.user.first_name|default:request.user.username|slice:':1'|upper }}</a></div></header>
+                <main id="main-content" class="workspace-content">{% if messages %}<div class="mb-5 space-y-2">{% for message in messages %}<div role="status"
+     class="workspace-message {% if message.tags == 'error' %}is-error{% endif %}">{{ message }}<button @click="$el.parentElement.remove()" aria-label="Tutup pesan">×</button></div>{% endfor %}</div>{% endif %}<div id="interaction-status"
+     class="workspace-message mb-4 hidden"
+     role="status"
+     aria-live="polite"></div>{% block content %}{% endblock %}</main></div></div><dialog id="project-action-panel" class="project-action-drawer" aria-label="Form project"><header class="drawer-header"><p>Scope · Project workspace</p><button type="button" class="panel-close" data-panel-close aria-label="Tutup drawer"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6"/></svg></button></header><div data-panel-content></div></dialog>{% block extra_js %}{% endblock %}</body></html>

@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Issue, Task, TaskComment
+from .models import Issue, Task, TaskAttachment, TaskComment
 
 
 class TaskCommentInline(admin.TabularInline):
@@ -40,3 +40,6 @@ class IssueAdmin(admin.ModelAdmin):
     list_filter = ["status", "severity", "project"]
     search_fields = ["title", "description"]
     autocomplete_fields = ["owner", "task"]
+
+
+admin.site.register(TaskAttachment)

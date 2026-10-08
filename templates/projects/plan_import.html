@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+{% block title %}Import rencana — Scope{% endblock %}
+{% block content %}
+<div class="pcc-form-surface mx-auto max-w-2xl"><h1 class="text-2xl font-normal">Import rencana dari AI</h1><p class="mt-2 text-sm text-muted-foreground">{% if project %}Tambahkan rencana ke {{ project.name }}.{% else %}Buat project beserta task, tahap, dan milestone dari satu file.{% endif %}</p>
+  <div class="mt-5 flex flex-wrap gap-3"><a class="pcc-button pcc-button-secondary" href="{% if project %}{% url 'projects:plan_template' project.pk %}{% else %}{% url 'projects:plan_template_new' %}{% endif %}">Unduh template JSON</a>{% if project %}<a class="text-sm underline self-center" href="{% url 'projects:plan_export' project.pk %}">Export rencana saat ini</a>{% endif %}</div>
+  <p class="mt-4 text-sm leading-relaxed text-muted-foreground">Kirim template ke AI, jelaskan rencana project Anda, lalu unggah hasilnya di sini. Nama anggota yang tersedia sudah ada dalam template.</p>
+  <form method="post" enctype="multipart/form-data" class="mt-6 space-y-5" data-simple-form>{% csrf_token %}{% include '_form_fields.html' with fields=form.primary_fields %}
+    <details class="form-extra"{% if form.extra_errors %} open{% endif %}><summary>Pengaturan tambahan</summary><div class="mt-4">{% include '_form_fields.html' with fields=form.extra_fields hide_global_errors=True %}</div></details>
+    <p class="text-xs leading-relaxed text-muted-foreground">Data baru ditambahkan ke project. File yang sama hanya diimpor sekali. Jika file tidak valid, seluruh perubahan dibatalkan.</p>
+    <div class="form-actions"><a class="pcc-button pcc-button-secondary" data-panel-cancel href="{% if project %}{% url 'projects:project_detail' project.pk %}{% else %}{% url 'projects:project_list' %}{% endif %}">Batal</a><button class="pcc-button" type="submit">Import rencana</button></div>
+  </form>
+</div>
+{% endblock %}

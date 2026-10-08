@@ -52,7 +52,7 @@ def actual_progress(project) -> Decimal:
     weighted = Decimal("0")
     for task in _eligible_tasks(project):
         total_weight += task.weight
-        weighted += task.progress * task.weight
+        weighted += task.display_progress * task.weight
     if total_weight <= 0:
         return Decimal("0.00")
     return (weighted / total_weight).quantize(_DP)
@@ -126,7 +126,9 @@ def project_health(project) -> dict:
         if open_issues.filter(severity=severity).exists():
             top_severity = severity
             break
-    risky_count = open_issues.filter(severity__in=["critical", "high"]).count()
+    risks = project.risks.filter(status="open")
+    risky_count = risks.count()
+    top_severity = next((s for s in severity_rank if risks.filter(severity=s).exists()), None)
 
     return {
         "schedule": schedule,
@@ -170,3 +172,184 @@ def record_activity(project, actor, action: str, message: str, object_repr: str 
         message=message[:300],
         object_repr=object_repr[:200],
     )
+
+
+def timeline_data(project):
+    """Data shared by full timeline and overview; dates are inclusive."""
+    from datetime import timedelta
+
+    tasks = list(
+        project.tasks.select_related("assignee", "phase")
+        .prefetch_related("dependencies", "collaborators")
+        .order_by("phase__sequence", "start_date", "id")
+    )
+    milestones = list(project.milestones.all())
+    dates = [project.start_date, project.target_end_date]
+    for task in tasks:
+        dates.extend(
+            d
+            for d in [
+                task.start_date,
+                task.due_date,
+                task.baseline_start_date,
+                task.baseline_end_date,
+            ]
+            if d
+        )
+    dates.extend(m.date for m in milestones)
+    start, end = min(dates), max(dates)
+    span = max((end - start).days + 1, 1)
+
+    def geometry(first, last):
+        return {
+            "left": round((first - start).days / span * 100, 3),
+            "width": round(((last - first).days + 1) / span * 100, 3),
+        }
+
+    today = timezone.localdate()
+    rows, gantt = [], []
+    previous_phase = object()
+    for task in tasks:
+        first = task.start_date or project.start_date
+        last = task.due_date or first
+        baseline = (
+            geometry(task.baseline_start_date, task.baseline_end_date)
+            if task.baseline_start_date and task.baseline_end_date
+            else None
+        )
+        plan_start = task.baseline_start_date or task.start_date
+        plan_end = task.baseline_end_date or task.due_date
+        expected = None
+        if plan_start and plan_end:
+            duration = max((plan_end - plan_start).days + 1, 1)
+            expected = round(min(100, max(0, ((today - plan_start).days + 1) / duration * 100)), 2)
+        rows.append(
+            {
+                "task": task,
+                **geometry(first, last),
+                "baseline": baseline,
+                "planned_percent": expected,
+                "plan_source": "Rencana awal"
+                if task.baseline_start_date and task.baseline_end_date
+                else "Jadwal saat ini",
+                "undated": not (task.start_date and task.due_date),
+                "phase_heading": task.phase_id != previous_phase,
+            }
+        )
+        previous_phase = task.phase_id
+        gantt.append(
+            {
+                "id": str(task.pk),
+                "name": task.title,
+                "start": first.isoformat(),
+                "end": (last + timedelta(days=1)).isoformat(),
+                "progress": float(task.display_progress),
+                "dependencies": ",".join(str(t.pk) for t in task.dependencies.all()),
+                "custom_class": "task-" + task.status,
+            }
+        )
+    mini_rows = []
+    for phase in project.phases.all():
+        phase_tasks = [t for t in tasks if t.phase_id == phase.pk]
+        if not phase_tasks:
+            continue
+        first = min(t.start_date or project.start_date for t in phase_tasks)
+        last = max(t.due_date or t.start_date or project.start_date for t in phase_tasks)
+        roots = [t for t in phase_tasks if t.parent_task_id is None]
+        total = sum(t.weight for t in roots)
+        progress = sum(t.display_progress * t.weight for t in roots) / total if total else 0
+        mini_rows.append({"name": phase.name, "progress": progress, **geometry(first, last)})
+    if any(t.phase_id is None for t in tasks):
+        ungrouped = [t for t in tasks if t.phase_id is None]
+        mini_rows.append(
+            {
+                "name": "Tanpa phase",
+                "progress": 0,
+                **geometry(
+                    min(t.start_date or project.start_date for t in ungrouped),
+                    max(t.due_date or t.start_date or project.start_date for t in ungrouped),
+                ),
+            }
+        )
+    today = timezone.localdate()
+    return {
+        "mini_timeline_rows": mini_rows,
+        "tasks": tasks,
+        "timeline_rows": rows,
+        "gantt_tasks": gantt,
+        "timeline_start": start,
+        "timeline_end": end,
+        "timeline_today": round((today - start).days / span * 100, 3)
+        if start <= today <= end
+        else None,
+        "timeline_ticks": [
+            {
+                "date": start + timedelta(days=round(i * (span - 1) / 6)),
+                "left": round(i / 6 * 100, 3),
+            }
+            for i in range(7)
+        ],
+        "timeline_milestones": [
+            {"milestone": m, "left": round((m.date - start).days / span * 100, 3)}
+            for m in milestones
+        ],
+    }
+
+
+def capture_baseline(project, actor):
+    """Freeze task dates and derive a weighted cumulative planned curve."""
+    from django.db import transaction
+
+    from .models import ProgressBaselinePoint
+
+    with transaction.atomic():
+        tasks = list(project.tasks.filter(parent_task__isnull=True))
+        if not tasks or any(not t.start_date or not t.due_date for t in tasks):
+            from django.core.exceptions import ValidationError
+
+            raise ValidationError(
+                "Isi tanggal mulai dan selesai seluruh task utama sebelum menyimpan baseline."
+            )
+        total = sum(t.weight for t in tasks)
+        if total <= 0:
+            from django.core.exceptions import ValidationError
+
+            raise ValidationError("Total bobot task harus lebih besar dari nol.")
+        # Preserve baseline for subtasks too, but only root tasks affect cumulative progress.
+        all_tasks = list(project.tasks.all())
+        for task in all_tasks:
+            task.baseline_start_date, task.baseline_end_date = task.start_date, task.due_date
+        project.tasks.model.objects.bulk_update(
+            all_tasks, ["baseline_start_date", "baseline_end_date"]
+        )
+        first = min(t.start_date for t in tasks) - timezone.timedelta(days=1)
+        last = max(t.due_date for t in tasks)
+        points = []
+        for i in range((last - first).days + 1):
+            day = first + timezone.timedelta(days=i)
+            value = Decimal("0")
+            for task in tasks:
+                fraction = max(
+                    Decimal(0),
+                    min(
+                        Decimal(1),
+                        Decimal((day - task.start_date).days + 1)
+                        / Decimal((task.due_date - task.start_date).days + 1),
+                    ),
+                )
+                value += fraction * task.weight / total * 100
+            points.append(
+                ProgressBaselinePoint(
+                    project=project, date=day, planned_percent=value.quantize(_DP)
+                )
+            )
+        project.baseline_points.all().delete()
+        ProgressBaselinePoint.objects.bulk_create(points)
+        project._prefetched_objects_cache = {}
+        record_snapshot(project)
+        record_activity(
+            project,
+            actor,
+            ActivityAction.BASELINE_UPDATED,
+            "Baseline timeline dan weighted planned progress disimpan.",
+        )

@@ -9,6 +9,7 @@ from .models import (
     ProgressBaselinePoint,
     ProgressSnapshot,
     Project,
+    Risk,
 )
 
 
@@ -26,6 +27,7 @@ class ProjectAdmin(admin.ModelAdmin):
     list_filter = ["status", "team"]
     search_fields = ["code", "name"]
     autocomplete_fields = ["manager", "current_phase"]
+    filter_horizontal = ["members"]
 
 
 @admin.register(Phase)
@@ -70,3 +72,6 @@ class DecisionAdmin(admin.ModelAdmin):
 class ActivityEventAdmin(admin.ModelAdmin):
     list_display = ["project", "action", "actor", "message", "created_at"]
     list_filter = ["action"]
+
+
+admin.site.register(Risk)

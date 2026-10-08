@@ -1,0 +1,9 @@
+{% load pcc_tags %}
+<article class="issue-row issue-{{ issue.severity }}">
+    <div class="issue-row-top"><span class="issue-severity" data-severity="{{ issue.severity }}"><span aria-hidden="true">{% if issue.severity == 'critical' %}‼{% elif issue.severity == 'high' %}↑{% elif issue.severity == 'medium' %}—{% else %}↓{% endif %}</span>{{ issue.severity|severity_label }}</span><span class="issue-id">ISS-{{ issue.pk }}</span><span class="{{ issue.status|status_style }}">{{ issue.status|status_label }}</span></div>
+    <h3 class="mt-3"><a {% if can_manage %}data-project-action{% endif %} class="underline underline-offset-4" href="{% url 'work:issue_update' issue.pk %}">{{ issue.title }}</a></h3>
+    {% if issue.description %}<p class="mt-2 text-sm text-muted-foreground">{{ issue.description|plain|truncatechars:240 }}</p>{% endif %}
+    <div class="issue-meta"><span>Penanggung jawab: {{ issue.owner|person_name|default:"belum ditentukan" }}</span><span>Target: {{ issue.due_date|date:"d M Y"|default:"belum ditentukan" }}</span>{% if issue.task %}<a class="underline" href="{% url 'work:task_detail' issue.task_id %}">Task: {{ issue.task.title }}</a>{% else %}<span>Issue tingkat project</span>{% endif %}</div>
+    {% if issue.resolution %}<p class="mt-3 text-sm">Penyelesaian: {{ issue.resolution|plain }}</p>{% endif %}
+    <div class="mt-3 flex flex-wrap items-center justify-between gap-3"><span class="text-xs text-muted-foreground">Diperbarui {{ issue.updated_at|date:"d M Y H:i" }}</span><a {% if can_manage %}data-project-action{% endif %} class="pcc-button pcc-button-secondary" href="{% url 'work:issue_update' issue.pk %}">{% if can_manage %}Update issue{% else %}Lihat issue{% endif %}</a></div>
+</article>

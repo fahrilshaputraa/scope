@@ -1,132 +1,57 @@
 {% extends "projects/project_base.html" %}
-{% load pcc_tags %}
+{% load pcc_tags static %}
 {% block project_content %}
-
-<div class="mt-6 flex flex-wrap items-center justify-between gap-3">
-    <div>
-        <h2 class="text-lg font-semibold tracking-tight">Kanban Board</h2>
-        <p class="text-sm text-muted-foreground">Seret kartu antar kolom untuk mengubah status task.</p>
-    </div>
-    {% if can_manage %}
-    <a href="{% url 'work:task_create' %}?project={{ project.pk }}"
-       class="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/90">
-        <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
-        New Task
-    </a>
-    {% endif %}
-</div>
-
-<div id="kanban" class="mt-4 flex gap-4 overflow-x-auto pb-4" {% if can_manage %}data-can-drag="true"{% endif %}>
-    {% for status, tasks in columns %}
-    <div class="flex w-72 shrink-0 flex-col" data-status="{{ status }}">
-        <div class="flex items-center justify-between rounded-lg px-3 py-2.5
-            {% if status == 'in_progress' %}bg-blue-50 text-blue-800
-            {% elif status == 'blocked' %}bg-red-50 text-red-800
-            {% elif status == 'review' %}bg-violet-50 text-violet-800
-            {% elif status == 'done' %}bg-emerald-50 text-emerald-800
-            {% elif status == 'backlog' %}bg-slate-100 text-slate-500
-            {% else %}bg-slate-100 text-slate-700{% endif %}">
-            <span class="text-sm font-semibold">{{ status_labels|get_item:status }}</span>
-            <span class="rounded-full bg-white/70 px-2 py-0.5 text-xs font-semibold tabular-nums" data-count>{{ tasks|length }}</span>
+    <div class="mt-6 flex flex-wrap items-center justify-between gap-3">
+        <div>
+            <h2 class="text-lg font-normal tracking-tight">Kanban Board</h2>
+            <p class="text-sm text-muted-foreground">Seret kartu atau gunakan pilihan status pada task yang dapat Anda ubah.</p>
         </div>
-        <div class="mt-2 flex min-h-24 flex-1 flex-col gap-2 rounded-xl border border-dashed p-2" data-cards>
-            {% for task in tasks %}
-            <a href="{% url 'work:task_detail' task.pk %}"
-               data-task-id="{{ task.pk }}"
-               data-draggable="{% if can_manage or task.assignee == request.user %}true{% else %}false{% endif %}"
-               class="kanban-card cursor-grab rounded-lg border bg-card p-3 shadow-sm transition-shadow hover:shadow-md active:cursor-grabbing">
-                <div class="flex items-start justify-between gap-2">
-                    <p class="text-sm font-medium leading-snug">{{ task.title }}</p>
-                    <c-badge variant="outline" class="shrink-0 {{ task.priority|status_style }}">{{ task.get_priority_display }}</c-badge>
+        {% if can_manage %}
+            <div class="flex flex-wrap gap-2"><a data-project-action class="pcc-button pcc-button-secondary" href="{% url 'projects:board_column_create' project.pk %}">Tambah kolom</a>
+            <a data-project-action href="{% url 'work:task_create' %}?project={{ project.pk }}"
+               class="pcc-button">
+                <svg class="size-4"
+                     viewBox="0 0 24 24"
+                     fill="none"
+                     stroke="currentColor"
+                     stroke-width="2"
+                     stroke-linecap="round">
+                    <path d="M12 5v14M5 12h14" />
+                </svg>
+                Tambah task
+            </a></div>
+        {% endif %}
+    </div>
+    <div id="kanban"
+         class="mt-4 flex gap-4 overflow-x-auto pb-4"
+         data-can-drag="true" data-project-id="{{ project.pk }}">
+        {% for status, tasks in columns %}
+            <div class="flex w-72 shrink-0 flex-col" data-status="{{ status }}">
+                <div class="kanban-column-heading flex items-center justify-between px-3 py-3">
+                    <span class="text-sm font-normal">{{ status_labels|get_item:status }}</span>
+                    <span class="bg-muted px-2 py-0.5 text-xs font-normal tabular-nums"
+                          data-count>{{ tasks|length }}</span>
                 </div>
-                {% if task.label_list %}
-                <div class="mt-2 flex flex-wrap gap-1">
-                    {% for label in task.label_list %}
-                    <span class="rounded border border-border px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">{{ label }}</span>
+                <div class="mt-2 flex min-h-24 flex-1 flex-col gap-2 kanban-column p-2"
+                     data-cards>
+                    {% for task in tasks %}
+                        {% include "projects/_kanban_task.html" %}
+                    {% empty %}
+                        <p class="flex-1 py-6 text-center text-xs text-muted-foreground">Drop task di sini</p>
                     {% endfor %}
                 </div>
-                {% endif %}
-                <div class="mt-3 flex items-center justify-between text-xs text-muted-foreground">
-                    <span class="inline-flex items-center gap-1">
-                        <span class="flex size-5 items-center justify-center rounded-full bg-muted text-[10px] font-semibold uppercase text-muted-foreground">{{ task.assignee|initials|default:"?" }}</span>
-                        <span>{{ task.assignee.pcc_profile.name|default:task.assignee.username|default:"Unassigned" }}</span>
-                    </span>
-                    <span class="font-medium tabular-nums {{ task.is_overdue|yesno:'text-red-600,' }}">{{ task.display_progress|floatformat:0 }}%</span>
-                </div>
-                {% if task.due_date %}
-                <div class="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
-                    <span class="inline-flex items-center gap-1 {% if task.is_overdue %}font-medium text-red-600{% endif %}">
-                        <svg class="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
-                        Due {{ task.due_date|date:"d M" }}{% if task.is_overdue %} (overdue){% endif %}
-                    </span>
-                    {% if task.issues.all %}<span class="inline-flex items-center gap-1 text-red-500">{{ task.issues.all|length }} issue</span>{% endif %}
-                </div>
-                {% endif %}
-            </a>
-            {% empty %}
-            <p class="flex-1 py-6 text-center text-xs text-muted-foreground">Drop task di sini</p>
-            {% endfor %}
-        </div>
+            </div>
+        {% endfor %}
+        {% for column in custom_columns %}
+        <div class="flex w-72 shrink-0 flex-col" data-custom-column="{{ column.pk }}">
+         <div class="kanban-column-heading flex items-center justify-between gap-2 px-3 py-3"><span class="text-sm">{{ column.title }}</span>{% if can_manage %}<a data-project-action class="text-xs text-muted-foreground" href="{% url 'projects:board_column_edit' project.pk column.pk %}">Edit</a>{% endif %}</div>
+         <div class="mt-2 flex min-h-24 flex-1 flex-col gap-2 kanban-column p-2" data-cards>
+          {% for task in column.board_tasks %}{% include "projects/_kanban_task.html" %}{% endfor %}
+          {% for card in column.feedback_cards.all %}<article class="kanban-card p-3" data-feedback-id="{{ card.pk }}" data-draggable="{{ can_manage|yesno:'true,false' }}"><div class="flex items-center justify-between gap-2"><span class="text-xs text-muted-foreground">Feedback · {{ card.get_status_display }}</span>{% if can_manage %}<a data-project-action class="text-xs" href="{% url 'projects:feedback_edit' project.pk column.pk card.pk %}">Edit</a>{% endif %}</div><h3 class="mt-2 text-sm">{{ card.title }}</h3>{% if card.description %}<p class="mt-2 text-xs text-muted-foreground whitespace-pre-line">{{ card.description }}</p>{% endif %}<p class="mt-3 text-xs text-muted-foreground">{{ card.owner|person_name|default:"PIC belum ditentukan" }}{% if card.due_date %} · {{ card.due_date|date:"d M" }}{% endif %}</p>{% if card.linked_task %}<a class="mt-2 block text-xs underline" href="{% url 'work:task_detail' card.linked_task.pk %}">{{ card.linked_task.title }} · {{ card.linked_task.display_progress|floatformat:0 }}%</a>{% endif %}{% if can_manage and custom_columns|length > 1 %}<label class="sr-only" for="feedback-column-{{ card.pk }}">Kolom feedback {{ card.title }}</label><select id="feedback-column-{{ card.pk }}" class="pcc-field mt-3 text-xs" data-feedback-column-select data-feedback-id-select="{{ card.pk }}" data-current="{{ column.pk }}">{% for destination in custom_columns %}<option value="{{ destination.pk }}" {% if destination.pk == column.pk %}selected{% endif %}>{{ destination.title }}</option>{% endfor %}</select>{% endif %}</article>{% endfor %}
+          {% if can_manage %}<a data-project-action class="pcc-button pcc-button-secondary text-xs" href="{% url 'projects:feedback_create' project.pk column.pk %}">+ Tambah feedback</a>{% endif %}
+          {% if not column.board_tasks and not column.feedback_cards.all %}<p class="py-4 text-center text-xs text-muted-foreground">Feedback dan task untuk pembahasan tambahan.</p>{% endif %}
+         </div>
+        </div>{% endfor %}
     </div>
-    {% endfor %}
-</div>
-
 {% endblock %}
-
-{% block extra_js %}
-<script>
-(function () {
-    const board = document.getElementById('kanban');
-    if (!board) return;
-    const canDrag = board.dataset.canDrag === 'true';
-    function moveToStorage() { /* no-op placeholder */ }
-    function refreshCounts() {
-        board.querySelectorAll('[data-status]').forEach((col) => {
-            const count = col.querySelector('[data-count]');
-            const n = col.querySelectorAll('[data-task-id]').length;
-            if (count) count.textContent = n;
-        });
-    }
-    board.querySelectorAll('[data-task-id]').forEach((card) => {
-        if (!canDrag || card.dataset.draggable !== 'true') return;
-        card.draggable = true;
-        card.addEventListener('dragstart', (e) => {
-            e.dataTransfer.setData('text/plain', card.dataset.taskId);
-            e.dataTransfer.effectAllowed = 'move';
-            card.classList.add('opacity-40');
-            card.classList.add('ring-2', 'ring-primary');
-        });
-        card.addEventListener('dragend', () => {
-            card.classList.remove('opacity-40', 'ring-2', 'ring-primary');
-        });
-    });
-    board.querySelectorAll('[data-status]').forEach((col) => {
-        const list = col.querySelector('[data-cards]');
-        col.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            e.dataTransfer.dropEffect = 'move';
-            list.classList.add('bg-primary/5');
-        });
-        col.addEventListener('dragleave', () => list.classList.remove('bg-primary/5'));
-        col.addEventListener('drop', (e) => {
-            e.preventDefault();
-            list.classList.remove('bg-primary/5');
-            const taskId = e.dataTransfer.getData('text/plain');
-            if (!taskId) return;
-            const status = col.dataset.status;
-            const card = board.querySelector(`[data-task-id="${taskId}"]`);
-            fetch(`/tasks/${taskId}/status/`, {
-                method: 'PATCH',
-                headers: { 'X-CSRFToken': document.querySelector('meta[name=csrf-token]').content },
-                body: new URLSearchParams({ status }),
-            }).then((r) => r.json()).then((res) => {
-                if (res.ok && card) {
-                    list.appendChild(card);
-                    refreshCounts();
-                }
-            }).catch(() => {});
-        });
-    });
-})();
-</script>
-{% endblock %}
+{% block extra_js %}<script src="{% static 'js/board.js' %}" defer></script>{% endblock %}

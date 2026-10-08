@@ -1,37 +1,52 @@
 """Views aplikasi work: task, kanban status, gantt dates, issue, comments."""
 
+from decimal import Decimal, InvalidOperation
+from urllib.parse import parse_qs
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.http import HttpRequest, HttpResponse, JsonResponse
+from django.core.exceptions import PermissionDenied, ValidationError
+from django.db import transaction
+from django.db.models import Q
+from django.http import FileResponse, HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.utils.dateparse import parse_date
 from django.views.decorators.http import require_http_methods
 
-from apps.identity.permissions import can_edit_task, can_manage_project
+from apps.identity.permissions import (
+    can_edit_task,
+    can_manage_project,
+    can_report_issue,
+    is_management,
+    visible_projects,
+)
 from apps.projects.models import ActivityAction, Project
 from apps.projects.services import record_activity
 
-from .forms import IssueForm, TaskCommentForm, TaskForm
+from .forms import AttachmentForm, IssueForm, TaskCommentForm, TaskForm
 from .models import (
     OPEN_ISSUE_STATUSES,
     Issue,
     IssueStatus,
     Task,
+    TaskAttachment,
     TaskStatus,
 )
 
 
-def _task_or_404(pk):
+def _task_or_404(request, pk):
     return get_object_or_404(
         Task.objects.select_related("project", "assignee", "phase", "milestone", "parent_task"),
         pk=pk,
+        project__in=visible_projects(request.user),
     )
 
 
 def _project_from_request(request) -> Project | None:
     pid = request.GET.get("project") or request.POST.get("project")
     if pid:
-        return get_object_or_404(Project, pk=pid)
+        return get_object_or_404(visible_projects(request.user), pk=pid)
     return None
 
 
@@ -41,21 +56,35 @@ def _project_from_request(request) -> Project | None:
 @login_required
 def my_tasks(request: HttpRequest) -> HttpResponse:
     qs = (
-        Task.objects.filter(assignee=request.user)
+        Task.objects.filter(
+            Q(assignee=request.user) | Q(collaborators=request.user),
+            project__in=visible_projects(request.user),
+        )
+        .distinct()
         .select_related("project", "phase")
-        .prefetch_related("issues")
+        .prefetch_related("issues", "collaborators")
     )
     current = list(qs.filter(status=TaskStatus.IN_PROGRESS).order_by("due_date"))
     review = list(qs.filter(status=TaskStatus.REVIEW).order_by("due_date"))
     next_up = list(
-        qs.filter(status__in=[TaskStatus.TODO, TaskStatus.BACKLOG, TaskStatus.BLOCKED])
-        .order_by("order", "due_date")[:10]
+        qs.filter(status__in=[TaskStatus.TODO, TaskStatus.BACKLOG]).order_by("order", "due_date")[
+            :10
+        ]
     )
+    blocked = list(qs.filter(status=TaskStatus.BLOCKED).order_by("due_date"))
     done = list(qs.filter(status=TaskStatus.DONE).order_by("-updated_at")[:10])
+    for task in current + review + next_up + done + blocked:
+        task.can_edit = can_edit_task(request.user, task)
     return render(
         request,
         "work/my_tasks.html",
-        {"current": current, "review": review, "next_up": next_up, "done": done},
+        {
+            "current": current,
+            "review": review,
+            "next_up": next_up,
+            "done": done,
+            "blocked": blocked,
+        },
     )
 
 
@@ -64,7 +93,9 @@ def my_tasks(request: HttpRequest) -> HttpResponse:
 
 @login_required
 def issue_list(request: HttpRequest) -> HttpResponse:
-    qs = Issue.objects.select_related("project", "owner", "task")
+    qs = Issue.objects.select_related("project", "owner", "task").filter(
+        project__in=visible_projects(request.user)
+    )
     status = request.GET.get("status", "open")
     if status == "open":
         qs = qs.filter(status__in=OPEN_ISSUE_STATUSES)
@@ -77,7 +108,10 @@ def issue_list(request: HttpRequest) -> HttpResponse:
         {
             "issues": issues,
             "filter": status,
-            "open_count": Issue.objects.filter(status__in=OPEN_ISSUE_STATUSES).count(),
+            "can_report": can_report_issue(request.user),
+            "open_count": Issue.objects.filter(
+                status__in=OPEN_ISSUE_STATUSES, project__in=visible_projects(request.user)
+            ).count(),
         },
     )
 
@@ -85,7 +119,9 @@ def issue_list(request: HttpRequest) -> HttpResponse:
 @login_required
 def issue_create(request: HttpRequest) -> HttpResponse:
     project = _project_from_request(request)
-    form = IssueForm(request.POST or None, project=project)
+    if is_management(request.user) and not request.user.is_staff:
+        raise PermissionDenied
+    form = IssueForm(request.POST or None, project=project, user=request.user)
     if request.method == "POST" and form.is_valid():
         issue = form.save(commit=False)
         if project is None:
@@ -113,11 +149,15 @@ def issue_create(request: HttpRequest) -> HttpResponse:
 @login_required
 def issue_update(request: HttpRequest, pk: int) -> HttpResponse:
     issue = get_object_or_404(
-        Issue.objects.select_related("project", "task"), pk=pk
+        Issue.objects.select_related("project", "task").filter(
+            project__in=visible_projects(request.user)
+        ),
+        pk=pk,
     )
     if not can_manage_project(request.user, issue.project):
-        messages.error(request, "Hanya Project Manager yang bisa mengubah issue.")
-        return redirect("projects:project_issues", pk=issue.project_id)
+        if request.method != "GET":
+            raise PermissionDenied
+        return render(request, "work/issue_detail.html", {"issue": issue})
     form = IssueForm(request.POST or None, instance=issue, project=issue.project)
     if request.method == "POST" and form.is_valid():
         issue = form.save()
@@ -132,6 +172,9 @@ def issue_update(request: HttpRequest, pk: int) -> HttpResponse:
                 f'Issue "{issue.title}" resolved.',
             )
         else:
+            if not was_resolved and issue.resolved_at:
+                issue.resolved_at = None
+                issue.save(update_fields=["resolved_at"])
             record_activity(
                 issue.project,
                 request.user,
@@ -151,6 +194,7 @@ def issue_update(request: HttpRequest, pk: int) -> HttpResponse:
 
 
 @login_required
+@transaction.atomic
 def task_create(request: HttpRequest) -> HttpResponse:
     project = _project_from_request(request)
     if project is None:
@@ -164,6 +208,7 @@ def task_create(request: HttpRequest) -> HttpResponse:
         task = form.save(commit=False)
         task.project = project
         task.save()
+        form.save_m2m()
         record_activity(
             task.project,
             request.user,
@@ -175,7 +220,7 @@ def task_create(request: HttpRequest) -> HttpResponse:
     return render(
         request,
         "work/task_form.html",
-        {"form": form, "project": project, "title": "New Task"},
+        {"form": form, "project": project, "title": "Tambah task"},
     )
 
 
@@ -186,9 +231,12 @@ def task_detail(request: HttpRequest, pk: int) -> HttpResponse:
             "project", "assignee", "phase", "milestone", "parent_task"
         ).prefetch_related("comments__author", "issues"),
         pk=pk,
+        project__in=visible_projects(request.user),
     )
     comment_form = TaskCommentForm()
     if request.method == "POST":
+        if is_management(request.user) and not request.user.is_staff:
+            raise PermissionDenied
         comment_form = TaskCommentForm(request.POST)
         if comment_form.is_valid():
             comment = comment_form.save(commit=False)
@@ -211,20 +259,34 @@ def task_detail(request: HttpRequest, pk: int) -> HttpResponse:
             "can_edit": can_edit_task(request.user, task),
             "can_manage": can_manage_project(request.user, task.project),
             "comment_form": comment_form,
+            "can_comment": not is_management(request.user) or request.user.is_staff,
+            "attachment_form": AttachmentForm(),
         },
     )
 
 
 @login_required
+@transaction.atomic
 def task_update(request: HttpRequest, pk: int) -> HttpResponse:
-    task = _task_or_404(pk)
+    task = _task_or_404(request, pk)
     if not can_edit_task(request.user, task):
         messages.error(request, "Anda tidak berhak mengubah task ini.")
         return redirect("work:task_detail", pk=task.pk)
-    form = TaskForm(request.POST or None, instance=task, project=task.project)
+    old_status = task.status
+    work_update = request.GET.get("mode") == "update"
+    board_status = request.GET.get("board_status") if work_update else None
+    form = TaskForm(
+        request.POST or None,
+        instance=task,
+        project=task.project,
+        can_plan=can_manage_project(request.user, task.project) and not work_update,
+        initial={"status": board_status} if board_status in TaskStatus.values else None,
+    )
     if request.method == "POST" and form.is_valid():
-        old_status = task.status
         task = form.save()
+        if work_update and request.GET.get("clear_column") == "true":
+            task.board_column = None
+            task.save(update_fields=["board_column", "updated_at"])
         if task.status != old_status:
             record_activity(
                 task.project,
@@ -248,86 +310,173 @@ def task_update(request: HttpRequest, pk: int) -> HttpResponse:
     return render(
         request,
         "work/task_form.html",
-        {"form": form, "project": task.project, "title": f"Edit — {task.title}"},
+        {
+            "form": form,
+            "project": task.project,
+            "title": f"Update pekerjaan — {task.title}" if work_update else f"Edit — {task.title}",
+        },
     )
+
+
+def _params(request):
+    if request.method == "POST":
+        return request.POST
+    return {k: v[0] for k, v in parse_qs(request.body.decode("utf-8")).items()}
 
 
 @login_required
 @require_http_methods(["PATCH", "POST"])
-def task_status(request: HttpRequest, pk: int) -> HttpResponse:
-    """Endpoint Kanban drag & drop: ubah status task. Dipanggil via htmx/ajax."""
-    task = _task_or_404(pk)
+@transaction.atomic
+def task_status(request, pk):
+    task = _task_or_404(request, pk)
     if not can_edit_task(request.user, task):
-        return JsonResponse({"ok": False, "error": "forbidden"}, status=403)
-    data = request.POST if request.method == "POST" else request.body
-    if isinstance(data, bytes):
-        status = data.decode("utf-8")
-        try:
-            from urllib.parse import parse_qs
-            status = parse_qs(data.decode("utf-8")).get("status", [""])[0]
-        except Exception:
-            status = data.decode("utf-8")
-    else:
-        status = data.get("status", "")
+        return JsonResponse(
+            {"ok": False, "error": "Anda tidak dapat mengubah task ini."}, status=403
+        )
+    params = _params(request)
+    status = params.get("status", "")
     if status not in TaskStatus.values:
-        return JsonResponse({"ok": False, "error": "invalid status"}, status=400)
+        return JsonResponse({"ok": False, "error": "Pilih status task yang valid."}, status=400)
     old_status = task.status
+    # Status updates preserve grouping; only an explicit board move clears it.
+    if params.get("clear_column") == "true":
+        task.board_column = None
     task.status = status
-    task.save(update_fields=["status", "updated_at"])
-    if task.status == TaskStatus.DONE:
-        task.completed_at = timezone.now()
-        task.save(update_fields=["completed_at"])
-    elif old_status == TaskStatus.DONE:
-        task.completed_at = None
-        task.save(update_fields=["completed_at"])
+    if status == TaskStatus.BLOCKED:
+        task.blocked_reason = params.get("blocked_reason", task.blocked_reason).strip()
+    if (
+        status in (TaskStatus.IN_PROGRESS, TaskStatus.DONE)
+        and task.dependencies.exclude(status=TaskStatus.DONE).exists()
+    ):
+        return JsonResponse(
+            {"ok": False, "error": "Selesaikan dependency task terlebih dahulu."}, status=400
+        )
+    try:
+        task.full_clean(exclude=["dependencies"])
+    except ValidationError as exc:
+        return JsonResponse({"ok": False, "error": " ".join(exc.messages)}, status=400)
+    task.save()
     record_activity(
         task.project,
         request.user,
         ActivityAction.TASK_STATUS,
         f'Status task "{task.title}": '
-                f"{dict(TaskStatus.choices)[old_status]} → {task.get_status_display()}.",
+        f"{dict(TaskStatus.choices)[old_status]} → {task.get_status_display()}.",
     )
-    return JsonResponse({"ok": True, "id": task.id, "status": task.status})
+    return JsonResponse(
+        {"ok": True, "id": task.pk, "status": task.status, "progress": float(task.display_progress)}
+    )
 
 
 @login_required
 @require_http_methods(["PATCH", "POST"])
-def task_dates(request: HttpRequest, pk: int) -> HttpResponse:
-    """Endpoint Gantt drag/resize: ubah start/end date task."""
-    task = _task_or_404(pk)
+@transaction.atomic
+def task_progress(request, pk):
+    task = _task_or_404(request, pk)
+    if not can_edit_task(request.user, task):
+        return JsonResponse(
+            {"ok": False, "error": "Anda tidak dapat mengubah progress task ini."}, status=403
+        )
+    try:
+        value = Decimal(_params(request).get("progress", ""))
+        if not value.is_finite() or not 0 <= value <= 100:
+            raise ValueError
+    except (InvalidOperation, ValueError):
+        return JsonResponse({"ok": False, "error": "Progress harus antara 0 dan 100%."}, status=400)
+    if task.is_done and value != 100:
+        return JsonResponse(
+            {"ok": False, "error": "Ubah status Done sebelum menurunkan progress."}, status=400
+        )
+    task.progress = value
+    task.save(update_fields=["progress", "updated_at"])
+    record_activity(
+        task.project,
+        request.user,
+        ActivityAction.PROGRESS_UPDATED,
+        f'Progress task "{task.title}" menjadi {value}%.',
+    )
+    return JsonResponse({"ok": True, "progress": float(task.display_progress)})
+
+
+@login_required
+@require_http_methods(["PATCH", "POST"])
+@transaction.atomic
+def task_dates(request, pk):
+    task = _task_or_404(request, pk)
     if not can_manage_project(request.user, task.project):
-        return JsonResponse({"ok": False, "error": "forbidden"}, status=403)
-    params = {}
-    if request.method == "POST":
-        params = request.POST
-    else:
-        from urllib.parse import parse_qs
+        return JsonResponse(
+            {"ok": False, "error": "Hanya PM project yang dapat mengubah jadwal."}, status=403
+        )
+    params = _params(request)
+    try:
+        start, end = parse_date(params.get("start", "")), parse_date(params.get("end", ""))
+    except ValueError:
+        start, end = None, None
+    if not start or not end or end < start:
+        return JsonResponse(
+            {
+                "ok": False,
+                "error": (
+                    "Tanggal mulai dan selesai harus valid; selesai tidak boleh sebelum mulai."
+                ),
+            },
+            status=400,
+        )
+    task.start_date, task.due_date = start, end
+    task.save(update_fields=["start_date", "due_date", "updated_at"])
+    record_activity(
+        task.project,
+        request.user,
+        ActivityAction.TIMELINE_CHANGED,
+        f'Timeline task "{task.title}" diubah.',
+    )
+    return JsonResponse(
+        {"ok": True, "id": task.pk, "start": start.isoformat(), "end": end.isoformat()}
+    )
 
-        params = {k: v[0] for k, v in parse_qs(request.body.decode("utf-8")).items()}
-    start = params.get("start", "")
-    end = params.get("end", "")
-    changed = []
-    from django.utils.dateparse import parse_date
 
-    if start and parse_date(start):
-        task.start_date = parse_date(start)
-        changed.append("start_date")
-    if end and parse_date(end):
-        task.due_date = parse_date(end)
-        changed.append("due_date")
-    if changed:
-        task.save(update_fields=changed + ["updated_at"])
+@login_required
+@require_http_methods(["POST"])
+def attachment_upload(request, pk):
+    task = _task_or_404(request, pk)
+    if not can_edit_task(request.user, task):
+        raise PermissionDenied
+    form = AttachmentForm(request.POST, request.FILES)
+    if form.is_valid():
+        upload = form.cleaned_data["file"]
+        TaskAttachment.objects.create(
+            task=task, file=upload, name=upload.name, uploaded_by=request.user
+        )
         record_activity(
             task.project,
             request.user,
-            ActivityAction.TIMELINE_CHANGED,
-            f'Timeline task "{task.title}" diubah.',
+            ActivityAction.TASK_UPDATED,
+            f'Lampiran ditambahkan ke "{task.title}".',
         )
-    return JsonResponse(
-        {
-            "ok": True,
-            "id": task.id,
-            "start": task.start_date.isoformat(),
-            "end": task.due_date.isoformat() if task.due_date else None,
-        }
+        messages.success(request, "Lampiran diunggah.")
+    else:
+        messages.error(request, " ".join(form.errors.get("file", [])))
+    return redirect("work:task_detail", pk=pk)
+
+
+@login_required
+def attachment_download(request, pk):
+    attachment = get_object_or_404(
+        TaskAttachment, pk=pk, task__project__in=visible_projects(request.user)
     )
+    return FileResponse(attachment.file.open("rb"), as_attachment=True, filename=attachment.name)
+
+
+@login_required
+@require_http_methods(["POST"])
+def attachment_delete(request, pk):
+    attachment = get_object_or_404(
+        TaskAttachment, pk=pk, task__project__in=visible_projects(request.user)
+    )
+    if not can_edit_task(request.user, attachment.task):
+        raise PermissionDenied
+    task_id = attachment.task_id
+    attachment.file.delete(save=False)
+    attachment.delete()
+    messages.success(request, "Lampiran dihapus.")
+    return redirect("work:task_detail", pk=task_id)

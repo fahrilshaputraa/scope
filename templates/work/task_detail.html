@@ -1,162 +1,210 @@
 {% extends "base.html" %}
 {% load pcc_tags %}
-{% block title %}{{ task.title }} — Project Control Center{% endblock %}
+{% block title %}{{ task.title }} — Scope{% endblock %}
 {% block content %}
-<div class="flex flex-wrap items-start justify-between gap-4">
-    <div class="min-w-0">
-        <a href="{% url 'projects:project_tasks' task.project.pk %}"
-           class="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">
-            <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7M5 12h14"/></svg>
-            {{ task.project.code }} · Tasks
-        </a>
-        <h1 class="mt-2 text-2xl font-semibold tracking-tight">{{ task.title }}</h1>
-        <div class="mt-2 flex flex-wrap items-center gap-2">
-            <c-badge variant="outline" class="{{ task.status|status_style }}">{{ task.get_status_display }}</c-badge>
-            <c-badge variant="outline" class="{{ task.priority|status_style }}">{{ task.get_priority_display }}</c-badge>
-            {% if task.phase %}<span class="rounded bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">{{ task.phase.name }}</span>{% endif %}
-            {% for label in task.label_list %}
-            <span class="rounded border border-border px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">{{ label }}</span>
-            {% endfor %}
+    <div class="flex flex-wrap items-start justify-between gap-4">
+        <div class="min-w-0">
+            <a href="{% url 'projects:project_tasks' task.project.pk %}"
+               class="inline-flex items-center gap-1.5 text-sm font-normal text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">
+                <svg class="size-4"
+                     viewBox="0 0 24 24"
+                     fill="none"
+                     stroke="currentColor"
+                     stroke-width="2"
+                     stroke-linecap="round"
+                     stroke-linejoin="round">
+                    <path d="m12 19-7-7 7-7M5 12h14" />
+                </svg>
+                {{ task.project.code }} · Tasks
+            </a>
+            <h1 class="mt-2 text-2xl font-normal tracking-tight">{{ task.title }}</h1>
+            <div class="mt-2 flex flex-wrap items-center gap-2">
+                <span class="{{ task.status|status_style }}">{{ task.get_status_display }}</span>
+                <span class="{{ task.priority|status_style }}">{{ task.get_priority_display }}</span>
+                {% if task.phase %}<span class="rounded-md bg-muted px-2 py-0.5 text-xs font-normal text-muted-foreground">{{ task.phase.name }}</span>{% endif %}
+                {% for label in task.label_list %}
+                    <span class="rounded-md border border-border px-1.5 py-0.5 text-[10px] font-normal text-muted-foreground">{{ label }}</span>
+                {% endfor %}
+            </div>
         </div>
+        {% if can_edit %}
+            <a data-project-action href="{% url 'work:task_update' task.pk %}"
+               class="inline-flex h-9 items-center gap-2 rounded-md border bg-background px-4 text-sm font-normal shadow-xs hover:bg-accent hover:text-accent-foreground">
+                <svg class="size-4"
+                     viewBox="0 0 24 24"
+                     fill="none"
+                     stroke="currentColor"
+                     stroke-width="2"
+                     stroke-linecap="round"
+                     stroke-linejoin="round">
+                    <path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" />
+                </svg>
+                Edit Task
+            </a>
+        {% endif %}
     </div>
-    {% if can_edit %}
-    <a href="{% url 'work:task_update' task.pk %}"
-       class="inline-flex h-9 items-center gap-2 rounded-md border bg-background px-4 text-sm font-medium shadow-xs hover:bg-accent hover:text-accent-foreground">
-        <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/></svg>
-        Edit Task
-    </a>
-    {% endif %}
-</div>
-
-<div class="mt-6 grid gap-4 lg:grid-cols-3">
-    <div class="lg:col-span-2 space-y-4">
-        {# ---------------------------------------------------- progress #}
-        <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
-            <div class="border-b px-5 py-4">
-                <div class="flex items-baseline justify-between">
-                    <h2 class="text-base font-semibold">Progress</h2>
-                    <span class="text-lg font-semibold tabular-nums">{{ task.display_progress|floatformat:1 }}%</span>
+    <div class="mt-6 grid gap-4 lg:grid-cols-3">
+        <div class="lg:col-span-2 space-y-4">
+            {# ---------------------------------------------------- progress #}
+            <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
+                <div class="border-b px-5 py-4">
+                    <div class="flex items-baseline justify-between">
+                        <h2 class="text-base font-normal">Progress</h2>
+                        <span class="text-lg font-normal tabular-nums">{{ task.display_progress|floatformat:1 }}%</span>
+                    </div>
+                </div>
+                <div class="p-5">
+                    <progress class="pcc-progress"
+                              max="100"
+                              value="{{ task.display_progress }}"
+                              aria-label="Progress"></progress>
+                    <div class="mt-2 flex justify-between text-xs text-muted-foreground">
+                        {% if task.weight %}<span>Weight: {{ task.weight }}</span>{% endif %}
+                        {% if task.parent_task %}<span>Subtask of: <a href="{% url 'work:task_detail' task.parent_task.pk %}"
+    class="hover:underline">{{ task.parent_task.title }}</a></span>{% endif %}
+                    </div>
                 </div>
             </div>
-            <div class="p-5">
-                <c-progress value="{{ task.display_progress }}" min="0" max="100"></c-progress>
-                <div class="mt-2 flex justify-between text-xs text-muted-foreground">
-                    {% if task.weight %}<span>Weight: {{ task.weight }}</span>{% endif %}
-                    {% if task.parent_task %}<span>Subtask of: <a href="{% url 'work:task_detail' task.parent_task.pk %}" class="hover:underline">{{ task.parent_task.title }}</a></span>{% endif %}
+            {# ------------------------------------------------- description #}
+            <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
+                <div class="border-b px-5 py-4">
+                    <h2 class="text-base font-normal">Description</h2>
+                </div>
+                <div class="p-5">
+                    {% if task.description %}
+                        <div class="rich-text text-sm leading-relaxed text-muted-foreground">{{ task.description|rich }}</div>
+                    {% else %}
+                        <p class="text-sm text-muted-foreground">Tidak ada deskripsi.</p>
+                    {% endif %}
                 </div>
             </div>
-        </div>
-
-        {# ------------------------------------------------- description #}
-        <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
-            <div class="border-b px-5 py-4">
-                <h2 class="text-base font-semibold">Description</h2>
-            </div>
-            <div class="p-5">
-                {% if task.description %}
-                <p class="whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">{{ task.description }}</p>
-                {% else %}
-                <p class="text-sm text-muted-foreground">Tidak ada deskripsi.</p>
+            {# ---------------------------------------------------- blocked #}
+            {% if task.is_blocked %}
+                <div class="rounded-xl border border-border bg-muted text-foreground shadow-sm">
+                    <div class="px-5 py-4">
+                        <h2 class="flex items-center gap-2 text-sm font-normal text-foreground">
+                            <svg class="size-4"
+                                 viewBox="0 0 24 24"
+                                 fill="none"
+                                 stroke="currentColor"
+                                 stroke-width="2"
+                                 stroke-linecap="round"
+                                 stroke-linejoin="round">
+                                <path d="M18 6 6 18M6 6l12 12" />
+                            </svg>
+                            Blocked
+                        </h2>
+                        {% if task.blocked_reason %}<p class="mt-2 text-sm">{{ task.blocked_reason }}</p>{% endif %}
+                        {% if task.blocked_dependency %}<p class="mt-1 text-xs text-foreground">Dependency: {{ task.blocked_dependency }}</p>{% endif %}
+                    </div>
+                </div>
+            {% endif %}
+            {# ---------------------------------------------------- comments #}
+            <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
+                <div class="border-b px-5 py-4">
+                    <h2 class="text-base font-normal">Comments <span class="text-sm font-normal text-muted-foreground">({{ task.comments.all|length }})</span></h2>
+                </div>
+                <div class="divide-y">
+                    {% for comment in task.comments.all %}
+                        <div class="px-5 py-4">
+                            <div class="flex flex-wrap items-baseline justify-between gap-2">
+                                <span class="text-sm font-normal">{{ comment.author|person_name|default:"—" }}</span>
+                                <span class="text-xs text-muted-foreground">{{ comment.created_at|date:"d M Y H:i" }}</span>
+                            </div>
+                            <div class="rich-text mt-1 text-sm text-muted-foreground">{{ comment.content|rich }}</div>
+                        </div>
+                    {% empty %}
+                        <p class="px-5 py-8 text-center text-sm text-muted-foreground">Belum ada komentar.</p>
+                    {% endfor %}
+                </div>
+                {% if can_comment %}
+                    <form method="post" class="border-t p-5">
+                        {% csrf_token %}
+                        <label for="id_content" class="text-sm font-normal">Tambah komentar</label>
+                        {{ comment_form.content.errors }}
+                        <div class="mt-2">{{ comment_form.content }}</div>
+                        <div class="mt-3 flex justify-end">
+                            <button type="submit"
+                                    class="pcc-button">Kirim</button>
+                        </div>
+                    </form>
                 {% endif %}
             </div>
         </div>
-
-        {# ---------------------------------------------------- blocked #}
-        {% if task.is_blocked %}
-        <div class="rounded-xl border border-red-200 bg-red-50 text-red-900 shadow-sm">
-            <div class="px-5 py-4">
-                <h2 class="flex items-center gap-2 text-sm font-semibold text-red-800">
-                    <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
-                    Blocked
-                </h2>
-                {% if task.blocked_reason %}<p class="mt-2 text-sm">{{ task.blocked_reason }}</p>{% endif %}
-                {% if task.blocked_dependency %}<p class="mt-1 text-xs text-red-700">Dependency: {{ task.blocked_dependency }}</p>{% endif %}
-            </div>
-        </div>
-        {% endif %}
-
-        {# ---------------------------------------------------- comments #}
-        <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
-            <div class="border-b px-5 py-4">
-                <h2 class="text-base font-semibold">Comments <span class="text-sm font-normal text-muted-foreground">({{ task.comments.all|length }})</span></h2>
-            </div>
-            <div class="divide-y">
-                {% for comment in task.comments.all %}
-                <div class="px-5 py-4">
-                    <div class="flex flex-wrap items-baseline justify-between gap-2">
-                        <span class="text-sm font-medium">{{ comment.author.pcc_profile.name|default:comment.author.username|default:"—" }}</span>
-                        <span class="text-xs text-muted-foreground">{{ comment.created_at|date:"d M Y H:i" }}</span>
+        {# ---------------------------------------------------------- details #}
+        <div class="space-y-4">
+            <section class="pcc-panel"><h2 class="pcc-section border-b font-normal">Lampiran</h2><ul class="divide-y">{% for attachment in task.attachments.all %}<li class="p-4"><a class="break-words text-sm underline"
+   href="{% url 'work:attachment_download' attachment.pk %}">{{ attachment.name }}</a>{% if can_edit %}<form method="post"
+      action="{% url 'work:attachment_delete' attachment.pk %}"
+      class="mt-2">{% csrf_token %}<button class="text-xs text-foreground underline">Hapus</button></form>{% endif %}</li>{% empty %}<li class="p-4 text-sm text-muted-foreground">Belum ada lampiran.</li>{% endfor %}</ul>{% if can_edit %}<form class="border-t p-4 space-y-3"
+      method="post"
+      enctype="multipart/form-data"
+      action="{% url 'work:attachment_upload' task.pk %}">{% csrf_token %}<label for="id_file" class="text-sm font-normal">Tambah lampiran</label>{{ attachment_form.file }}<p class="text-xs text-muted-foreground">Maksimal 10 MB per file.</p><button class="pcc-button pcc-button-secondary">Unggah</button></form>{% endif %}</section>
+            <section class="pcc-panel"><h2 class="pcc-section border-b font-normal">Dependency</h2><ul class="divide-y">{% for dependency in task.dependencies.all %}<li class="p-4 text-sm"><a class="underline" href="{% url 'work:task_detail' dependency.pk %}">{{ dependency.title }}</a><span class="mt-1 block text-xs text-muted-foreground">{{ dependency.get_status_display }}</span></li>{% empty %}<li class="p-4 text-sm text-muted-foreground">Tidak ada dependency.</li>{% endfor %}</ul></section>
+            <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
+                <div class="border-b px-5 py-4">
+                    <h2 class="text-base font-normal">Details</h2>
+                </div>
+                <dl class="divide-y text-sm">
+                    <div class="grid grid-cols-[100px_1fr] gap-2 px-5 py-3">
+                        <dt class="text-muted-foreground">Assignees</dt>
+                        <dd>
+                            {{ task.assignee_names }}
+                        </dd>
                     </div>
-                    <p class="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">{{ comment.content }}</p>
-                </div>
-                {% empty %}
-                <p class="px-5 py-8 text-center text-sm text-muted-foreground">Belum ada komentar.</p>
-                {% endfor %}
+                    <div class="grid grid-cols-[100px_1fr] gap-2 px-5 py-3">
+                        <dt class="text-muted-foreground">Phase</dt>
+                        <dd>
+                            {{ task.phase.name|default:"—" }}
+                        </dd>
+                    </div>
+                    <div class="grid grid-cols-[100px_1fr] gap-2 px-5 py-3">
+                        <dt class="text-muted-foreground">Milestone</dt>
+                        <dd>
+                            {{ task.milestone.name|default:"—" }}
+                        </dd>
+                    </div>
+                    <div class="grid grid-cols-[100px_1fr] gap-2 px-5 py-3">
+                        <dt class="text-muted-foreground">Start</dt>
+                        <dd class="tabular-nums">
+                            {{ task.start_date|date:"d M Y"|default:"—" }}
+                        </dd>
+                    </div>
+                    <div class="grid grid-cols-[100px_1fr] gap-2 px-5 py-3">
+                        <dt class="text-muted-foreground">Due</dt>
+                        <dd class="tabular-nums {% if task.is_overdue %}font-normal text-foreground{% endif %}">
+                            {{ task.due_date|date:"d M Y"|default:"—" }}{% if task.is_overdue %} (overdue){% endif %}
+                        </dd>
+                    </div>
+                    <div class="grid grid-cols-[100px_1fr] gap-2 px-5 py-3">
+                        <dt class="text-muted-foreground">Weight</dt>
+                        <dd class="tabular-nums">
+                            {{ task.weight }}
+                        </dd>
+                    </div>
+                    <div class="grid grid-cols-[100px_1fr] gap-2 px-5 py-3">
+                        <dt class="text-muted-foreground">Labels</dt>
+                        <dd>{% if task.label_list %}{{ task.label_list|join:", " }}{% else %}—{% endif %}</dd>
+                    </div>
+                </dl>
             </div>
-            <form method="post" class="border-t p-5">
-                {% csrf_token %}
-                <label class="text-sm font-medium">Tambah komentar</label>
-                <div class="mt-2">{{ comment_form.content }}</div>
-                <div class="mt-3 flex justify-end">
-                    <button type="submit"
-                            class="inline-flex h-9 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/90">Kirim</button>
+            {# ----------------------------------------------------- issues #}
+            {% if task.issues.all %}
+                <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
+                    <div class="border-b px-5 py-4">
+                        <h2 class="text-base font-normal">Related Issues</h2>
+                    </div>
+                    <div class="divide-y">
+                        {% for issue in task.issues.all %}
+                            <a data-project-action href="{% url 'work:issue_update' issue.pk %}"
+                               class="flex items-center gap-2 px-5 py-3 hover:bg-accent/40">
+                                <span class="{{ issue.status|status_style }}">{{ issue.get_status_display }}</span>
+                                <span class="min-w-0 truncate text-sm font-normal">{{ issue.title }}</span>
+                            </a>
+                        {% endfor %}
+                    </div>
                 </div>
-            </form>
+            {% endif %}
         </div>
     </div>
-
-    {# ---------------------------------------------------------- details #}
-    <div class="space-y-4">
-        <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
-            <div class="border-b px-5 py-4"><h2 class="text-base font-semibold">Details</h2></div>
-            <dl class="divide-y text-sm">
-                <div class="grid grid-cols-[100px_1fr] gap-2 px-5 py-3">
-                    <dt class="text-muted-foreground">Assignees</dt>
-                    <dd>{{ task.assignee.pcc_profile.name|default:task.assignee.username|default:"Unassigned" }}</dd>
-                </div>
-                <div class="grid grid-cols-[100px_1fr] gap-2 px-5 py-3">
-                    <dt class="text-muted-foreground">Phase</dt>
-                    <dd>{{ task.phase.name|default:"—" }}</dd>
-                </div>
-                <div class="grid grid-cols-[100px_1fr] gap-2 px-5 py-3">
-                    <dt class="text-muted-foreground">Milestone</dt>
-                    <dd>{{ task.milestone.name|default:"—" }}</dd>
-                </div>
-                <div class="grid grid-cols-[100px_1fr] gap-2 px-5 py-3">
-                    <dt class="text-muted-foreground">Start</dt>
-                    <dd class="tabular-nums">{{ task.start_date|date:"d M Y"|default:"—" }}</dd>
-                </div>
-                <div class="grid grid-cols-[100px_1fr] gap-2 px-5 py-3">
-                    <dt class="text-muted-foreground">Due</dt>
-                    <dd class="tabular-nums {% if task.is_overdue %}font-medium text-red-600{% endif %}">
-                        {{ task.due_date|date:"d M Y"|default:"—" }}{% if task.is_overdue %} (overdue){% endif %}
-                    </dd>
-                </div>
-                <div class="grid grid-cols-[100px_1fr] gap-2 px-5 py-3">
-                    <dt class="text-muted-foreground">Weight</dt>
-                    <dd class="tabular-nums">{{ task.weight }}</dd>
-                </div>
-                <div class="grid grid-cols-[100px_1fr] gap-2 px-5 py-3">
-                    <dt class="text-muted-foreground">Labels</dt>
-                    <dd>{% if task.label_list %}{{ task.label_list|join:", " }}{% else %}—{% endif %}</dd>
-                </div>
-            </dl>
-        </div>
-
-        {# ----------------------------------------------------- issues #}
-        {% if task.issues.all %}
-        <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
-            <div class="border-b px-5 py-4"><h2 class="text-base font-semibold">Related Issues</h2></div>
-            <div class="divide-y">
-                {% for issue in task.issues.all %}
-                <a href="{% url 'work:issue_update' issue.pk %}" class="flex items-center gap-2 px-5 py-3 hover:bg-accent/40">
-                    <c-badge variant="outline" class="{{ issue.status|status_style }}">{{ issue.get_status_display }}</c-badge>
-                    <span class="min-w-0 truncate text-sm font-medium">{{ issue.title }}</span>
-                </a>
-                {% endfor %}
-            </div>
-        </div>
-        {% endif %}
-    </div>
-</div>
 {% endblock %}

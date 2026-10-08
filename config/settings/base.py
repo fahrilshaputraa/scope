@@ -14,7 +14,6 @@ CSRF_TRUSTED_ORIGINS = [
 ]
 
 INSTALLED_APPS = [
-    "django_cotton",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -120,3 +119,5 @@ PROGRESS_AT_RISK_THRESHOLD = float(os.getenv("PCC_AT_RISK_THRESHOLD", "-1"))
 PROGRESS_DELAYED_THRESHOLD = float(os.getenv("PCC_DELAYED_THRESHOLD", "-5"))
 # Selisih plan vs actual yang masih dianggap "On Track" (|variance| <= eps)
 PROGRESS_ON_TRACK_EPSILON = float(os.getenv("PCC_ON_TRACK_EPSILON", "1"))
+
+# Local username/password is the default authentication method.

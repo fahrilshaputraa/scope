@@ -1,10 +1,62 @@
 from django.urls import path
 
-from . import views
+from . import planning_views, presentation_views, views
+from .exports import export_report
 
 app_name = "projects"
 
 urlpatterns = [
+    path(
+        "projects/<int:pk>/board/feedback/<int:card_id>/",
+        presentation_views.feedback_move,
+        name="feedback_move",
+    ),
+    path("projects/<int:pk>/presentation/", presentation_views.presentation, name="presentation"),
+    path(
+        "projects/<int:pk>/presentation/play/",
+        presentation_views.presentation_play,
+        name="presentation_play",
+    ),
+    path(
+        "projects/<int:pk>/columns/new/",
+        presentation_views.board_column,
+        name="board_column_create",
+    ),
+    path(
+        "projects/<int:pk>/columns/<int:column_id>/",
+        presentation_views.board_column,
+        name="board_column_edit",
+    ),
+    path(
+        "projects/<int:pk>/columns/<int:column_id>/feedback/new/",
+        presentation_views.feedback_edit,
+        name="feedback_create",
+    ),
+    path(
+        "projects/<int:pk>/columns/<int:column_id>/feedback/<int:card_id>/",
+        presentation_views.feedback_edit,
+        name="feedback_edit",
+    ),
+    path(
+        "projects/<int:pk>/board/tasks/<int:task_id>/",
+        presentation_views.board_move,
+        name="board_move",
+    ),
+    path("projects/import/", planning_views.plan_import, name="plan_import_new"),
+    path("projects/import/template/", planning_views.plan_template, name="plan_template_new"),
+    path("projects/<int:pk>/import/", planning_views.plan_import, name="plan_import"),
+    path("projects/<int:pk>/import/template/", planning_views.plan_template, name="plan_template"),
+    path("projects/<int:pk>/export/json/", planning_views.plan_export, name="plan_export"),
+    path("projects/<int:pk>/phases/<int:phase_id>/", views.phase_edit, name="phase_edit"),
+    path("reports/export/", export_report, name="export_report"),
+    path("projects/<int:pk>/members/", views.project_members, name="project_members"),
+    path("projects/<int:pk>/risks/new/", views.risk_edit, name="risk_create"),
+    path("projects/<int:pk>/risks/<int:rid>/", views.risk_edit, name="risk_edit"),
+    path(
+        "projects/<int:pk>/timeline/baseline/",
+        views.capture_timeline_baseline,
+        name="capture_baseline",
+    ),
     # Dashboard
     path("", views.dashboard, name="dashboard"),
     # Projects

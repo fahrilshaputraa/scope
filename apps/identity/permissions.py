@@ -1,5 +1,7 @@
 """Authorization sederhana berdasarkan role (PRD §30)."""
 
+from django.db.models import Q
+
 from .models import Role
 
 
@@ -44,9 +46,29 @@ def can_edit_task(user, task) -> bool:
         return True
     if can_manage_project(user, task.project):
         return True
-    return task.assignee_id == user.id
+    return not is_management(user) and (
+        task.assignee_id == user.id or task.collaborators.filter(pk=user.pk).exists()
+    )
 
 
 def can_report_issue(user) -> bool:
     """Member boleh melaporkan issue (PRD §30)."""
-    return user.is_authenticated
+    return user.is_authenticated and (user.is_staff or not is_management(user))
+
+
+def visible_projects(user):
+    """The single read scope for pages, exports, comments, and downloads."""
+    from apps.projects.models import Project
+
+    qs = Project.objects.all()
+    if not user.is_authenticated:
+        return qs.none()
+    if user.is_staff or is_management(user):
+        return qs
+    return qs.filter(
+        Q(manager=user) | Q(members=user) | Q(tasks__assignee=user) | Q(tasks__collaborators=user)
+    ).distinct()
+
+
+def can_view_project(user, project):
+    return visible_projects(user).filter(pk=project.pk).exists()

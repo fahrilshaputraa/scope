@@ -1,91 +1,105 @@
 {% extends "base.html" %}
 {% load pcc_tags %}
-{% block title %}{{ project.name }} — Project Control Center{% endblock %}
+{% block title %}{{ project.name }} — Scope{% endblock %}
 {% block content %}
-
-{# ------------------------------------------------ project header (PRD §8) #}
-<div class="flex flex-wrap items-start justify-between gap-4">
-    <div class="min-w-0">
-        <div class="flex items-center gap-2">
-            <h1 class="text-2xl font-semibold tracking-tight">{{ project.name }}</h1>
-            <span class="rounded bg-muted px-1.5 py-0.5 text-xs font-medium tabular-nums text-muted-foreground">{{ project.code }}</span>
+    <nav class="project-sidebar" aria-label="Bagian project">
+        <div class="project-sidebar-head">
+            <span class="project-sidebar-name">{{ project.name }}</span>
+            <span class="project-sidebar-code">{{ project.code }} · {{ project.effective_current_phase.name|default:"Phase belum ditentukan" }}</span>
         </div>
-        <div class="mt-2 flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-muted-foreground">
-            <span class="inline-flex items-center gap-1.5">
-                <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                {{ project.manager.pcc_profile.name|default:project.manager.username|default:"—" }}
-            </span>
-            <span class="inline-flex items-center gap-1.5">
-                <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
-                {{ project.start_date|date:"d M Y" }} → {{ project.target_end_date|date:"d M Y" }}
-            </span>
-            {% if project.team %}
-            <span class="inline-flex items-center gap-1.5">
-                <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-                {{ project.team }}
-            </span>
-            {% endif %}
-            {% if project.is_overdue %}
-            <span class="inline-flex items-center gap-1 rounded bg-red-50 px-1.5 py-0.5 text-xs font-medium text-red-700">Overdue</span>
-            {% endif %}
+        <div class="project-sidebar-nav">
+            {% for key, label in tabs %}
+            <a class="project-nav-item{% if active_tab == key %} is-active{% endif %}"
+               {% if active_tab == key %}aria-current="page"{% endif %}
+               href="{% if key == 'overview' %}{% url 'projects:project_detail' project.pk %}{% else %}{% url 'projects:project_'|add:key project.pk %}{% endif %}">
+                {% if key == 'overview' %}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h9l5 5v13H5zM14 3v5h5M9 13h6M9 17h6"/></svg>
+                {% elif key == 'progress' %}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 17l5-5 4 3 7-8M3 21h18"/></svg>
+                {% elif key == 'timeline' %}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h12M8 12h13M3 19h10M3 3v4M8 10v4M3 17v4"/></svg>
+                {% elif key == 'tasks' %}<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="4" height="13" rx="1"/></svg>
+                {% elif key == 'issues' %}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 10 18H2zM12 9v5M12 17v1"/></svg>
+                {% elif key == 'milestones' %}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M12 4h8l-2 4 2 4h-8"/></svg>
+                {% elif key == 'notes' %}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l4 4v14H6zM15 3v4h4M9 13h6M9 17h6"/></svg>
+                {% elif key == 'activity' %}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l2-6 4 12 2-6h6"/></svg>{% endif %}
+                <span>{{ label }}</span>
+            </a>
+            {% endfor %}
         </div>
-    </div>
-    <div class="flex items-center gap-3">
-        <c-badge variant="outline" class="px-3 py-1 text-sm {{ project.status|status_style }}">{{ project.get_status_display }}</c-badge>
-        {% if can_manage %}
-        <a href="{% url 'projects:project_edit' project.pk %}"
-           class="inline-flex h-9 items-center gap-2 rounded-md border bg-background px-3 text-sm font-medium shadow-xs hover:bg-accent hover:text-accent-foreground">
-            <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/></svg>
-            Edit
-        </a>
-        {% endif %}
-    </div>
-</div>
-
-{# ------------------------------------------------------- overall progress #}
-<div class="mt-4 grid gap-3 sm:grid-cols-3">
-    <div class="rounded-lg border bg-card px-4 py-3 shadow-sm">
-        <div class="flex items-baseline justify-between">
-            <span class="text-xs font-medium text-muted-foreground">PLANNED</span>
-            <span class="text-sm font-semibold tabular-nums">{{ project.planned_progress|pct }}</span>
-        </div>
-        <c-progress class="mt-2" value="{{ project.planned_progress|default:0 }}" min="0" max="100"></c-progress>
-    </div>
-    <div class="rounded-lg border bg-card px-4 py-3 shadow-sm">
-        <div class="flex items-baseline justify-between">
-            <span class="text-xs font-medium text-muted-foreground">ACTUAL</span>
-            <span class="text-sm font-semibold tabular-nums">{{ project.actual_progress|pct }}</span>
-        </div>
-        <c-progress class="mt-2" value="{{ project.actual_progress|default:0 }}" min="0" max="100"></c-progress>
-    </div>
-    <div class="rounded-lg border bg-card px-4 py-3 shadow-sm">
-        <div class="flex items-baseline justify-between">
-            <span class="text-xs font-medium text-muted-foreground">VARIANCE</span>
-            <span class="text-sm font-semibold tabular-nums {{ project.variance|comp }}">
-                {% if project.variance > 0 %}+{% endif %}{{ project.variance|pct }}
-            </span>
-        </div>
-        <div class="mt-2 flex items-center gap-1.5 text-sm">
-            <span class="size-2 rounded-full {{ project.variance_level|level_dot }}"></span>
-            <span class="text-xs text-muted-foreground">{{ project.variance_level|level_label }}</span>
-        </div>
-    </div>
-</div>
-
-{# ---------------------------------------------------------------- tabs #}
-<div class="mt-6 border-b">
-    <nav class="-mb-px flex gap-1 overflow-x-auto text-sm">
-        {% for key, label in tabs %}
-            {% if key == "overview" %}
-                <a href="{% url 'projects:project_detail' project.pk %}"
-                   class="whitespace-nowrap border-b-2 px-3 py-2.5 transition-colors {% if active_tab == key %}border-primary font-medium text-foreground{% else %}border-transparent text-muted-foreground hover:border-border hover:text-foreground{% endif %}">{{ label }}</a>
-            {% else %}
-                <a href="{% url 'projects:project_'|add:key project.pk %}"
-                   class="whitespace-nowrap border-b-2 px-3 py-2.5 transition-colors {% if active_tab == key %}border-primary font-medium text-foreground{% else %}border-transparent text-muted-foreground hover:border-border hover:text-foreground{% endif %}">{{ label }}</a>
-            {% endif %}
-        {% endfor %}
     </nav>
-</div>
-
-{% block project_content %}{% endblock %}
+    {# ------------------------------------------------ project header (PRD §8) #}
+    <div class="flex flex-wrap items-start justify-between gap-4">
+        <div class="min-w-0">
+            <div class="flex items-center gap-2">
+                <h1 class="break-words text-2xl font-normal tracking-tight">{{ project.name }}</h1>
+                <span class="shrink-0 whitespace-nowrap rounded-md bg-muted px-1.5 py-0.5 text-xs font-normal tabular-nums text-muted-foreground">{{ project.code }}</span>
+            </div>
+            <div class="mt-2 flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-muted-foreground">
+                <span class="inline-flex items-center gap-1.5">
+                    <svg class="size-3.5"
+                         viewBox="0 0 24 24"
+                         fill="none"
+                         stroke="currentColor"
+                         stroke-width="2"
+                         stroke-linecap="round"
+                         stroke-linejoin="round">
+                        <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+                        <circle cx="12" cy="7" r="4" />
+                    </svg>
+                    {{ project.manager|person_name|default:"—" }}
+                </span>
+                <span class="inline-flex items-center gap-1.5">
+                    <svg class="size-3.5"
+                         viewBox="0 0 24 24"
+                         fill="none"
+                         stroke="currentColor"
+                         stroke-width="2"
+                         stroke-linecap="round"
+                         stroke-linejoin="round">
+                        <rect x="3" y="4" width="18" height="18" rx="2" />
+                        <path d="M16 2v4M8 2v4M3 10h18" />
+                    </svg>
+                    {{ project.start_date|date:"d M Y" }} → {{ project.target_end_date|date:"d M Y" }}
+                </span>
+                {% if project.team %}
+                    <span class="inline-flex items-center gap-1.5">
+                        <svg class="size-3.5"
+                             viewBox="0 0 24 24"
+                             fill="none"
+                             stroke="currentColor"
+                             stroke-width="2"
+                             stroke-linecap="round"
+                             stroke-linejoin="round">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                            <circle cx="9" cy="7" r="4" />
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                        </svg>
+                        {{ project.team }}
+                    </span>
+                {% endif %}
+                {% if project.is_overdue %}
+                    <span class="inline-flex items-center gap-1 rounded-md bg-muted px-1.5 py-0.5 text-xs font-normal text-foreground">Lewat target</span>
+                {% endif %}
+            </div>
+        </div>
+        <div class="flex flex-wrap items-center gap-3">
+            <span class="px-3 py-1 text-sm {{ project.status|status_style }}">{{ project.status|status_label }}</span>
+            <a data-project-action class="pcc-button pcc-button-secondary" href="{% url 'projects:presentation' project.pk %}"><svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 3h18M4 3v13h16V3M12 16v5m-4 0 4-3 4 3"/><path d="m10 7 5 3-5 3Z"/></svg>Presentasi</a>
+            {% if can_manage %}
+                <a data-project-action class="pcc-button" href="{% url 'work:task_create' %}?project={{ project.pk }}">Tambah task</a>
+                <details class="project-add-menu"><summary class="pcc-button pcc-button-secondary">Lainnya</summary>
+                    <div class="project-add-options">
+                        <a data-project-action href="{% url 'work:issue_create' %}?project={{ project.pk }}">Laporkan masalah</a>
+                        <a data-project-action href="{% url 'projects:note_create' project.pk %}">Tulis catatan</a>
+                        <a data-project-action href="{% url 'projects:milestone_create' project.pk %}">Tambah milestone</a>
+                        <a data-project-action href="{% url 'projects:project_members' project.pk %}">Atur anggota tim</a>
+                        <a data-project-action href="{% url 'projects:plan_import' project.pk %}">Import rencana dari AI</a>
+                        <a data-project-action href="{% url 'projects:phase_create' project.pk %}">Tambah tahap project</a>
+                        <a data-project-action href="{% url 'projects:project_edit' project.pk %}">Edit informasi project</a>
+                    </div>
+                </details>
+            {% endif %}
+        </div>
+    </div>
+    <div class="project-compact-summary" data-project-brief><span>Rencana <strong>{{ project.planned_progress|pct }}</strong></span><span>Actual <strong>{{ project.actual_progress|pct }}</strong></span><span>Deviasi <strong>{% if project.variance is not None %}{{ project.variance|floatformat:2 }}%{% else %}—{% endif %}</strong></span><span>{{ project.variance_level|level_label }}</span><span>Phase: {{ project.effective_current_phase.name|default:"belum ditentukan" }}</span></div>
+    {% block project_content %}{% endblock %}
 {% endblock %}

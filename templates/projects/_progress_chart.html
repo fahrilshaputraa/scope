@@ -1,0 +1,23 @@
+{% load static %}<script src="{% static 'vendor/chart.umd.min.js' %}"></script>{{ chart|json_script:"progress-chart-data" }}<script>
+(function () {
+ const data = JSON.parse(document.getElementById('progress-chart-data').textContent);
+ const canvas = document.getElementById('progress-chart'); if (!canvas) return;
+ const styles = getComputedStyle(document.body);
+ const token = name => styles.getPropertyValue(name).trim();
+ Chart.defaults.font.family = styles.fontFamily;
+ Chart.defaults.color = token('--color-ash');
+ Chart.defaults.font.weight = 400;
+ const chart = new Chart(canvas, { type: 'line', data: { labels: data.labels, datasets: [
+ { label: 'Rencana', data: data.planned, borderColor: token('--color-ash'), borderDash: [5,4], borderWidth: 2, pointRadius: 0, tension: 0 },
+ { label: 'Actual', data: data.actual, borderColor: token('--color-ink'), borderWidth: 2.5, pointRadius: 3, spanGaps: true, tension: 0 }
+ ] }, options: { animation: canvas.closest('[data-presentation-player]') ? false : undefined, responsive: true, maintainAspectRatio: false, interaction: { mode:'index',intersect:false },
+ plugins: {legend: {position:'bottom',labels:{usePointStyle:true,boxWidth:8}},tooltip:{callbacks:{label:c=>c.parsed.y === null ? '' : `${c.dataset.label}: ${c.parsed.y.toFixed(2)}%`}}},
+ scales: { y:{min:0,max:100,ticks:{callback:v=>v+'%'},grid:{color:token('--color-hairline')}}, x:{grid:{display:false},ticks:{maxTicksLimit:8,maxRotation:0}} } } });
+ document.querySelectorAll('[data-zoom]').forEach(button => button.addEventListener('click', () => {
+ document.querySelectorAll('[data-zoom]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));
+ chart.options.scales.x.min = button.dataset.zoom === 'all' ? undefined : Math.max(0,data.today_index-Number(button.dataset.zoom));
+ chart.options.scales.x.max = button.dataset.zoom === 'all' ? undefined : data.today_index;
+ chart.update();
+ }));
+})();
+</script>

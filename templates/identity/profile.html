@@ -1,41 +1,48 @@
 {% extends "base.html" %}
-{% block title %}Profile — Project Control Center{% endblock %}
+{% load pcc_tags %}
+{% block title %}Profile — Scope{% endblock %}
 {% block content %}
-<div class="mx-auto max-w-2xl">
-    <h1 class="text-2xl font-semibold tracking-tight">Profile</h1>
-    <p class="mt-1 text-sm text-muted-foreground">Informasi akun & role akses Anda.</p>
-
-    <div class="mt-6 rounded-lg border bg-card text-card-foreground shadow-sm">
-        <div class="p-6">
-            <div class="flex items-center gap-4">
-                <span class="flex size-14 items-center justify-center rounded-full bg-primary/10 text-xl font-semibold uppercase text-primary">
-                    {{ request.user.pcc_profile.name|default:request.user.username|slice:":1" }}
-                </span>
-                <div>
-                    <p class="text-lg font-medium">{{ request.user.pcc_profile.name|default:request.user.username }}</p>
-                    <p class="text-sm text-muted-foreground">{{ request.user.email|default:"-" }}</p>
+    <div class="mx-auto max-w-2xl">
+        <h1 class="text-2xl font-normal tracking-tight">Profile</h1>
+        <p class="mt-1 text-sm text-muted-foreground">Informasi akun & role akses Anda.</p>
+        <div class="mt-6 rounded-lg border bg-card text-card-foreground shadow-sm">
+            <div class="p-6">
+                <div class="flex items-center gap-4">
+                    <span class="flex size-14 items-center justify-center rounded-full bg-muted text-xl font-normal uppercase text-foreground">
+                        {{ request.user|person_name|slice:":1" }}
+                    </span>
+                    <div>
+                        <p class="text-lg font-normal">{{ request.user|person_name }}</p>
+                        <p class="text-sm text-muted-foreground">{{ request.user.email|default:"-" }}</p>
+                    </div>
                 </div>
+                <dl class="mt-6 grid gap-4 border-t pt-6 text-sm sm:grid-cols-2">
+                    <div>
+                        <dt class="text-muted-foreground">Role</dt>
+                        <dd class="mt-0.5 font-normal">
+                            {{ request.user.pcc_profile.get_role_display|default:"Project Member" }}
+                        </dd>
+                    </div>
+                    <div>
+                        <dt class="text-muted-foreground">Job Title</dt>
+                        <dd class="mt-0.5 font-normal">
+                            {{ request.user.pcc_profile.job_title|default:"-" }}
+                        </dd>
+                    </div>
+                    <div>
+                        <dt class="text-muted-foreground">Username</dt>
+                        <dd class="mt-0.5 font-normal">
+                            {{ request.user.username }}
+                        </dd>
+                    </div>
+                    <div>
+                        <dt class="text-muted-foreground">SSO Subject</dt>
+                        <dd class="mt-0.5 font-normal">
+                            {{ request.user.pcc_profile.sso_subject|default:"-" }}
+                        </dd>
+                    </div>
+                </dl>
             </div>
-
-            <dl class="mt-6 grid gap-4 border-t pt-6 text-sm sm:grid-cols-2">
-                <div>
-                    <dt class="text-muted-foreground">Role</dt>
-                    <dd class="mt-0.5 font-medium">{{ request.user.pcc_profile.get_role_display|default:"Project Member" }}</dd>
-                </div>
-                <div>
-                    <dt class="text-muted-foreground">Job Title</dt>
-                    <dd class="mt-0.5 font-medium">{{ request.user.pcc_profile.job_title|default:"-" }}</dd>
-                </div>
-                <div>
-                    <dt class="text-muted-foreground">Username</dt>
-                    <dd class="mt-0.5 font-medium">{{ request.user.username }}</dd>
-                </div>
-                <div>
-                    <dt class="text-muted-foreground">SSO Subject</dt>
-                    <dd class="mt-0.5 font-medium">{{ request.user.pcc_profile.sso_subject|default:"-" }}</dd>
-                </div>
-            </dl>
         </div>
     </div>
-</div>
 {% endblock %}

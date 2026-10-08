@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Presentasi — {{ project.name }}{% endblock %}
+{% block content %}
+<div class="pcc-form-surface presentation-setup" data-panel-kind="presentation">
+ <a class="pcc-form-back text-sm text-muted-foreground" href="{% url 'projects:project_detail' project.pk %}">← Kembali ke project</a>
+ <header class="pcc-section"><p class="text-sm text-muted-foreground">{{ project.code }} · {{ project.name }}</p><h1 class="text-2xl mt-2">Presentasi project</h1><p class="mt-2 text-sm text-muted-foreground">Pilih isi dan susun slide sebelum mulai presentasi.</p></header>
+ <form method="post" id="presentation-config" class="presentation-settings">{% csrf_token %}{{ form.sections }}
+  <section class="pcc-section presentation-period"><h2>Periode berikutnya</h2><p class="text-sm text-muted-foreground">Rentang tanggal untuk pekerjaan berikutnya.</p><div class="presentation-period-fields">{% for field in form.visible_fields %}<div><label for="{{ field.id_for_label }}">{{ field.label }}</label>{% if can_manage %}{{ field }}{% else %}<p>{{ field.value }}</p>{% endif %}{{ field.errors }}</div>{% endfor %}</div></section>
+  <section class="pcc-section"><h2>Urutan & isi slide</h2><p class="text-sm text-muted-foreground">{% if can_manage %}Seret atau gunakan panah untuk mengurutkan. Aktifkan kolom Kanban tambahan untuk menambah slide.{% else %}Susunan ini dikelola oleh Project Manager.{% endif %}</p>
+   {% if form.errors %}<div role="alert" class="mt-4 text-sm">{{ form.non_field_errors }}{{ form.sections.errors }}</div>{% endif %}
+   <ol class="slide-order" id="slide-order">
+   {% for section in sections %}<li data-slide-key="{{ section.key }}" {% if can_manage %}draggable="true"{% endif %}>
+    <span class="slide-order-number">{{ forloop.counter|stringformat:"02d" }}</span>
+    <div class="slide-order-content"><label><input type="checkbox" data-enabled {% if section.enabled %}checked{% endif %} {% if not can_manage %}disabled{% endif %}>Tampilkan slide</label><label class="sr-only" for="slide-title-{{ forloop.counter }}">Judul slide {{ forloop.counter }}</label><input id="slide-title-{{ forloop.counter }}" class="pcc-field" data-slide-title value="{{ section.title }}" maxlength="100" required {% if not can_manage %}readonly{% endif %}><small>{% if section.key == 'overview' %}Grafik dan angka rencana, actual, deviasi{% elif section.key == 'ongoing' %}Task aktif, pemeriksaan, dan hambatan{% elif section.key == 'next' %}Task terjadwal pada periode pilihan, termasuk pekerjaan aktif yang belum selesai{% elif section.key == 'issues' %}Masalah terbuka, diurutkan menurut tingkat prioritas{% elif section.key == 'thanks' %}Penutup presentasi{% else %}Sumber: kolom Kanban · feedback dan task{% endif %}</small>{% if section.key != 'overview' and section.key != 'thanks' %}<label class="mt-3"><input type="checkbox" data-show-details {% if section.show_details %}checked{% endif %} {% if not can_manage %}disabled{% endif %}>Tampilkan PIC, jadwal & keterangan</label>{% endif %}</div>
+    {% if can_manage %}<div class="slide-order-controls"><button type="button" data-move="-1" aria-label="Naikkan slide {{ section.title }}">↑</button><button type="button" data-move="1" aria-label="Turunkan slide {{ section.title }}">↓</button></div>{% endif %}
+   </li>{% endfor %}</ol>
+
+  </section>
+  <section class="pcc-section presentation-additional"><h2>Tambahkan isi dari Kanban</h2><p class="text-sm text-muted-foreground">Kolom tambahan seperti Feedback muncul di daftar slide di atas. Buat kolom baru jika sumbernya belum tersedia.</p><a class="pcc-button pcc-button-secondary mt-4" href="{% url 'projects:project_tasks' project.pk %}">Buka Kanban</a><p class="mt-4 text-xs text-muted-foreground">Data diambil saat presentasi dimulai. Isi panjang otomatis dilanjutkan ke slide berikutnya.</p></section>
+  <footer class="presentation-drawer-actions"><p class="text-xs text-muted-foreground" id="presentation-save-state" aria-live="polite">{% if saved %}Susunan tersimpan untuk project ini.{% else %}Susunan awal siap digunakan.{% endif %}</p><div class="form-actions">{% if can_manage %}<button class="pcc-button pcc-button-secondary" type="submit">Simpan susunan</button><button class="pcc-button" type="submit" name="action" value="play" data-panel-navigate>Mulai presentasi →</button>{% else %}<a class="pcc-button" href="{% url 'projects:presentation_play' project.pk %}">Mulai presentasi →</a>{% endif %}</div></footer>
+ </form>
+</div>
+{% endblock %}
