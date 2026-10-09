@@ -1,34 +1,51 @@
-# Scope — brand kit
+# Scope — logo B / Seimbang
 
-Approved name: **Scope**. Approved direction: **A / Shared corner**.
-Two corners share one open workspace: structured, clear, dependable.
+Identitas disetujui pada 9 Oktober 2026. Dua jalur naik mewakili **rencana dan progres aktual**: dua jalur progres, satu pandangan. Gunakan B untuk seluruh branding Scope.
 
-## Assets
+## Pilih file
 
-- `scope-symbol.svg`: black master, geometry 256 × 256.
-- `scope-symbol-white.svg`: optically lighter reversed master.
-- `scope-symbol-small.svg`: grid-aligned cut for 16–24 px.
-- `scope-horizontal.svg`, `scope-stacked.svg`, `scope-wordmark.svg`: outlined lockups.
-- `assets/`: black, white, blue, PNG, favicon ICO/SVG, app icons, web manifest.
-- `presentation.html`: identity board with website, browser tab, app icon, business card, social and sticker contexts.
-- Live application assets: `static/brand/`.
+| Kebutuhan | File |
+|---|---|
+| Header, laporan, dokumen berlatar terang | `scope-horizontal.svg` |
+| Header atau dokumen berlatar gelap | `scope-horizontal-dark.svg` |
+| Susunan vertikal | `scope-stacked.svg` / `scope-stacked-dark.svg` |
+| Simbol saja, minimum 32 px | `scope-symbol-violet.svg` |
+| Simbol putih di latar gelap, minimum 32 px | `scope-symbol-white.svg` |
+| Simbol 16–24 px | `scope-symbol-small.svg` atau `assets/favicon-light.svg` / `assets/favicon-dark.svg` |
+| Tulisan Scope saja | `scope-wordmark.svg` |
+| PNG transparan | `renders/` atau `assets/` |
+| Browser tab | `assets/favicon.svg` / `assets/favicon.ico` |
+| App icon / avatar | `assets/scope-app-icon.svg` / `assets/scope-app-icon-1024.png` |
+| Web icon, Apple touch, manifest | `assets/icon-*.png`, `assets/apple-touch-icon.png`, `assets/site.webmanifest` |
 
-## Usage
+Semua master SVG memakai bentuk fill dan huruf outlined: tidak membutuhkan font, bitmap, atau filter. Versi hitam, putih, dan satu warna violet untuk setiap lockup tersedia di `assets/`. Favicon SVG menyesuaikan tema browser; favicon ICO memakai violet. Manifest memakai alamat ikon relatif dan perlu dipasang sesuai hosting aplikasi.
 
-Clear space: at least one vertical stroke width (38/256 of the symbol canvas).
-Minimum symbol: 16 px using the small cut; regular master 24 px.
-Minimum horizontal lockup: 120 px wide. Keep both pieces together; do not rotate,
-add gradients, outline the mark, stretch it, or place it over busy photography.
-Use blue or black on white/warm paper, and the lighter white master on blue/dark ink.
+## Ruang dan ukuran
 
-Palette: action blue `#0075DE` (RGB 0,117,222), ink `#111111`, white `#FFFFFF`,
-warm paper `#F6F5F4`. Approximate print blue CMYK 100,47,0,13; proof before print.
-Roboto Bold supplies the outlined wordmark; its Apache 2.0 licence is copied
-into this folder. All live interface text keeps the existing shared sans stack.
+Jaga ruang kosong minimal **satu tebal jalur** di sekeliling batas gambar: 32 unit dari master simbol 256 unit. Pada simbol 32 px, ruang kosong minimum 4 px. Padding artboard boleh dihitung sebagai ruang kosong tersebut; jangan dipotong lalu menempelkan logo pada teks atau tepi.
 
-## Verification
+Logo horizontal minimum **120 px** lebar; stacked minimum **80 px** lebar; simbol biasa minimum **32 px**. Untuk 16–24 px, gunakan versi kecil dengan celah 32 unit dan grid yang disesuaikan. Versi putih biasa memakai jalur 30 unit agar terasa sama beratnya pada latar gelap; versi kecil tetap 32 unit supaya stabil pada pixel grid.
 
-Two concept refinement rounds; SVG audits; 16/32/64px checks; black, blue and
-reversed previews. Masters contain paths only, no external fonts or bitmap
-images. The kit does not assert trademark clearance; commercial brand
-registration requires a separate name/mark availability search.
+## Warna
+
+| Warna | HEX | RGB | CMYK perkiraan | Pemakaian |
+|---|---|---|---|---|
+| Violet | `#5B5BD6` | 91, 91, 214 | 57, 57, 0, 16 | Simbol utama, tile app icon |
+| Violet terang | `#7C7CF0` | 124, 124, 240 | 48, 48, 0, 6 | Simbol pada latar gelap |
+| Ink | `#111111` | 17, 17, 17 | 0, 0, 0, 93 | Wordmark / monokrom |
+| Putih | `#FFFFFF` | 255, 255, 255 | 0, 0, 0, 0 | Logo reversed |
+| Canvas | `#FBFBFA` | 251, 251, 250 | 0, 0, 0, 2 | Latar terang |
+
+Pasangan utama: violet + ink di putih/canvas; violet terang + putih di ink/dark; putih di violet. CMYK adalah konversi numerik awal, bukan hasil profil cetak. Tentukan spot/Pantone lewat proof dan swatch fisik bila diperlukan.
+
+## Tipografi dan pemakaian
+
+Wordmark memakai **Roboto Medium**, sudah diubah menjadi path. Lisensi Apache 2.0 dan notice tersedia di `FONT-LICENSE.txt` dan `FONT-NOTICE.txt`. Interface tetap memakai **Inter** sesuai `DESIGN.md`. Gunakan file wordmark, jangan mengetik ulang tulisan Scope untuk mengganti logo.
+
+Pertahankan proporsi dan susunan resmi; gunakan warna yang tercantum. Hindari meregangkan, memutar, memisahkan kedua jalur, menambah outline/gradient/bayangan, atau menaruh logo pada latar yang ramai. Tile app icon boleh mengikuti bentuk mask sistem operasi; gunakan `maskable-512.png` untuk crop maskable.
+
+## Handover
+
+`overview.png` merangkum identitas. `presentation.html` dan `board/` menunjukkan konteks aplikasi dan branding; domain dan kontak pada mockup adalah ilustrasi. `tests.html`, `tests.png`, dan `verification.md` mencatat pemeriksaan. Aset aplikasi tersedia di `static/brand/`; logo PDF memakai proporsi horizontal B. Konsep lain telah dibersihkan atas permintaan pengguna.
+
+Paket ini tidak menyatakan clearance merek. Jika identitas akan didaftarkan, lakukan pencarian nama dan kemiripan melalui layanan merek profesional.

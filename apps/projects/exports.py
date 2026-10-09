@@ -237,7 +237,7 @@ def export_report(request):
                 Image(
                     str(settings.BASE_DIR / "static/brand/scope-horizontal.png"),
                     width=140,
-                    height=45.37,
+                    height=140 * 256 / 710,
                     hAlign="LEFT",
                 ),
                 Spacer(1, 10),

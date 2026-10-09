@@ -1,45 +1,58 @@
 {
   "brand": "Scope",
   "tagline": "Project workspace",
-  "brief": "Satu ruang untuk rencana project dan pekerjaan tim. Identitas profesional, ringkas, dan jelas.",
+  "brief": "Memahami kondisi project, membandingkan rencana dengan progres aktual, dan melihat pekerjaan tim dalam satu workspace.",
   "adjectives": [
-    "professional",
-    "clear",
-    "dependable",
-    "calm"
+    "Ramah",
+    "Ringan",
+    "Kolaboratif",
+    "Jelas"
   ],
-  "criteria": "Terbaca pada16px, satu warna, dan laporan profesional.",
+  "criteria": "Dua jalur terlihat terpisah, tampil konsisten di terang/gelap, dan tetap terbaca sebagai favicon.",
   "industry": "saas",
-  "brand_color": "#0075de",
+  "brand_color": "#5b5bd6",
   "greyscale": false,
+  "final": true,
+  "deck_title": "Brand identity · B",
+  "date": "2026-10-09",
+  "label": "B — Seimbang",
   "nav": [
     "Projects",
-    "Tasks",
+    "Progress",
     "Reports"
   ],
   "mockups": [
     "website",
     "favicon-tab",
     "app-icon",
-    "business-card",
     "social",
-    "sticker"
+    "sticker",
+    "business-card"
   ],
   "concepts": [
     {
-      "name": "Shared corner",
-      "symbol": "scope-symbol.svg",
+      "name": "Rencana / Aktual",
+      "symbol": "scope-symbol-violet.svg",
       "lockup": "scope-horizontal.svg",
-      "idea": "Dua sudut bertemu dalam satu ruang kerja.",
+      "stacked": "scope-stacked.svg",
+      "avatar": "scope-symbol-small.svg",
+      "symbol_on_tile": "scope-symbol-white.svg",
+      "symbol_on_dark": "scope-symbol-white.svg",
+      "lockup_on_dark": "scope-horizontal-dark.svg",
+      "stacked_on_dark": "scope-stacked-dark.svg",
+      "stacked_on_tile": "assets/scope-stacked-white.svg",
+      "idea": "Dua jalur progres, satu pandangan.",
       "rationale": [
-        "Siluet sederhana untuk ukuran kecil.",
-        "Ruang terbuka menggambarkan koordinasi.",
-        "Geometri tegas untuk konteks profesional."
+        "Dua jalur naik mewakili rencana dan aktual.",
+        "Bentuk modular memberi kesan terstruktur; sudut halus membuatnya lebih ramah.",
+        "Violet menyambungkan logo dengan warna aplikasi."
       ]
     }
   ],
-  "recommendation": "Arah A disetujui pengguna; nama Scope dipilih pengguna.",
+  "recommendation": "B dipilih pengguna. Gunakan master resmi dan versi kecil khusus untuk 16–24 px.",
   "next_steps": [
-    "Gunakan aset di sidebar, login, favicon, dan laporan."
+    "Logo horizontal untuk dokumen dan header.",
+    "Simbol untuk sidebar, favicon, dan app icon.",
+    "Panduan penggunaan ada di README.md."
   ]
 }

@@ -1,0 +1,422 @@
+{
+  "pngs": [
+    {
+      "file": "renders/scope-symbol.png",
+      "size": [
+        512,
+        512
+      ],
+      "alpha_extrema": [
+        0,
+        255
+      ]
+    },
+    {
+      "file": "renders/scope-symbol-white.png",
+      "size": [
+        512,
+        512
+      ],
+      "alpha_extrema": [
+        0,
+        255
+      ]
+    },
+    {
+      "file": "renders/scope-symbol-small.png",
+      "size": [
+        512,
+        512
+      ],
+      "alpha_extrema": [
+        0,
+        255
+      ]
+    },
+    {
+      "file": "renders/scope-symbol-violet.png",
+      "size": [
+        512,
+        512
+      ],
+      "alpha_extrema": [
+        0,
+        255
+      ]
+    },
+    {
+      "file": "renders/scope-horizontal.png",
+      "size": [
+        1200,
+        433
+      ],
+      "alpha_extrema": [
+        0,
+        255
+      ]
+    },
+    {
+      "file": "renders/scope-horizontal-dark.png",
+      "size": [
+        1200,
+        433
+      ],
+      "alpha_extrema": [
+        0,
+        255
+      ]
+    },
+    {
+      "file": "renders/scope-stacked.png",
+      "size": [
+        512,
+        628
+      ],
+      "alpha_extrema": [
+        0,
+        255
+      ]
+    },
+    {
+      "file": "renders/scope-stacked-dark.png",
+      "size": [
+        512,
+        628
+      ],
+      "alpha_extrema": [
+        0,
+        255
+      ]
+    },
+    {
+      "file": "renders/scope-wordmark.png",
+      "size": [
+        1200,
+        463
+      ],
+      "alpha_extrema": [
+        0,
+        255
+      ]
+    },
+    {
+      "file": "assets/scope-horizontal-black-1200.png",
+      "size": [
+        1200,
+        433
+      ],
+      "alpha_extrema": [
+        0,
+        255
+      ]
+    },
+    {
+      "file": "assets/scope-horizontal-white-1200.png",
+      "size": [
+        1200,
+        433
+      ],
+      "alpha_extrema": [
+        0,
+        255
+      ]
+    },
+    {
+      "file": "assets/scope-horizontal-mono-5b5bd6-1200.png",
+      "size": [
+        1200,
+        433
+      ],
+      "alpha_extrema": [
+        0,
+        255
+      ]
+    },
+    {
+      "file": "assets/scope-stacked-black-1200.png",
+      "size": [
+        1200,
+        1473
+      ],
+      "alpha_extrema": [
+        0,
+        255
+      ]
+    },
+    {
+      "file": "assets/scope-stacked-white-1200.png",
+      "size": [
+        1200,
+        1473
+      ],
+      "alpha_extrema": [
+        0,
+        255
+      ]
+    },
+    {
+      "file": "assets/scope-stacked-mono-5b5bd6-1200.png",
+      "size": [
+        1200,
+        1473
+      ],
+      "alpha_extrema": [
+        0,
+        255
+      ]
+    },
+    {
+      "file": "assets/scope-wordmark-black-1200.png",
+      "size": [
+        1200,
+        463
+      ],
+      "alpha_extrema": [
+        0,
+        255
+      ]
+    },
+    {
+      "file": "assets/scope-wordmark-white-1200.png",
+      "size": [
+        1200,
+        463
+      ],
+      "alpha_extrema": [
+        0,
+        255
+      ]
+    },
+    {
+      "file": "assets/scope-wordmark-mono-5b5bd6-1200.png",
+      "size": [
+        1200,
+        463
+      ],
+      "alpha_extrema": [
+        0,
+        255
+      ]
+    },
+    {
+      "file": "assets/scope-symbol-black-512.png",
+      "size": [
+        512,
+        512
+      ],
+      "alpha_extrema": [
+        0,
+        255
+      ]
+    },
+    {
+      "file": "assets/scope-symbol-white-512.png",
+      "size": [
+        512,
+        512
+      ],
+      "alpha_extrema": [
+        0,
+        255
+      ]
+    },
+    {
+      "file": "assets/scope-symbol-mono-5b5bd6-512.png",
+      "size": [
+        512,
+        512
+      ],
+      "alpha_extrema": [
+        0,
+        255
+      ]
+    },
+    {
+      "file": "assets/favicon-16.png",
+      "size": [
+        16,
+        16
+      ],
+      "alpha_extrema": [
+        0,
+        255
+      ]
+    },
+    {
+      "file": "assets/favicon-32.png",
+      "size": [
+        32,
+        32
+      ],
+      "alpha_extrema": [
+        0,
+        255
+      ]
+    },
+    {
+      "file": "assets/favicon-48.png",
+      "size": [
+        48,
+        48
+      ],
+      "alpha_extrema": [
+        0,
+        255
+      ]
+    },
+    {
+      "file": "assets/apple-touch-icon.png",
+      "size": [
+        180,
+        180
+      ],
+      "alpha_extrema": [
+        255,
+        255
+      ]
+    },
+    {
+      "file": "assets/icon-192.png",
+      "size": [
+        192,
+        192
+      ],
+      "alpha_extrema": [
+        255,
+        255
+      ]
+    },
+    {
+      "file": "assets/icon-512.png",
+      "size": [
+        512,
+        512
+      ],
+      "alpha_extrema": [
+        255,
+        255
+      ]
+    },
+    {
+      "file": "assets/maskable-512.png",
+      "size": [
+        512,
+        512
+      ],
+      "alpha_extrema": [
+        255,
+        255
+      ]
+    },
+    {
+      "file": "assets/scope-app-icon-1024.png",
+      "size": [
+        1024,
+        1024
+      ],
+      "alpha_extrema": [
+        0,
+        255
+      ]
+    },
+    {
+      "file": "overview.png",
+      "size": [
+        1080,
+        900
+      ],
+      "alpha_extrema": [
+        255,
+        255
+      ]
+    },
+    {
+      "file": "tests.png",
+      "size": [
+        1060,
+        1360
+      ],
+      "alpha_extrema": [
+        255,
+        255
+      ]
+    },
+    {
+      "file": "board/slide-01.png",
+      "size": [
+        1280,
+        800
+      ],
+      "alpha_extrema": [
+        255,
+        255
+      ]
+    },
+    {
+      "file": "board/slide-02.png",
+      "size": [
+        1280,
+        800
+      ],
+      "alpha_extrema": [
+        255,
+        255
+      ]
+    },
+    {
+      "file": "board/slide-03.png",
+      "size": [
+        1280,
+        800
+      ],
+      "alpha_extrema": [
+        255,
+        255
+      ]
+    },
+    {
+      "file": "board/slide-04.png",
+      "size": [
+        1280,
+        800
+      ],
+      "alpha_extrema": [
+        255,
+        255
+      ]
+    },
+    {
+      "file": "board/slide-05.png",
+      "size": [
+        1280,
+        800
+      ],
+      "alpha_extrema": [
+        255,
+        255
+      ]
+    }
+  ],
+  "favicon_16_components": [
+    34,
+    34
+  ],
+  "contrast": {
+    "violet_on_white": 5.37,
+    "light_violet_on_dark": 5.11,
+    "white_on_violet": 5.37,
+    "ink_on_canvas": 18.24
+  },
+  "application_checks": {
+    "pdf_export_tests": "6 passed; 12 non-PDF cases deselected",
+    "django_check": "no issues",
+    "ruff_exports": "passed",
+    "css_build": "passed",
+    "login_light_dark": "rendered and visually inspected; dark logo filter corrected to white"
+  },
+  "cleanup": [
+    "docs/brand/concepts",
+    "docs/brand/scope-exploration-2026-10-09",
+    "previous kit and previous live brand assets replaced with B"
+  ]
+}

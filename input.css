@@ -664,7 +664,7 @@ body:has(.visualization-fullscreen) { overflow: hidden; }
 .login-form-panel { background: var(--surface); border: 1px solid var(--line); padding: 32px; border-radius: var(--radius-xl); }
 .login-form-panel a:not(.pcc-button) { color: var(--brand); }
 .login-theme { position: absolute; top: 20px; right: 20px; }
-html[data-theme="dark"] .login-shell img { filter: invert(1); }
+html[data-theme="dark"] .login-shell img { filter: brightness(0) invert(1); }
 
 /* ------------------------------------------------------------------ WYSIWYG */
 .wysiwyg { border: 1px solid var(--input); border-radius: var(--radius-inputs); background: var(--surface); overflow: hidden; }

@@ -14,4 +14,4 @@ Project → Tambah → Import rencana dari AI → Unduh template JSON. Send the 
 
 85 pytest cases passed, Django system checks, migration consistency and Ruff. Browser checks on an isolated preview database covered searchable member selection, title-only unassigned task creation, current-page preservation, invalid form focus and focus restoration, invalid JSON, complete import, duplicate no-op, dashboard import creating a project, desktop/mobile containment, and no JavaScript exceptions. Live local server remained on port 8001 and serves the new Scope login and assets.
 
-Scope name and logo A were chosen by the user. Brand kit is in docs/brand/scope, downloadable archive docs/brand/scope-kit.zip. Internal PCC identifiers remain stable for compatibility.
+Scope name and logo B (Seimbang / Rencana dan Aktual) were chosen by the user. Brand kit is in docs/brand/scope, downloadable archive docs/brand/scope-kit.zip. Internal PCC identifiers remain stable for compatibility.
