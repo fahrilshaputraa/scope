@@ -33,9 +33,9 @@
        autocomplete="current-password"
        required>
                 </div>
-                <button class="pcc-button w-full" type="submit">Masuk</button>
+                <button class="pcc-button w-full" type="submit"><svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg>Masuk</button>
             </form>
             {% if entra_enabled %}<a class="pcc-button pcc-button-secondary mt-4 w-full"
-   href="{% url 'identity:authorize' %}?next={{ next|urlencode }}">Masuk dengan Microsoft</a>{% endif %}
+   href="{% url 'identity:authorize' %}?next={{ next|urlencode }}"><svg class="size-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 3h8v8H3zM13 3h8v8h-8zM3 13h8v8H3zM13 13h8v8h-8z"/></svg>Masuk dengan Microsoft</a>{% endif %}
             <p class="mt-5 text-xs leading-relaxed text-muted-foreground">Belum punya akun atau lupa password? Hubungi administrator workspace.</p>
         </div><p class="mt-5 text-xs text-muted-foreground">Workspace internal · Akses sesuai role dan keanggotaan project.</p></main></body></html>

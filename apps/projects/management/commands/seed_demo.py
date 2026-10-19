@@ -12,6 +12,7 @@ from django.core.management.base import BaseCommand
 from django.utils import timezone
 
 from apps.identity.models import Role, UserProfile
+from apps.projects.demo import DEMO_PROJECT_CODES
 from apps.projects.models import (
     ActivityAction,
     ActivityEvent,
@@ -34,8 +35,6 @@ from apps.work.models import (
     Task,
     TaskStatus,
 )
-
-DEMO_CODES = ["HRMS-01", "LBR-02", "CP-03", "DWM-04", "SOC-05", "APG-06"]
 
 TODAY = timezone.localdate()
 D = lambda s: datetime.strptime(s, "%Y-%m-%d").date()  # noqa: E731
@@ -115,7 +114,7 @@ class Command(BaseCommand):
     # --- main ---
 
     def handle(self, *args, **options):
-        Project.objects.filter(code__in=DEMO_CODES).delete()
+        Project.objects.filter(code__in=DEMO_PROJECT_CODES).delete()
 
         fahril = self.user("fahril", Role.PROJECT_MANAGER, "Fahril", "Project Manager")
         andi = self.user("andi", Role.PROJECT_MANAGER, "Andi", "Project Manager")

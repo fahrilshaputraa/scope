@@ -1,0 +1,27 @@
+{% load static %}<!DOCTYPE html>
+<html lang="id">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1">
+        <meta name="robots" content="noindex, nofollow">
+        <title>{% block title %}Scope{% endblock %}</title>
+        <script src="{% static 'js/theme.js' %}"></script>
+        <link rel="icon" type="image/svg+xml" href="{% static 'brand/scope-favicon.svg' %}">
+        <link rel="icon" sizes="any" href="{% static 'brand/scope-favicon.ico' %}">
+        <link rel="stylesheet" href="{% static 'css/output.css' %}">
+    </head>
+    <body class="public-shell">
+        <header class="public-header">
+            <div class="public-brand">
+                <img src="{% static 'brand/scope-symbol.svg' %}" width="28" height="28" alt="">
+                <span><strong>Scope</strong><small>Halaman publik</small></span>
+            </div>
+            <button type="button" class="public-theme" data-theme-toggle aria-label="Ganti tema">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg>
+            </button>
+        </header>
+        <main class="public-main">{% block content %}{% endblock %}</main>
+        <footer class="public-foot">Dibagikan melalui Scope · Progress project diperbarui otomatis.</footer>
+        {% block extra_js %}{% endblock %}
+    </body>
+</html>

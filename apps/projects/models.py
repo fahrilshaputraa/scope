@@ -1,4 +1,5 @@
 from decimal import Decimal
+from uuid import uuid4
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
@@ -95,6 +96,9 @@ class Project(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    public_token = models.UUIDField(default=uuid4, unique=True, editable=False)
+    is_public = models.BooleanField(default=False)
+    published_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ["name"]

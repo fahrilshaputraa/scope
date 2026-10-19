@@ -4,11 +4,11 @@
 <section class="pcc-panel mt-6" data-fullscreen-panel="Plan vs actual" data-expand-label="Presentasikan">
     <div class="pcc-section border-b visualization-toolbar">
         <div><h2 class="text-xl">Rencana vs progress</h2><p class="mt-1 text-sm text-muted-foreground">{{ health.variance|variance_summary }}</p></div>
-        <div data-visualization-actions><a class="pcc-button pcc-button-secondary" href="{% url 'projects:project_progress' project.pk %}">Detail progress</a></div>
+        <div data-visualization-actions><a class="pcc-button pcc-button-secondary" href="{% url 'projects:project_progress' project.pk %}"><svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 17l5-5 4 3 7-8M3 21h18"/></svg>Detail progress</a></div>
     </div>
     <div class="pcc-section">
         {% if chart_has_plan %}<div class="overview-chart" data-chart-frame><canvas id="progress-chart" role="img" aria-label="Rencana {{ health.planned|pct }} dibanding progress {{ health.progress|pct }}"></canvas></div>
-        {% else %}<div class="py-12"><h3>Rencana progress belum tersedia.</h3><p class="mt-2 text-sm text-muted-foreground">Progress saat ini {{ health.progress|pct }}. Tambahkan baseline di tab Progress untuk melihat perbandingan.</p>{% if can_manage %}<a class="pcc-button pcc-button-secondary mt-4" href="{% url 'projects:project_progress' project.pk %}">Atur rencana progress</a>{% endif %}</div>{% endif %}
+        {% else %}<div class="py-12"><h3>Rencana progress belum tersedia.</h3><p class="mt-2 text-sm text-muted-foreground">Progress saat ini {{ health.progress|pct }}. Tambahkan baseline di tab Progress untuk melihat perbandingan.</p>{% if can_manage %}<a class="pcc-button pcc-button-secondary mt-4" href="{% url 'projects:project_progress' project.pk %}"><svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 17l5-5 4 3 7-8M3 21h18"/></svg>Atur rencana progress</a>{% endif %}</div>{% endif %}
     </div>
 </section>
 <div class="overview-pair mt-6">

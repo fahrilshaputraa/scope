@@ -1,11 +1,18 @@
 from django.urls import path
 
-from . import planning_views, presentation_views, views
+from . import planning_views, presentation_views, share_views, views
 from .exports import export_report
 
 app_name = "projects"
 
 urlpatterns = [
+    path("p/<uuid:token>/", share_views.public_project, name="public_project"),
+    path("projects/<int:pk>/share/", share_views.project_share, name="project_share"),
+    path(
+        "projects/<int:pk>/share/reset/",
+        share_views.project_share_reset,
+        name="project_share_reset",
+    ),
     path(
         "projects/<int:pk>/board/feedback/<int:card_id>/",
         presentation_views.feedback_move,

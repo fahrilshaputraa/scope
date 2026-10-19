@@ -1,0 +1,84 @@
+{% extends "projects/_base.html" %}
+{% load static %}
+{% block project_content %}
+    <div class="mt-6 max-w-3xl space-y-4">
+        <div class="flex flex-wrap items-start justify-between gap-3">
+            <div>
+                <h2 class="text-lg font-normal tracking-tight">Bagikan project</h2>
+                <p class="text-sm text-muted-foreground">Beri akses baca-saja ke progress project melalui tautan publik.</p>
+            </div>
+            {% if project.is_public %}
+                <span class="pcc-status pcc-status-success">Publik</span>
+            {% else %}
+                <span class="pcc-status pcc-status-neutral">Privat</span>
+            {% endif %}
+        </div>
+        <section class="rounded-xl border bg-card p-6 shadow-sm">
+            <h3 class="text-base font-normal">Tautan publik</h3>
+            <div class="mt-3 flex flex-col gap-2 sm:flex-row">
+                <input id="public-url"
+                       class="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm"
+                       readonly
+                       value="{{ public_url }}">
+                <button type="button"
+                        class="pcc-button pcc-button-secondary shrink-0"
+                        data-copy-url="#public-url"><svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Salin tautan</button>
+            </div>
+            <p class="mt-2 text-xs text-muted-foreground">Tautan ini tidak bisa ditebak. Siapa pun yang memilikinya dapat melihat progress project.</p>
+            <div class="mt-4 flex flex-wrap gap-2">
+                <form method="post" action="{% url 'projects:project_share' project.pk %}">
+                    {% csrf_token %}
+                    <input type="hidden"
+                           name="action"
+                           value="{% if project.is_public %}unpublish{% else %}publish{% endif %}">
+                    <button type="submit"
+                            class="pcc-button {% if project.is_public %}pcc-button-secondary{% endif %}">
+                        {% if project.is_public %}<svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/><path d="m3 3 18 18"/></svg>Matikan publikasi{% else %}<svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/></svg>Publikasikan project{% endif %}
+                    </button>
+                </form>
+                {% if project.is_public %}
+                    <a class="pcc-button pcc-button-secondary"
+                       href="{% url 'projects:public_project' project.public_token %}"
+                       target="_blank"
+                       rel="noopener"><svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14 21 3"/></svg>Buka halaman publik</a>
+                {% endif %}
+            </div>
+        </section>
+        <section class="rounded-xl border bg-card p-6 shadow-sm">
+            <h3 class="text-base font-normal">Buat ulang tautan</h3>
+            <p class="mt-1 text-sm text-muted-foreground">Berguna jika tautan lama sudah tersebar. Tautan lama langsung tidak berlaku.</p>
+            <form method="post"
+                  action="{% url 'projects:project_share_reset' project.pk %}"
+                  data-confirm="Tautan publik lama akan langsung tidak berlaku. Lanjutkan?"
+                  class="mt-3">
+                {% csrf_token %}
+                <button type="submit" class="pcc-button pcc-button-secondary"><svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>Buat ulang tautan</button>
+            </form>
+        </section>
+        <section class="rounded-xl border bg-card p-6 shadow-sm">
+            <h3 class="text-base font-normal">Yang terlihat oleh publik</h3>
+            <div class="mt-3 grid gap-5 sm:grid-cols-2">
+                <div>
+                    <p class="text-xs font-normal text-muted-foreground">DITAMPILKAN</p>
+                    <ul class="mt-2 space-y-1 text-sm">
+                        <li>Nama, kode, status, dan tanggal project</li>
+                        <li>Progress rencana vs actual dan deviasinya</li>
+                        <li>Grafik progress</li>
+                        <li>Timeline project dan daftar pekerjaan per fase (judul, status, progress, tanggal)</li>
+                        <li>Fase dan milestone</li>
+                    </ul>
+                </div>
+                <div>
+                    <p class="text-xs font-normal text-muted-foreground">TIDAK DITAMPILKAN</p>
+                    <ul class="mt-2 space-y-1 text-sm text-muted-foreground">
+                        <li>Nama anggota/assignee, deskripsi task, komentar, dan lampiran</li>
+                        <li>Project manager dan tim</li>
+                        <li>Deskripsi project</li>
+                        <li>Catatan, issue, risiko, dan aktivitas</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+    </div>
+{% endblock %}
+{% block extra_js %}<script src="{% static 'js/share.js' %}"></script>{% endblock %}

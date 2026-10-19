@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}{% if query %}Pencarian panduan{% else %}{{ article.title }}{% endif %} — Docs Scope{% endblock %}
+{% block content %}
+<div class="docs-page" data-docs-page>
+    {% include "identity/_settings_nav.html" with active_settings="docs" %}
+    <div class="docs-heading"><a href="{% url 'identity:docs' %}" class="docs-brand"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h6l2 2 2-2h6v15h-6l-2 2-2-2H4zM12 6v15M7 8h2M15 8h2M7 12h2M15 12h2"/></svg><span>Panduan Scope</span></a><span>{{ article_count }} topik · Bahasa Indonesia</span></div>
+    <div class="docs-layout">
+        {% if query %}
+        <div class="docs-reading docs-results">
+            <p class="docs-eyebrow">Pencarian dokumentasi</p>
+            <h1>Hasil untuk “{{ query }}”</h1>
+            <p class="docs-lead">{{ search_results|length }} topik ditemukan. Pencarian ini hanya mencakup panduan penggunaan Scope.</p>
+            {% for result in search_results %}
+            <a class="docs-result" href="{{ result.url }}"><span class="docs-eyebrow">{{ result.article.group }}</span><h2>{{ result.article.title }} <span aria-hidden="true">↗</span></h2><p>{{ result.snippet }}…</p></a>
+            {% empty %}
+            <div class="docs-empty"><h2>Belum ada topik yang cocok</h2><p>Coba kata yang lebih singkat, misalnya “anggota”, “progres”, atau “impor”. Untuk mencari proyek, gunakan pencarian pada bilah atas aplikasi.</p></div>
+            {% endfor %}
+            <a class="docs-text-link" href="{% url 'identity:docs' %}">← Kembali ke panduan</a>
+        </div>
+        {% else %}
+        <article class="docs-reading" aria-labelledby="docs-article-title">
+            <header class="docs-article-header">
+                <p class="docs-eyebrow">{{ article.group }}</p>
+                <h1 id="docs-article-title">{{ article.title }}</h1>
+                <p class="docs-lead">{{ article.summary }}</p>
+                <div class="docs-meta"><span>{{ article.audience }}</span><button type="button" data-docs-print hidden>Cetak panduan <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9V3h12v6M6 18H3V9h18v9h-3M6 14h12v7H6zM17 12h1"/></svg></button></div>
+                {% if action_link %}<a class="docs-text-link" href="{{ action_link.url }}">{{ action_link.label }} <span aria-hidden="true">↗</span></a>{% endif %}
+            </header>
+            <details class="docs-inline-toc"><summary>Di halaman ini</summary><nav aria-label="Daftar isi artikel">{% for block in article.sections %}<a href="#{{ block.id }}">{{ block.title }}</a>{% endfor %}</nav></details>
+            {% for block in article.sections %}
+            <section class="docs-section" id="{{ block.id }}" aria-labelledby="heading-{{ block.id }}">
+                <h2 id="heading-{{ block.id }}"><a href="#{{ block.id }}">{{ block.title }}<span class="docs-anchor" aria-hidden="true">#</span></a></h2>
+                {% for paragraph in block.paragraphs %}<p>{{ paragraph }}</p>{% endfor %}
+                {% if block.steps %}<ol class="docs-steps">{% for step in block.steps %}<li><span aria-hidden="true">{{ forloop.counter|stringformat:"02d" }}</span><p>{{ step }}</p></li>{% endfor %}</ol>{% endif %}
+                {% if block.table %}<div class="docs-table-scroll" tabindex="0" role="region" aria-label="{{ block.title }} — tabel"><table><thead><tr>{% for cell in block.table.headers %}<th scope="col">{{ cell }}</th>{% endfor %}</tr></thead><tbody>{% for row in block.table.rows %}<tr>{% for cell in row %}{% if forloop.first %}<th scope="row">{{ cell }}</th>{% else %}<td>{{ cell }}</td>{% endif %}{% endfor %}</tr>{% endfor %}</tbody></table></div>{% endif %}
+                {% if block.bullets %}<ul class="docs-bullets">{% for bullet in block.bullets %}<li>{{ bullet }}</li>{% endfor %}</ul>{% endif %}
+                {% if block.visual %}<figure class="docs-figure"><div class="docs-example-label"><span>Contoh untuk belajar</span><span>Data ilustrasi</span></div>{% include "identity/docs/_visual.html" with visual=block.visual only %}<figcaption>{{ block.caption }}</figcaption></figure>{% endif %}
+                {% if block.callout %}<aside class="docs-callout" role="note"><strong>{{ block.callout.0 }}</strong><p>{{ block.callout.1 }}</p></aside>{% endif %}
+            </section>
+            {% endfor %}
+            <footer class="docs-article-footer">
+                {% if related_articles %}<div class="docs-related"><h2>Lanjutkan membaca</h2>{% for related in related_articles %}<a href="{{ related.url }}">{{ related.title }} <span aria-hidden="true">↗</span></a>{% endfor %}</div>{% endif %}
+                <nav class="docs-pagination" aria-label="Artikel sebelumnya dan berikutnya">{% if previous_article %}<a href="{{ previous_article.url }}"><small>← Sebelumnya</small><span>{{ previous_article.title }}</span></a>{% endif %}{% if next_article %}<a href="{{ next_article.url }}"><small>Berikutnya →</small><span>{{ next_article.title }}</span></a>{% endif %}</nav>
+                <p class="docs-footnote">Panduan ini menjelaskan fitur Scope yang tersedia. Contoh di halaman ini tidak mengubah data proyek.</p>
+            </footer>
+        </article>
+        <aside class="docs-toc"><p>Di halaman ini</p><nav aria-label="Daftar isi artikel">{% for block in article.sections %}<a href="#{{ block.id }}" data-docs-anchor>{{ block.title }}</a>{% endfor %}</nav><a class="docs-text-link" href="{% url 'identity:docs_article' 'bantuan-istilah' %}">Butuh bantuan? →</a></aside>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}<script src="{% static 'js/docs.js' %}" defer></script>{% endblock %}

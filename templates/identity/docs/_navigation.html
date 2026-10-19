@@ -1,0 +1,14 @@
+<div class="docs-sidebar">
+            <form class="docs-search" method="get" action="{% url 'identity:docs' %}" role="search">
+                <label for="docs-query">Cari di panduan</label>
+                <div><input id="docs-query" type="search" name="q" value="{{ query }}" maxlength="200" placeholder="Cari topik…"><button type="submit" aria-label="Cari dokumentasi"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="10" r="6"/><path d="m15 15 5 5"/></svg></button></div>
+            </form>
+            <details class="docs-menu" open>
+                <summary>Topik dokumentasi</summary>
+                <nav aria-label="Topik dokumentasi">
+                    {% for group, items in docs_groups %}
+                    <div class="docs-nav-group"><p>{{ group }}</p>{% for item in items %}<a href="{{ item.url }}"{% if not query and item.slug == article.slug %} aria-current="page"{% endif %}>{{ item.title }}</a>{% endfor %}</div>
+                    {% endfor %}
+                </nav>
+            </details>
+        </div>

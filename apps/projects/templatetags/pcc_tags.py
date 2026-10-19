@@ -174,6 +174,7 @@ def status_label(status):
         "resolved": "Diselesaikan",
         "closed": "Ditutup",
         "upcoming": "Akan datang",
+        "not_started": "Belum dimulai",
     }.get(str(status), status)
 
 

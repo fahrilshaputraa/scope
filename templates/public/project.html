@@ -1,0 +1,122 @@
+{% extends "public/base.html" %}
+{% load pcc_tags %}
+{% block title %}{{ project.name }} — Scope{% endblock %}
+{% block content %}
+    <article class="public-project">
+        <header class="public-project-head">
+            <div class="public-project-title">
+                <h1>{{ project.name }}</h1>
+                <span class="public-code">{{ project.code }}</span>
+            </div>
+            <div class="public-project-meta">
+                <span class="{{ project.status|status_style }}">{{ project.status|status_label }}</span>
+                <span>{{ project.start_date|date:"d M Y" }} → {{ project.target_end_date|date:"d M Y" }}</span>
+            </div>
+        </header>
+        <section class="public-metrics" aria-label="Ringkasan progress">
+            <div class="public-card public-metric">
+                <p class="public-metric-label">Rencana</p>
+                <p class="public-metric-value">{{ planned|pct }}</p>
+            </div>
+            <div class="public-card public-metric">
+                <p class="public-metric-label">Actual</p>
+                <p class="public-metric-value">{{ actual|pct }}</p>
+            </div>
+            <div class="public-card public-metric">
+                <p class="public-metric-label">Deviasi</p>
+                <p class="public-metric-value {{ variance|comp }}">{% if variance is not None %}{% if variance > 0 %}+{% endif %}{{ variance|fmt2:"%" }}{% else %}—{% endif %}</p>
+            </div>
+            <div class="public-card public-metric">
+                <p class="public-metric-label">Status progress</p>
+                <p class="public-metric-value public-metric-level">{{ level|level_label }}</p>
+            </div>
+        </section>
+        <section class="public-card public-section">
+            <div class="public-section-head">
+                <div>
+                    <h2>Rencana vs progress</h2>
+                    <p>Perbandingan planned progress dan actual progress.</p>
+                </div>
+            </div>
+            <div class="public-chart">
+                {% if chart_has_plan %}
+                    <canvas id="progress-chart" role="img" aria-label="Rencana {{ planned|pct }} dibanding progress {{ actual|pct }}"></canvas>
+                {% else %}
+                    <p class="public-empty">Rencana progress belum tersedia. Progress saat ini {{ actual|pct }}.</p>
+                {% endif %}
+            </div>
+        </section>
+        <section class="public-card public-section">
+            <div class="public-section-head">
+                <div>
+                    <h2>Timeline project</h2>
+                    <p>{{ timeline_start|date:"d M Y" }} — {{ timeline_end|date:"d M Y" }}</p>
+                </div>
+            </div>
+            {% include "public/_timeline.html" %}
+        </section>
+        <section class="public-card public-section">
+            <div class="public-section-head">
+                <h2>Pekerjaan per fase</h2>
+                <span class="public-count">{{ phase_groups|length }}</span>
+            </div>
+            <div class="public-phase-list">
+                {% for group in phase_groups %}
+                    <div class="public-phase">
+                        <div class="public-phase-head">
+                            <div class="public-phase-title">
+                                <h3>{{ group.phase.name|default:"Tanpa fase" }}</h3>
+                                <p class="public-meta">{% if group.phase %}{{ group.phase.start_date|date:"d M Y"|default:"Tanpa tanggal" }} → {{ group.phase.end_date|date:"d M Y"|default:"Tanpa tanggal" }}{% else %}Tanpa tanggal fase{% endif %}</p>
+                            </div>
+                            <div class="public-phase-side">
+                                {% if group.phase %}
+                                    <span class="{{ group.phase.status|status_style }}">{{ group.phase.status|status_label }}</span>
+                                    <span class="public-progress">{{ group.phase.progress|pct }}</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="public-task-list">
+                            {% for task in group.tasks %}
+                                <div class="public-task-row">
+                                    <div class="public-task-main">
+                                        <p class="public-task-title">{{ task.title }}</p>
+                                        <p class="public-meta">{{ task.start_date|date:"d M Y"|default:"Tanpa tanggal" }} → {{ task.due_date|date:"d M Y"|default:"Tanpa tanggal" }}</p>
+                                    </div>
+                                    <div class="public-task-side">
+                                        <span class="{{ task.status|status_style }}">{{ task.status|status_label }}</span>
+                                        <span class="public-progress">{{ task.display_progress|floatformat:0 }}%</span>
+                                    </div>
+                                </div>
+                            {% empty %}
+                                <p class="public-empty">Belum ada pekerjaan di fase ini.</p>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% empty %}
+                    <p class="public-empty">Belum ada fase.</p>
+                {% endfor %}
+            </div>
+        </section>
+        <section class="public-card public-section">
+            <div class="public-section-head">
+                <h2>Milestone</h2>
+                <span class="public-count">{{ milestones|length }}</span>
+            </div>
+            <div class="public-rows">
+                {% for milestone in milestones %}
+                    <div class="public-row">
+                        <div class="public-row-main">
+                            <p class="public-row-title">{{ milestone.name }}</p>
+                            <p class="public-meta">{{ milestone.date|date:"d M Y" }}</p>
+                        </div>
+                        <span class="{{ milestone.status|status_style }}">{{ milestone.status|status_label }}</span>
+                    </div>
+                {% empty %}
+                    <p class="public-empty">Belum ada milestone.</p>
+                {% endfor %}
+            </div>
+        </section>
+        <p class="public-updated">Terakhir diperbarui {{ last_updated|date:"d M Y H:i" }}</p>
+    </article>
+{% endblock %}
+{% block extra_js %}{% if chart_has_plan %}{% include "projects/partials/_progress_chart.html" %}{% endif %}{% endblock %}

@@ -7,7 +7,7 @@
             <h1 class="text-2xl font-normal tracking-tight">Projects</h1>
             <p class="mt-1 text-sm text-muted-foreground">Seluruh project di workspace.</p>
         </div>
-        {% if can_create %}<div class="flex gap-2"><a data-project-action class="pcc-button pcc-button-secondary" href="{% url 'projects:plan_import_new' %}">Import dari AI</a>
+        {% if can_create %}<div class="flex gap-2"><a data-project-action class="pcc-button pcc-button-secondary" href="{% url 'projects:plan_import_new' %}"><svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 2 6 6 3-6 2-2 7-2-7-6-2 6-3zM21 2v4m-2-2h4"/></svg>Import dari AI</a>
             <a data-project-action href="{% url 'projects:project_create' %}"
                class="pcc-button">
                 <svg class="size-4"
@@ -72,11 +72,12 @@
             <div class="flex items-end gap-2">
                 <button type="submit"
                         class="pcc-button">
+                    <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></svg>
                     Filter
                 </button>
                 {% if filters.q or filters.status or filters.pm or filters.team %}
                     <a href="{% url 'projects:project_list' %}"
-                       class="inline-flex h-9 items-center rounded-md border bg-background px-3 text-sm font-normal shadow-xs hover:bg-accent">Reset</a>
+                       class="inline-flex h-9 items-center gap-1.5 rounded-md border bg-background px-3 text-sm font-normal shadow-xs hover:bg-accent"><svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>Reset</a>
                 {% endif %}
             </div>
         </div>
@@ -94,15 +95,15 @@
        min="0"
        max="100"
        name="progress_max"
-       value="{{ filters.progress_max }}"></label><label class="text-xs">Phase saat ini<select class="pcc-field mt-1" name="phase"><option value="">Semua phase</option>{% for phase in phases %}<option {% if filters.phase == phase %}selected{% endif %}>{{ phase }}</option>{% endfor %}</select></label></div><button class="pcc-button mt-4">Terapkan filter</button></details></form>
+       value="{{ filters.progress_max }}"></label><label class="text-xs">Phase saat ini<select class="pcc-field mt-1" name="phase"><option value="">Semua phase</option>{% for phase in phases %}<option {% if filters.phase == phase %}selected{% endif %}>{{ phase }}</option>{% endfor %}</select></label></div><button class="pcc-button mt-4"><svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></svg>Terapkan filter</button></details></form>
     {# ----------------------------------------------------- view toggle #}
     <div class="mt-4 flex items-center justify-between">
         <p class="text-sm text-muted-foreground">{{ rows|length }} project ditemukan</p>
         <div class="flex gap-2"><a data-view-link="list"
    class="pcc-button pcc-button-secondary"
-   href="?view=list">List</a><a data-view-link="card"
+   href="?view=list"><svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>List</a><a data-view-link="card"
    class="pcc-button pcc-button-secondary"
-   href="?view=card">Card</a></div>
+   href="?view=card"><svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Card</a></div>
     </div>
     {# ------------------------------------------------------- list view #}
     {% if view == "list" %}

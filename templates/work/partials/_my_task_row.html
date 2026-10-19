@@ -3,5 +3,5 @@
     <div class="min-w-0"><a class="underline underline-offset-4" href="{% url 'work:task_detail' task.pk %}">{{ task.title }}</a>
     <p class="mt-2 text-sm text-muted-foreground">{{ task.project.name }} · {{ task.status|status_label }} · Target {{ task.due_date|date:"d M Y"|default:"belum ditentukan" }}{% if task.is_overdue %} · Lewat target{% endif %}</p>
     {% if task.blocked_reason %}<p class="mt-2 text-sm">Hambatan: {{ task.blocked_reason }}</p>{% endif %}</div>
-    <div class="work-row-actions"><span class="tabular-nums">{{ task.display_progress|floatformat:0 }}%</span>{% if task.can_edit %}<a data-project-action class="pcc-button pcc-button-secondary" href="{% url 'work:task_update' task.pk %}?mode=update">Update pekerjaan</a>{% endif %}</div>
+    <div class="work-row-actions"><span class="tabular-nums">{{ task.display_progress|floatformat:0 }}%</span>{% if task.can_edit %}<a data-project-action class="pcc-button pcc-button-secondary" href="{% url 'work:task_update' task.pk %}?mode=update"><svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4zM14 6l4 4"/></svg>Update pekerjaan</a>{% endif %}</div>
 </div>

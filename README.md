@@ -86,6 +86,12 @@ Lihat [DESIGN.md](DESIGN.md) untuk aturan visual.
 
 ## Struktur
 
+Panduan penggunaan tersedia di **Pengaturan → Docs** (`/auth/settings/docs/`).
+Dokumentasi berbahasa Indonesia mencakup alur proyek dan pekerjaan tim dengan
+contoh visual, pencarian topik, serta simulasi progres berbobot. Isi panduan
+berada di `apps/identity/documentation.py`; catatan implementasinya tersedia
+di [docs/documentation-page.md](docs/documentation-page.md).
+
 ```
 config/          # settings, urls, wsgi/asgi
 apps/
