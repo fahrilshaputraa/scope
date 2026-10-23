@@ -22,7 +22,7 @@
                                     <span class="assignee-avatar-stack"><span title="{{ task.assignee|person_name }}">{{ task.assignee|initials|default:"?" }}</span>{% for person in task.collaborators.all %}<span title="{{ person|person_name }}">{{ person|initials }}</span>{% endfor %}</span>
                                     <span>{{ task.assignee_names }}</span>
                                 </span>
-                                <span class="font-normal tabular-nums {{ task.is_overdue|yesno:'text-foreground,' }}">{{ task.display_progress|floatformat:0 }}%</span>
+                                <span class="font-normal tabular-nums {{ task.is_overdue|yesno:'text-foreground,' }}" data-task-progress-label>{{ task.display_progress|floatformat:0 }}%</span>
                             </div>
                             {% if task.due_date %}
                                 <div class="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
@@ -53,6 +53,7 @@
                                 {% for value,label in status_labels.items %}<option value="{{ value }}"
         {% if task.status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
                             </select>
+                            {% include "work/partials/_task_quick_update.html" with show_status=False %}
                         {% endif %}
                         {% if task.is_blocked %}<p class="px-2 text-xs text-foreground">{{ task.blocked_reason|default:"Alasan hambatan belum dicatat." }}</p>{% endif %}
                         {% if task.can_edit and custom_columns %}<label class="sr-only" for="column-{{ task.pk }}">Kolom {{ task.title }}</label><select class="pcc-field text-xs" id="column-{{ task.pk }}" data-column-select data-task-id-select="{{ task.pk }}" data-current="{{ task.board_column_id|default:'' }}"><option value="">Kolom berdasarkan status</option>{% for column in custom_columns %}<option value="{{ column.pk }}" {% if task.board_column_id == column.pk %}selected{% endif %}>{{ column.title }}</option>{% endfor %}</select>{% endif %}

@@ -1,0 +1,4 @@
+<section class="pcc-panel mt-6">
+    <h2 class="pcc-section border-b">{{ title }} <span class="text-sm text-muted-foreground tabular-nums">({{ tasks|length }})</span></h2>
+    {% for task in tasks %}{% include "work/partials/_my_task_row.html" %}{% endfor %}
+</section>

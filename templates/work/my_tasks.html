@@ -1,6 +1,113 @@
 {% extends "base.html" %}
+{% load pcc_tags static %}
 {% block title %}Pekerjaan saya — Scope{% endblock %}
 {% block content %}
-<h1 class="text-2xl font-normal">Pekerjaan saya</h1>
-<p class="mt-2 text-sm text-muted-foreground">Perbarui progress, tandai selesai, atau jelaskan hambatan langsung dari daftar ini.</p>
-{% if blocked %}<section class="pcc-panel mt-6"><h2 class="pcc-section border-b">Perlu dibantu <span class="text-sm text-muted-foreground">({{ blocked|length }})</span></h2>{% for task in blocked %}{% include "work/partials/_my_task_row.html" %}{% empty %}<p class="pcc-section text-sm text-muted-foreground"></p>{% endfor %}</section>{% endif %}<section class="pcc-panel mt-6"><h2 class="pcc-section border-b">Sedang dikerjakan <span class="text-sm text-muted-foreground">({{ current|length }})</span></h2>{% for task in current %}{% include "work/partials/_my_task_row.html" %}{% empty %}<p class="pcc-section text-sm text-muted-foreground">Belum ada pekerjaan yang sedang berjalan.</p>{% endfor %}</section>{% if review %}<section class="pcc-panel mt-6"><h2 class="pcc-section border-b">Menunggu pemeriksaan <span class="text-sm text-muted-foreground">({{ review|length }})</span></h2>{% for task in review %}{% include "work/partials/_my_task_row.html" %}{% empty %}<p class="pcc-section text-sm text-muted-foreground"></p>{% endfor %}</section>{% endif %}<section class="pcc-panel mt-6"><h2 class="pcc-section border-b">Berikutnya <span class="text-sm text-muted-foreground">({{ next_up|length }})</span></h2>{% for task in next_up %}{% include "work/partials/_my_task_row.html" %}{% empty %}<p class="pcc-section text-sm text-muted-foreground">Tidak ada pekerjaan menunggu.</p>{% endfor %}</section>{% if done %}<details class="pcc-panel mt-6"><summary class="pcc-section cursor-pointer">Selesai baru-baru ini</summary>{% for task in done %}{% include "work/partials/_my_task_row.html" %}{% endfor %}</details>{% endif %}{% endblock %}
+    <div class="flex flex-wrap items-end justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-normal tracking-tight">Pekerjaan saya</h1>
+            <p class="mt-1 text-sm text-muted-foreground">Perbarui status dan progress langsung dari daftar. Urutan mengikuti target lalu prioritas.</p>
+        </div>
+        <p class="text-sm text-muted-foreground tabular-nums">{{ open_count }} terbuka · {{ done_count }} selesai</p>
+    </div>
+    <form method="get"
+          action="{% url 'work:my_tasks' %}"
+          class="pcc-panel mt-6"
+          role="search"
+          aria-label="Filter pekerjaan saya">
+        <div class="pcc-section filter-panel">
+            <div class="filter-field">
+                <label class="filter-label" for="filter-q">Cari judul</label>
+                <input id="filter-q"
+                       class="pcc-field"
+                       type="search"
+                       name="q"
+                       value="{{ query }}"
+                       placeholder="Judul task">
+            </div>
+            <div class="filter-field">
+                <label class="filter-label" for="filter-project">Project</label>
+                <select id="filter-project" class="pcc-field" name="project">
+                    <option value="">Semua project</option>
+                    {% for project in projects %}
+                        <option value="{{ project.pk }}" {% if selected_project and selected_project.pk == project.pk %}selected{% endif %}>{{ project.name }} ({{ project.code }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-field">
+                <label class="filter-label" for="filter-status">Status</label>
+                <select id="filter-status" class="pcc-field" name="status">
+                    <option value="">Semua status</option>
+                    {% for value, label in status_labels.items %}
+                        <option value="{{ value }}" {% if status_filter == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <input type="hidden" name="due" value="{{ due_filter }}">
+            <input type="hidden" name="group" value="{{ group }}">
+            <div class="filter-actions">
+                <button class="pcc-button" type="submit">Terapkan</button>
+                {% if has_filters %}<a class="pcc-button pcc-button-secondary" href="{% url 'work:my_tasks' %}">Reset</a>{% endif %}
+            </div>
+        </div>
+    </form>
+    <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
+        <nav class="flex flex-wrap items-center gap-1 rounded-lg border bg-card p-1"
+             aria-label="Filter jatuh tempo">
+            <a href="{% query_replace due='' %}"
+               class="filter-pill {% if due_filter == 'all' %}bg-primary text-primary-foreground{% else %}text-muted-foreground hover:text-foreground{% endif %}"
+               {% if due_filter == 'all' %}aria-current="page"{% endif %}>Semua <span class="tabular-nums">({{ due_counts.all }})</span></a>
+            <a href="{% query_replace due='overdue' %}"
+               class="filter-pill {% if due_filter == 'overdue' %}bg-primary text-primary-foreground{% else %}text-muted-foreground hover:text-foreground{% endif %}"
+               {% if due_filter == 'overdue' %}aria-current="page"{% endif %}>Terlambat <span class="tabular-nums">({{ due_counts.overdue }})</span></a>
+            <a href="{% query_replace due='soon' %}"
+               class="filter-pill {% if due_filter == 'soon' %}bg-primary text-primary-foreground{% else %}text-muted-foreground hover:text-foreground{% endif %}"
+               {% if due_filter == 'soon' %}aria-current="page"{% endif %}>Jatuh tempo 7 hari <span class="tabular-nums">({{ due_counts.soon }})</span></a>
+            <a href="{% query_replace due='none' %}"
+               class="filter-pill {% if due_filter == 'none' %}bg-primary text-primary-foreground{% else %}text-muted-foreground hover:text-foreground{% endif %}"
+               {% if due_filter == 'none' %}aria-current="page"{% endif %}>Tanpa target <span class="tabular-nums">({{ due_counts.none }})</span></a>
+        </nav>
+        <nav class="flex items-center gap-1 rounded-lg border bg-card p-1" aria-label="Kelompokkan pekerjaan">
+            <span class="px-2 text-xs text-muted-foreground">Kelompok</span>
+            <a href="{% query_replace group='' %}"
+               class="filter-pill {% if group == 'status' %}bg-primary text-primary-foreground{% else %}text-muted-foreground hover:text-foreground{% endif %}"
+               {% if group == 'status' %}aria-current="page"{% endif %}>Status</a>
+            <a href="{% query_replace group='project' %}"
+               class="filter-pill {% if group == 'project' %}bg-primary text-primary-foreground{% else %}text-muted-foreground hover:text-foreground{% endif %}"
+               {% if group == 'project' %}aria-current="page"{% endif %}>Project</a>
+        </nav>
+    </div>
+    {% if group == 'project' %}
+        {% for entry in project_groups %}
+            <section class="pcc-panel mt-6">
+                <h2 class="pcc-section border-b">{{ entry.project.name }} <span class="text-sm text-muted-foreground">{{ entry.project.code }} · <span class="tabular-nums">{{ entry.count }}</span> task</span></h2>
+                {% for task in entry.tasks %}{% include "work/partials/_my_task_row.html" %}{% endfor %}
+            </section>
+        {% endfor %}
+    {% else %}
+        {% if bucket_overdue %}{% include "work/partials/_my_task_section.html" with title="Terlambat" tasks=bucket_overdue %}{% endif %}
+        {% if bucket_soon %}{% include "work/partials/_my_task_section.html" with title="Jatuh tempo 7 hari" tasks=bucket_soon %}{% endif %}
+        {% if bucket_blocked %}{% include "work/partials/_my_task_section.html" with title="Perlu dibantu" tasks=bucket_blocked %}{% endif %}
+        {% if bucket_current %}{% include "work/partials/_my_task_section.html" with title="Sedang dikerjakan" tasks=bucket_current %}{% endif %}
+        {% if bucket_review %}{% include "work/partials/_my_task_section.html" with title="Menunggu pemeriksaan" tasks=bucket_review %}{% endif %}
+        {% if bucket_next %}{% include "work/partials/_my_task_section.html" with title="Berikutnya" tasks=bucket_next %}{% endif %}
+        {% if bucket_undated %}{% include "work/partials/_my_task_section.html" with title="Tanpa target" tasks=bucket_undated %}{% endif %}
+    {% endif %}
+    {% if not open_count %}
+        <section class="pcc-panel mt-6">
+            <div class="pcc-section">
+                {% if has_filters %}
+                    <p class="text-sm text-muted-foreground">Tidak ada pekerjaan yang cocok dengan filter ini. <a class="underline underline-offset-4" href="{% url 'work:my_tasks' %}">Reset filter</a>.</p>
+                {% else %}
+                    <p class="text-sm text-muted-foreground">Belum ada pekerjaan terbuka yang ditugaskan kepada Anda.</p>
+                {% endif %}
+            </div>
+        </section>
+    {% endif %}
+    {% if done %}
+        <details class="pcc-panel mt-6">
+            <summary class="pcc-section cursor-pointer">Selesai baru-baru ini <span class="text-sm text-muted-foreground tabular-nums">({{ done|length }})</span></summary>
+            {% for task in done %}{% include "work/partials/_my_task_row.html" %}{% endfor %}
+        </details>
+    {% endif %}
+{% endblock %}
+{% block extra_js %}<script src="{% static 'js/task-quick-update.js' %}" defer></script>{% endblock %}
