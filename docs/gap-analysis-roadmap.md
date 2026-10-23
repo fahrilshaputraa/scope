@@ -31,7 +31,7 @@ Kanban dan visualisasi (timeline, laporan, roadmap) sengaja tidak dipaginate kar
 | B1 Notification center | Selesai | Bell + unread count, filter, pagination, read/unread, deep link |
 | B2 Email + digest | Selesai | Opt-in email, antrean idempoten, digest harian/mingguan, preferensi notifikasi, scheduler |
 | B3 Mention | Selesai | `@username` tervalidasi akses, notifikasi sekali, autocomplete keyboard, render aman |
-| B4 Komentar lintas entitas | Belum | — |
+| B4 Komentar lintas entitas | Selesai | Komentar di issue, catatan, milestone, project; mention, thread, notifikasi, tanpa efek status/progress |
 | B5 Watch/follow | Selesai | Subscription project/task, auto-subscribe dengan opt-out, notifikasi watcher |
 | B6 My Tasks lanjutan | Belum | — |
 | B7 Quick update | Belum | — |
