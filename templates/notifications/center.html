@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% load pcc_tags %}
+{% block title %}Notifikasi — Scope{% endblock %}
+{% block content %}
+    <div class="flex flex-wrap items-end justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-normal tracking-tight">Notifikasi</h1>
+            <p class="mt-1 text-sm text-muted-foreground">Perubahan terbaru pada pekerjaan dan project Anda.</p>
+        </div>
+        {% if unread_count %}
+            <form method="post" action="{% url 'notifications:mark_all_read' %}">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                <button type="submit" class="pcc-button pcc-button-secondary">Tandai semua dibaca</button>
+            </form>
+        {% endif %}
+    </div>
+    <div class="mt-6 flex w-max items-center gap-1 rounded-lg border bg-card p-1 shadow-sm">
+        <a href="{% url 'notifications:center' %}?filter=all"
+           class="rounded-md px-3 py-1.5 text-sm font-normal {% if filter == 'all' %}bg-primary text-primary-foreground shadow-sm{% else %}text-muted-foreground hover:text-foreground{% endif %}"
+           {% if filter == 'all' %}aria-current="page"{% endif %}>
+            Semua <span class="tabular-nums">({{ page_obj.paginator.count }})</span>
+        </a>
+        <a href="{% url 'notifications:center' %}?filter=unread"
+           class="rounded-md px-3 py-1.5 text-sm font-normal {% if filter == 'unread' %}bg-primary text-primary-foreground shadow-sm{% else %}text-muted-foreground hover:text-foreground{% endif %}"
+           {% if filter == 'unread' %}aria-current="page"{% endif %}>
+            Belum dibaca <span class="tabular-nums">({{ unread_count }})</span>
+        </a>
+    </div>
+    <div class="mt-4 overflow-hidden rounded-xl border bg-card text-card-foreground">
+        <ul>
+            {% for notification in notifications %}
+                <li class="flex gap-3 border-b px-5 py-4 {% if not notification.read_at %}bg-muted/40{% endif %}">
+                    <div class="min-w-0 flex-1">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <a href="{{ notification.url|default:'#' }}"
+                               class="font-medium hover:underline">{{ notification.title }}</a>
+                            {% if not notification.read_at %}
+                                <span class="pcc-status pcc-status-info">Baru</span>
+                            {% endif %}
+                        </div>
+                        {% if notification.body %}
+                            <p class="mt-1 text-sm text-muted-foreground">{{ notification.body }}</p>
+                        {% endif %}
+                        <p class="mt-1 text-xs text-muted-foreground">
+                            {{ notification.actor|person_name|default:"Sistem" }} · {{ notification.created_at|date:"d M Y H:i" }}
+                        </p>
+                    </div>
+                    <div class="flex shrink-0 items-start">
+                        <form method="post"
+                              action="{% if notification.read_at %}{% url 'notifications:mark_unread' notification.pk %}{% else %}{% url 'notifications:mark_read' notification.pk %}{% endif %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                            <button type="submit"
+                                    class="text-xs text-muted-foreground hover:text-foreground hover:underline">
+                                {% if notification.read_at %}Tandai belum dibaca{% else %}Tandai dibaca{% endif %}
+                            </button>
+                        </form>
+                    </div>
+                </li>
+            {% empty %}
+                <li class="px-6 py-16 text-center">
+                    <p class="text-sm font-medium">Belum ada notifikasi</p>
+                    <p class="mt-1 text-sm text-muted-foreground">
+                        {% if filter == 'unread' %}
+                            Semua notifikasi sudah dibaca.
+                        {% else %}
+                            Perubahan task, issue, dan milestone akan muncul di sini.
+                        {% endif %}
+                    </p>
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% include "partials/_pagination.html" %}
+{% endblock %}

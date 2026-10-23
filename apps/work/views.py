@@ -140,6 +140,7 @@ def issue_create(request: HttpRequest) -> HttpResponse:
             request.user,
             ActivityAction.ISSUE_CREATED,
             f'Issue "{issue.title}" created ({issue.get_severity_display()}).',
+            target=issue,
         )
         messages.success(request, f"Issue {issue.title} dibuat.")
         return redirect("projects:project_issues", pk=issue.project_id)
@@ -168,7 +169,17 @@ def issue_update(request: HttpRequest, pk: int) -> HttpResponse:
         )
     form = IssueForm(request.POST or None, instance=issue, project=issue.project)
     if request.method == "POST" and form.is_valid():
+        old_due_date = issue.due_date
+        old_owner_id = issue.owner_id
         issue = form.save()
+        if issue.owner_id != old_owner_id:
+            record_activity(
+                issue.project,
+                request.user,
+                ActivityAction.ISSUE_ASSIGNED,
+                f'Penugasan issue "{issue.title}" diperbarui.',
+                target=issue,
+            )
         was_resolved = issue.status in (IssueStatus.RESOLVED, IssueStatus.CLOSED)
         if was_resolved and not issue.resolved_at:
             issue.resolved_at = timezone.now()
@@ -188,6 +199,7 @@ def issue_update(request: HttpRequest, pk: int) -> HttpResponse:
                 request.user,
                 ActivityAction.ISSUE_UPDATED,
                 f'Issue "{issue.title}" updated.',
+                target=issue if issue.due_date != old_due_date else None,
             )
         messages.success(request, "Issue disimpan.")
         return redirect("projects:project_issues", pk=issue.project_id)
@@ -274,6 +286,7 @@ def task_create(request: HttpRequest) -> HttpResponse:
             request.user,
             ActivityAction.TASK_CREATED,
             f'Task "{task.title}" dibuat. Status: {task.get_status_display()}.',
+            target=task,
         )
         messages.success(request, f"Task {task.title} dibuat.")
         if task.parent_task_id:
@@ -321,6 +334,8 @@ def task_detail(request: HttpRequest, pk: int) -> HttpResponse:
                 request.user,
                 ActivityAction.COMMENT_ADDED,
                 f'Komentar ditambahkan di task "{task.title}".',
+                target=task,
+                dedupe_token=str(comment.pk),
             )
             messages.success(request, "Komentar ditambahkan.")
             return redirect("work:task_detail", pk=task.pk)
@@ -349,6 +364,7 @@ def task_update(request: HttpRequest, pk: int) -> HttpResponse:
         messages.error(request, "Anda tidak berhak mengubah task ini.")
         return redirect("work:task_detail", pk=task.pk)
     old_status = task.status
+    old_assignee_id = task.assignee_id
     work_update = request.GET.get("mode") == "update"
     board_status = request.GET.get("board_status") if work_update else None
     form = TaskForm(
@@ -363,6 +379,14 @@ def task_update(request: HttpRequest, pk: int) -> HttpResponse:
         if work_update and request.GET.get("clear_column") == "true":
             task.board_column = None
             task.save(update_fields=["board_column", "updated_at"])
+        if task.assignee_id != old_assignee_id:
+            record_activity(
+                task.project,
+                request.user,
+                ActivityAction.TASK_ASSIGNED,
+                f'Penugasan task "{task.title}" diperbarui.',
+                target=task,
+            )
         if task.status != old_status:
             record_activity(
                 task.project,
@@ -370,6 +394,7 @@ def task_update(request: HttpRequest, pk: int) -> HttpResponse:
                 ActivityAction.TASK_STATUS,
                 f'Status task "{task.title}": '
                 f"{dict(TaskStatus.choices)[old_status]} → {task.get_status_display()}.",
+                target=task,
             )
         else:
             record_activity(
@@ -489,6 +514,7 @@ def task_status(request, pk):
         ActivityAction.TASK_STATUS,
         f'Status task "{task.title}": '
         f"{dict(TaskStatus.choices)[old_status]} → {task.get_status_display()}.",
+        target=task,
     )
     return JsonResponse(
         {"ok": True, "id": task.pk, "status": task.status, "progress": float(task.display_progress)}
@@ -561,6 +587,7 @@ def task_dates(request, pk):
         request.user,
         ActivityAction.TIMELINE_CHANGED,
         f'Timeline task "{task.title}" diubah.',
+        target=task,
     )
     return JsonResponse(
         {"ok": True, "id": task.pk, "start": start.isoformat(), "end": end.isoformat()}

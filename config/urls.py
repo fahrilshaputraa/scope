@@ -6,4 +6,5 @@ urlpatterns = [
     path("auth/", include("apps.identity.urls")),
     path("", include("apps.projects.urls")),
     path("", include("apps.work.urls")),
+    path("notifications/", include("apps.notifications.urls")),
 ]

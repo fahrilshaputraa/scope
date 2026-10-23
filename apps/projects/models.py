@@ -52,6 +52,7 @@ class ActivityAction(models.TextChoices):
     TASK_ASSIGNED = "task.assigned", "Task assigned"
     COMMENT_ADDED = "comment.added", "Comment added"
     ISSUE_CREATED = "issue.created", "Issue created"
+    ISSUE_ASSIGNED = "issue.assigned", "Issue assigned"
     ISSUE_UPDATED = "issue.updated", "Issue updated"
     ISSUE_RESOLVED = "issue.resolved", "Issue resolved"
     PROJECT_ARCHIVED = "project.archived", "Project archived"

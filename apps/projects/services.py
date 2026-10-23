@@ -183,17 +183,34 @@ def snapshot_due_projects(on_date: date | None = None) -> int:
     return count
 
 
-def record_activity(project, actor, action: str, message: str, object_repr: str = ""):
-    """Catat activity log project (PRD §25)."""
+def record_activity(
+    project,
+    actor,
+    action: str,
+    message: str,
+    object_repr: str = "",
+    target=None,
+    dedupe_token: str = "",
+):
+    """Catat activity log project (PRD §25) dan fan-out notifikasi terpusat.
+
+    ``target`` adalah objek yang berubah (task/issue/milestone). Bila diisi,
+    notifikasi dibuat dari satu tempat ini, bukan dari masing-masing view.
+    """
     if action not in ActivityAction.values:
         raise ValueError(f"Unknown activity action: {action}")
-    return ActivityEvent.objects.create(
+    event = ActivityEvent.objects.create(
         project=project,
         actor=actor,
         action=action,
         message=message[:300],
         object_repr=object_repr[:200],
     )
+    if target is not None:
+        from apps.notifications.activity import dispatch_activity
+
+        dispatch_activity(event, target=target, dedupe_token=dedupe_token)
+    return event
 
 
 def timeline_data(project):
