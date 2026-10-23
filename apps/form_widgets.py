@@ -102,9 +102,20 @@ def style_form(form, primary=None):
             field.widget.choices = field.choices
         if isinstance(field, forms.DateField):
             field.widget = forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d")
-        if isinstance(
-            field.widget, (forms.CheckboxSelectMultiple, forms.CheckboxInput, forms.HiddenInput)
-        ):
+        if isinstance(field.widget, forms.HiddenInput):
+            continue
+        described_by = []
+        if field.help_text:
+            described_by.append("help-" + name)
+        if form.is_bound and name in form.errors:
+            described_by.append("error-" + name)
+        if described_by:
+            field.widget.attrs["aria-describedby"] = " ".join(described_by)
+        if field.required:
+            field.widget.attrs["aria-required"] = "true"
+        if form.is_bound and name in form.errors:
+            field.widget.attrs["aria-invalid"] = "true"
+        if isinstance(field.widget, (forms.CheckboxSelectMultiple, forms.CheckboxInput)):
             continue
         field.widget.attrs["class"] = "pcc-field"
         if isinstance(field.widget, forms.SelectMultiple):
@@ -113,8 +124,6 @@ def style_form(form, primary=None):
             field.widget.attrs["rows"] = 4
             if name in RICH_FIELDS:
                 field.widget.attrs["data-wysiwyg"] = "true"
-        if form.is_bound and name in form.errors:
-            field.widget.attrs.update({"aria-invalid": "true", "aria-describedby": "error-" + name})
 
     visible = list(form.visible_fields())
     form.primary_fields = [f for f in visible if primary is None or f.name in primary]

@@ -10,7 +10,7 @@
         {% if can_report %}
             <a data-project-action href="{% url 'work:issue_create' %}"
                class="pcc-button">
-                <svg class="size-4"
+                <svg aria-hidden="true" focusable="false" class="size-4"
                      viewBox="0 0 24 24"
                      fill="none"
                      stroke="currentColor"
@@ -25,16 +25,19 @@
     {# -------------------------------------------------------------- filter #}
     <div class="mt-6 flex items-center gap-1 rounded-lg border bg-card p-1 shadow-sm w-max">
         <a href="{% url 'work:issue_list' %}?status=open"
-           class="rounded-md px-3 py-1.5 text-sm font-normal {% if filter == 'open' %}bg-primary text-primary-foreground shadow-sm{% else %}text-muted-foreground hover:text-foreground{% endif %}">
+           class="rounded-md px-3 py-1.5 text-sm font-normal {% if filter == 'open' %}bg-primary text-primary-foreground shadow-sm{% else %}text-muted-foreground hover:text-foreground{% endif %}"
+           {% if filter == 'open' %}aria-current="page"{% endif %}>
             Open <span class="tabular-nums">({{ open_count }})</span>
         </a>
         <a href="{% url 'work:issue_list' %}?status=resolved"
-           class="rounded-md px-3 py-1.5 text-sm font-normal {% if filter == 'resolved' %}bg-primary text-primary-foreground shadow-sm{% else %}text-muted-foreground hover:text-foreground{% endif %}">Resolved</a>
+           class="rounded-md px-3 py-1.5 text-sm font-normal {% if filter == 'resolved' %}bg-primary text-primary-foreground shadow-sm{% else %}text-muted-foreground hover:text-foreground{% endif %}"
+           {% if filter == 'resolved' %}aria-current="page"{% endif %}>Resolved</a>
         <a href="{% url 'work:issue_list' %}?status=all"
-           class="rounded-md px-3 py-1.5 text-sm font-normal {% if filter == 'all' %}bg-primary text-primary-foreground shadow-sm{% else %}text-muted-foreground hover:text-foreground{% endif %}">All</a>
+           class="rounded-md px-3 py-1.5 text-sm font-normal {% if filter == 'all' %}bg-primary text-primary-foreground shadow-sm{% else %}text-muted-foreground hover:text-foreground{% endif %}"
+           {% if filter == 'all' %}aria-current="page"{% endif %}>All</a>
     </div>
     <div class="mt-4 overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm">
-        <div class="overflow-x-auto">
+        <div class="overflow-x-auto" tabindex="0" role="region" aria-label="Daftar issue">
             <table class="w-full text-sm">
                 <thead>
                     <tr class="border-b bg-muted/40">

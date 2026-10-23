@@ -24,14 +24,25 @@
        value="{{ form.username.value|default:'' }}"
        autocomplete="username"
        required
-       autofocus>{% for error in form.username.errors %}<p class="mt-1 text-sm text-foreground">{{ error }}</p>{% endfor %}</div>
+       aria-required="true"
+       {% if form.username.errors %}aria-invalid="true"
+       aria-describedby="error-username"{% endif %}
+       autofocus>{% for error in form.username.errors %}<p id="error-username"
+   role="alert"
+   class="mt-1 text-sm text-foreground">{{ error }}</p>{% endfor %}</div>
                 <div>
                     <label for="password" class="text-sm font-normal">Password</label><input class="pcc-field mt-1.5"
        type="password"
        id="password"
        name="password"
        autocomplete="current-password"
-       required>
+       required
+       aria-required="true"
+       {% if form.password.errors %}aria-invalid="true"
+       aria-describedby="error-password"{% endif %}>
+                    {% for error in form.password.errors %}<p id="error-password"
+   role="alert"
+   class="mt-1 text-sm text-foreground">{{ error }}</p>{% endfor %}
                 </div>
                 <button class="pcc-button w-full" type="submit"><svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg>Masuk</button>
             </form>

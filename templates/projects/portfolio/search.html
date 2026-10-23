@@ -6,9 +6,11 @@
         <h1 class="text-2xl font-normal tracking-tight">Pencarian</h1>
         <p class="mt-1 text-sm text-muted-foreground">Cari project, task, issue, catatan, milestone, dan keputusan yang dapat Anda akses.</p>
     </div>
-    <form method="get" action="{% url 'projects:search' %}" class="mt-6 max-w-2xl">
+    <form method="get" action="{% url 'projects:search' %}" class="mt-6 max-w-2xl" role="search">
         <div class="flex gap-2">
-            <input name="q"
+            <label class="sr-only" for="search-q">Cari project, task, issue, catatan, milestone, atau keputusan</label>
+            <input id="search-q"
+                   name="q"
                    value="{{ query }}"
                    autofocus
                    placeholder="Kata kunci…"

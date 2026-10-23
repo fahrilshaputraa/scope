@@ -9,7 +9,7 @@
         {% if can_manage %}
             <a data-project-action href="{% url 'projects:milestone_create' project.pk %}"
                class="pcc-button">
-                <svg class="size-4"
+                <svg aria-hidden="true" focusable="false" class="size-4"
                      viewBox="0 0 24 24"
                      fill="none"
                      stroke="currentColor"
@@ -29,7 +29,7 @@
                     <div class="mt-1 flex flex-col items-center">
                         {% if ms.status == "completed" %}
                             <span class="flex size-5 items-center justify-center rounded-full bg-foreground text-white">
-                                <svg class="size-3"
+                                <svg aria-hidden="true" focusable="false" class="size-3"
                                      viewBox="0 0 24 24"
                                      fill="none"
                                      stroke="currentColor"
@@ -41,7 +41,7 @@
                             </span>
                         {% elif ms.status == "delayed" %}
                             <span class="flex size-5 items-center justify-center rounded-full bg-foreground text-white">
-                                <svg class="size-3"
+                                <svg aria-hidden="true" focusable="false" class="size-3"
                                      viewBox="0 0 24 24"
                                      fill="none"
                                      stroke="currentColor"
@@ -63,7 +63,7 @@
                         </div>
                         <div class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
                             <span class="inline-flex items-center gap-1">
-                                <svg class="size-3"
+                                <svg aria-hidden="true" focusable="false" class="size-3"
                                      viewBox="0 0 24 24"
                                      fill="none"
                                      stroke="currentColor"

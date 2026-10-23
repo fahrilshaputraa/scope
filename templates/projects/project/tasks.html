@@ -10,7 +10,7 @@
             <div class="flex flex-wrap gap-2"><a data-project-action class="pcc-button pcc-button-secondary" href="{% url 'projects:board_column_create' project.pk %}"><svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="6" height="16" rx="1"/><path d="M14 4h6v16h-6zM6 8v0M17 8v0M12 8v8"/></svg>Tambah kolom</a>
             <a data-project-action href="{% url 'work:task_create' %}?project={{ project.pk }}"
                class="pcc-button">
-                <svg class="size-4"
+                <svg aria-hidden="true" focusable="false" class="size-4"
                      viewBox="0 0 24 24"
                      fill="none"
                      stroke="currentColor"
@@ -24,6 +24,9 @@
     </div>
     <div id="kanban"
          class="mt-4 flex gap-4 overflow-x-auto pb-4"
+         tabindex="0"
+         role="region"
+         aria-label="Board kanban project"
          data-can-drag="true" data-project-id="{{ project.pk }}">
         {% for status, tasks in columns %}
             <div class="flex w-72 shrink-0 flex-col" data-status="{{ status }}">

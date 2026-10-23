@@ -6,7 +6,7 @@
         <span><i class="swatch-actual"></i>Actual tercatat</span>
         <span>Garis: hari ini</span>
     </div>
-    <div class="task-timeline-scroll" tabindex="0" aria-label="Timeline pekerjaan, geser untuk melihat semua tanggal">
+    <div class="task-timeline-scroll" tabindex="0" role="region" aria-label="Timeline pekerjaan, geser untuk melihat semua tanggal">
         <div class="task-timeline-grid task-timeline-compact" data-timeline-grid data-today="{{ timeline_today|default_if_none:'' }}">
             <div class="task-timeline-row timeline-axis">
                 <div class="timeline-task-label">Pekerjaan / progress</div>

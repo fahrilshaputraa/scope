@@ -87,18 +87,24 @@
                         {% csrf_token %}
                         <div class="grid flex-1 gap-2 sm:grid-cols-3">
                             <div>
-                                <label class="text-xs font-normal text-muted-foreground">Tanggal</label>
-                                <input type="date"
+                                <label for="baseline-date"
+                                       class="text-xs font-normal text-muted-foreground">Tanggal</label>
+                                <input id="baseline-date"
+                                       type="date"
                                        name="date"
                                        required
+                                       aria-required="true"
                                        value="{{ baseline_form.date.value }}"
                                        class="mt-1 flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
                             </div>
                             <div>
-                                <label class="text-xs font-normal text-muted-foreground">Planned %</label>
-                                <input type="number"
+                                <label for="baseline-planned"
+                                       class="text-xs font-normal text-muted-foreground">Planned %</label>
+                                <input id="baseline-planned"
+                                       type="number"
                                        name="planned_percent"
                                        required
+                                       aria-required="true"
                                        step="0.01"
                                        min="0"
                                        max="100"
@@ -106,8 +112,10 @@
                                        class="mt-1 flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
                             </div>
                             <div>
-                                <label class="text-xs font-normal text-muted-foreground">Label (opsional)</label>
-                                <input type="text"
+                                <label for="baseline-label"
+                                       class="text-xs font-normal text-muted-foreground">Label (opsional)</label>
+                                <input id="baseline-label"
+                                       type="text"
                                        name="label"
                                        placeholder="Kickoff"
                                        class="mt-1 flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
@@ -158,7 +166,7 @@
                         {% csrf_token %}
                         <button type="submit"
                                 class="inline-flex h-9 items-center gap-1.5 rounded-md border bg-background px-3 text-sm font-normal shadow-xs hover:bg-accent">
-                            <svg class="size-4"
+                            <svg aria-hidden="true" focusable="false" class="size-4"
                                  viewBox="0 0 24 24"
                                  fill="none"
                                  stroke="currentColor"
@@ -175,7 +183,7 @@
                     </form>
                 {% endif %}
             </div>
-            <div class="overflow-x-auto">
+            <div class="overflow-x-auto" tabindex="0" role="region" aria-label="Riwayat progress snapshot">
                 <table class="w-full text-sm">
                     <thead>
                         <tr class="border-b bg-muted/40">
