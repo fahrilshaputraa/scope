@@ -32,6 +32,7 @@ class Notification(models.Model):
     body = models.TextField(blank=True)
     url = models.CharField(max_length=500, blank=True)
     read_at = models.DateTimeField(null=True, blank=True)
+    emailed_at = models.DateTimeField(null=True, blank=True)
     dedupe_key = models.CharField(max_length=255, unique=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -45,6 +46,10 @@ class Notification(models.Model):
             models.Index(
                 fields=["recipient", "-created_at"],
                 name="notif_recipient_created_idx",
+            ),
+            models.Index(
+                fields=["emailed_at", "created_at"],
+                name="notif_email_queue_idx",
             ),
         ]
 
@@ -146,6 +151,7 @@ class NotificationPreference(models.Model):
         choices=DigestFrequency.choices,
         default=DigestFrequency.OFF,
     )
+    digest_sent_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

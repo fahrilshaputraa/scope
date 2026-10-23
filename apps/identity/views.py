@@ -16,6 +16,8 @@ from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_POST
 
 from apps.form_widgets import style_form
+from apps.notifications.forms import NotificationPreferenceForm
+from apps.notifications.models import NotificationPreference
 from apps.projects.pagination import paginate
 
 from .forms import LocalUserCreateForm, StaffPasswordResetForm, UserEditForm
@@ -112,8 +114,15 @@ def settings_view(request):
     password_form = PasswordChangeForm(
         request.user, request.POST if request.POST.get("action") == "password" else None
     )
-    style_form(profile_form)
-    style_form(password_form)
+    preference = NotificationPreference.objects.filter(user=request.user).first()
+    if preference is None:
+        preference = NotificationPreference(user=request.user)
+    notification_form = NotificationPreferenceForm(
+        request.POST if request.POST.get("action") == "notifications" else None,
+        instance=preference,
+    )
+    for form in (profile_form, password_form, notification_form):
+        style_form(form)
     if request.method == "POST":
         if request.POST.get("action") == "profile" and profile_form.is_valid():
             profile_form.save()
@@ -124,10 +133,18 @@ def settings_view(request):
             update_session_auth_hash(request, user)
             messages.success(request, "Password diperbarui.")
             return redirect("identity:settings")
+        if request.POST.get("action") == "notifications" and notification_form.is_valid():
+            notification_form.save()
+            messages.success(request, "Preferensi notifikasi disimpan.")
+            return redirect("identity:settings")
     return render(
         request,
         "identity/settings.html",
-        {"profile_form": profile_form, "password_form": password_form},
+        {
+            "profile_form": profile_form,
+            "password_form": password_form,
+            "notification_form": notification_form,
+        },
     )
 
 

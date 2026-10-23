@@ -140,3 +140,23 @@ try:
     )
 except ValueError:
     SCOPE_SCHEDULER_INTERVAL_MINUTES = 60.0
+
+
+# --- Email delivery (B2) ---
+# Default lokal: cetak email ke console. Deployment mengatur SMTP lewat env.
+EMAIL_BACKEND = os.getenv(
+    "EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend"
+)
+EMAIL_HOST = os.getenv("EMAIL_HOST", "localhost")
+EMAIL_PORT = int(os.getenv("EMAIL_PORT", "25"))
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
+EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "false").strip().lower() in {
+    "1",
+    "true",
+    "yes",
+    "on",
+}
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "Scope <no-reply@localhost>")
+# URL publik tanpa request; dipakai untuk deep link absolut di email.
+SITE_URL = os.getenv("SITE_URL", "http://localhost:8000").rstrip("/")

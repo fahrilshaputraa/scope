@@ -9,3 +9,7 @@ STORAGES = {
 }
 
 PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
+
+# Test tidak boleh mengirim email nyata.
+EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
+SITE_URL = "http://testserver"
