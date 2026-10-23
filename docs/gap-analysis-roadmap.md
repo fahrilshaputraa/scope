@@ -32,7 +32,7 @@ Kanban dan visualisasi (timeline, laporan, roadmap) sengaja tidak dipaginate kar
 | B2 Email + digest | Belum | — |
 | B3 Mention | Belum | — |
 | B4 Komentar lintas entitas | Belum | — |
-| B5 Watch/follow | Belum | — |
+| B5 Watch/follow | Selesai | Subscription project/task, auto-subscribe dengan opt-out, notifikasi watcher |
 | B6 My Tasks lanjutan | Belum | — |
 | B7 Quick update | Belum | — |
 | B8 Activity diff | Belum | — |
@@ -444,9 +444,9 @@ Prinsip eksekusi:
 
 ### 7.3 Watch/follow (B5)
 
-- `Subscription(user, content_type, object_id)` unik.
-- Auto-subscribe assignee, collaborator, dan pembuat komentar; opt-out tetap tersedia.
-- Watch project berarti menerima notifikasi milestone, issue, dan perubahan jadwal.
+- `Subscription(user, target_type, target_id)` unik, dengan index `(target_type, target_id)`.
+- Auto-subscribe assignee, collaborator, pembuat komentar, dan manager project. Unwatch menghapus subscription dan mencatat `SubscriptionOptOut` agar save berikutnya tidak mendaftarkan ulang.
+- Watch task menerima notifikasi task tersebut plus notifikasi project induknya; watch project menerima notifikasi milestone, issue, perubahan jadwal, dan update project.
 
 ### 7.4 Calendar (A1)
 

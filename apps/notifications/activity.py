@@ -6,7 +6,7 @@ need to pass the affected ``target`` to ``record_activity``.
 
 from django.urls import reverse
 
-from apps.projects.models import ActivityAction, Milestone
+from apps.projects.models import ActivityAction, Milestone, Project
 from apps.work.models import TASK_STATUS_LABELS, Issue, Task
 
 from .services import notify, today_token, user_display
@@ -27,6 +27,19 @@ def dispatch_activity(event, target=None, dedupe_token=""):
     actor = event.actor
     actor_name = _actor_name(actor)
     today = today_token()
+
+    if event.action == ActivityAction.PROJECT_UPDATED and isinstance(target, Project):
+        return notify(
+            actor,
+            "project.updated",
+            target,
+            title=f"Project diperbarui: {target.name}",
+            body=(
+                f"{actor_name} memperbarui detail atau jadwal {_project_code(target)}."
+            ),
+            url=reverse("projects:project_detail", args=[target.pk]),
+            dedupe_suffix=f"updated:{today}",
+        )
 
     if event.action == ActivityAction.TASK_CREATED and isinstance(target, Task):
         project = target.project

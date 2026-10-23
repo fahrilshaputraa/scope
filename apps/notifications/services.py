@@ -2,7 +2,13 @@
 
 from django.utils import timezone
 
-from .models import Notification, NotificationPreference, NotificationTarget
+from .models import (
+    Notification,
+    NotificationPreference,
+    NotificationTarget,
+    SubscriptionTarget,
+)
+from .subscriptions import watcher_users
 
 
 def get_preference(user) -> NotificationPreference:
@@ -57,12 +63,25 @@ def _target_users(target):
     return users
 
 
+def _target_watchers(target):
+    """Watchers of the target itself plus watchers of its project."""
+    from apps.work.models import Task
+
+    users = []
+    if isinstance(target, Task):
+        users.extend(watcher_users(SubscriptionTarget.TASK, target.pk))
+    project = _target_project(target)
+    if project is not None:
+        users.extend(watcher_users(SubscriptionTarget.PROJECT, project.pk))
+    return users
+
+
 def resolve_recipients(actor, target, recipients=None, project=None):
     """Active users who may see the project, excluding the actor."""
     from apps.identity.permissions import visible_projects
 
     project = project or _target_project(target)
-    candidates = list(recipients or []) + _target_users(target)
+    candidates = list(recipients or []) + _target_users(target) + _target_watchers(target)
     resolved = []
     seen = set()
     for user in candidates:

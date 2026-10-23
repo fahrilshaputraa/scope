@@ -83,6 +83,26 @@
         </div>
         <div class="flex flex-wrap items-center gap-3">
             <span class="px-3 py-1 text-sm {{ project.status|status_style }}">{{ project.status|status_label }}</span>
+            <form method="post"
+                  action="{% if is_watching %}{% url 'notifications:unwatch_project' project.pk %}{% else %}{% url 'notifications:watch_project' project.pk %}{% endif %}">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{{ request.path }}">
+                <button type="submit"
+                        class="pcc-button pcc-button-secondary whitespace-nowrap"
+                        aria-pressed="{{ is_watching|yesno:'true,false' }}"
+                        title="{% if is_watching %}Berhenti menerima notifikasi project ini{% else %}Ikuti project ini dan terima notifikasinya{% endif %}">
+                    <svg aria-hidden="true" focusable="false" class="size-4"
+                         viewBox="0 0 24 24"
+                         fill="none"
+                         stroke="currentColor"
+                         stroke-width="2"
+                         stroke-linecap="round"
+                         stroke-linejoin="round">
+                        {% if is_watching %}<path d="M18 6 6 18M6 6l12 12" />{% else %}<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0" />{% endif %}
+                    </svg>
+                    {% if is_watching %}Berhenti mengikuti{% else %}Ikuti{% endif %}
+                </button>
+            </form>
             <a data-project-action class="pcc-button pcc-button-secondary" href="{% url 'projects:presentation' project.pk %}"><svg aria-hidden="true" focusable="false" class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 3h18M4 3v13h16V3M12 16v5m-4 0 4-3 4 3"/><path d="m10 7 5 3-5 3Z"/></svg>Presentasi</a>
             {% if can_manage %}
                 <a data-project-action class="pcc-button" href="{% url 'work:task_create' %}?project={{ project.pk }}"><svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Tambah task</a>
@@ -106,5 +126,11 @@
         </div>
     </div>
     <div class="project-compact-summary" data-project-brief><span>Rencana <strong>{{ project.planned_progress|pct }}</strong></span><span>Actual <strong>{{ project.actual_progress|pct }}</strong></span><span>Deviasi <strong>{% if project.variance is not None %}{{ project.variance|floatformat:2 }}%{% else %}—{% endif %}</strong></span><span>{{ project.variance_level|level_label }}</span><span>Phase: {{ project.effective_current_phase.name|default:"belum ditentukan" }}</span></div>
+    {% if is_watching %}
+        <p class="mt-2 text-xs text-muted-foreground" data-watch-state>
+            {% if watch_is_auto %}Anda otomatis mengikuti project ini.{% else %}Anda mengikuti project ini.{% endif %}
+            Notifikasi perubahan project, milestone, dan issue dikirim ke akun Anda.
+        </p>
+    {% endif %}
     {% block project_content %}{% endblock %}
 {% endblock %}
