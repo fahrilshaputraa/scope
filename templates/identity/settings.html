@@ -50,6 +50,31 @@
                 </button>
             </form>
         </section>
+        <section class="pcc-panel mt-6 p-6">
+            <h2 class="mb-2 font-normal">Notifikasi</h2>
+            <p class="mb-4 text-sm text-muted-foreground">
+                Atur bagaimana Anda menerima kabar perubahan project dan task. Email
+                dikirim dari antrean, bukan saat halaman dimuat.
+            </p>
+            <form method="post" class="space-y-4">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="notifications">
+                {% include "partials/_form_fields.html" with form=notification_form %}
+                <button class="pcc-button">
+                    <svg class="size-4"
+                         viewBox="0 0 24 24"
+                         fill="none"
+                         stroke="currentColor"
+                         stroke-width="1.75"
+                         stroke-linecap="round"
+                         stroke-linejoin="round"
+                         aria-hidden="true">
+                        <path d="m5 12 4 4L19 6" />
+                    </svg>
+                    Simpan preferensi
+                </button>
+            </form>
+        </section>
         {% if request.user.is_staff %}
             <section class="pcc-panel mt-6 p-6">
                 <h2 class="mb-2 font-normal">Manajemen pengguna</h2>

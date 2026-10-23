@@ -33,10 +33,29 @@ def interval_seconds() -> float:
 
 
 def tick() -> int:
-    """Capture today's snapshot for every project that does not have one."""
+    """Capture due snapshots and deliver queued notification email.
+
+    The return value stays the snapshot count for backward compatibility.
+    Email failures are logged and never prevent the snapshot work or kill the
+    scheduler thread.
+    """
+    from apps.notifications.delivery import deliver_due_digests, deliver_pending_emails
+
     from .services import snapshot_due_projects
 
-    return snapshot_due_projects()
+    count = snapshot_due_projects()
+    try:
+        emails = deliver_pending_emails()
+        digests = deliver_due_digests()
+        if emails or digests:
+            logger.info(
+                "Notification scheduler sent %s email(s) and %s digest(s).",
+                emails,
+                digests,
+            )
+    except Exception:
+        logger.exception("Notification email tick failed; snapshot result is kept.")
+    return count
 
 
 def start_scheduler():
