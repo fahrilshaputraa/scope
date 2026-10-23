@@ -92,6 +92,9 @@
                                 </form>
                             </div>
                         {% endif %}
+                        <div class="mt-3">
+                            {% include "work/partials/_comment_thread.html" with comments=ms.comment_thread comment_count=ms.comment_count target_type="milestone" target_id=ms.pk heading="Komentar milestone" collapsible=True %}
+                        </div>
                     </div>
                 </div>
             {% empty %}

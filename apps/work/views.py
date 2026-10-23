@@ -13,7 +13,8 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.dateparse import parse_date
-from django.views.decorators.http import require_http_methods
+from django.utils.http import url_has_allowed_host_and_scheme
+from django.views.decorators.http import require_http_methods, require_POST
 
 from apps.identity.permissions import (
     can_edit_task,
@@ -29,10 +30,20 @@ from apps.projects.models import ActivityAction, Project
 from apps.projects.pagination import paginate
 from apps.projects.services import record_activity
 
-from .forms import AttachmentForm, IssueForm, TaskCommentForm, TaskForm
+from .comments import (
+    THREAD_PAGE_SIZE,
+    resolve_target,
+    target_label,
+    target_project,
+    target_title,
+    target_url,
+    thread,
+)
+from .forms import AttachmentForm, IssueForm, ObjectCommentForm, TaskCommentForm, TaskForm
 from .mentions import suggestion_payload
 from .models import (
     OPEN_ISSUE_STATUSES,
+    CommentTarget,
     Issue,
     IssueStatus,
     Task,
@@ -67,6 +78,74 @@ def mention_suggest(request: HttpRequest) -> JsonResponse:
         raise Http404 from None
     project = get_object_or_404(visible_projects(request.user), pk=project_id)
     return JsonResponse(suggestion_payload(project, request.GET.get("q", "")), safe=False)
+
+
+def _safe_next(request: HttpRequest, fallback: str) -> str:
+    target = request.POST.get("next") or ""
+    if target and url_has_allowed_host_and_scheme(
+        target,
+        allowed_hosts={request.get_host()},
+        require_https=request.is_secure(),
+    ):
+        return target
+    return fallback
+
+
+@login_required
+@require_POST
+def comment_create(request: HttpRequest) -> HttpResponse:
+    """Create a comment on an issue, note, milestone, or project (B4)."""
+    target_type = request.POST.get("target_type", "")
+    if target_type not in CommentTarget.values:
+        raise Http404("Jenis komentar tidak dikenal.")
+    target = resolve_target(target_type, request.POST.get("target_id"))
+    project = target_project(target)
+
+    if not visible_projects(request.user).filter(pk=project.pk).exists():
+        raise Http404("Project tidak ditemukan.")
+    posted_project = request.POST.get("project")
+    if posted_project and str(posted_project) != str(project.pk):
+        raise Http404("Target komentar bukan milik project ini.")
+    if is_management(request.user) and not request.user.is_staff:
+        raise PermissionDenied
+
+    fallback = target_url(target_type, target)
+    form = ObjectCommentForm(request.POST, project=project, user=request.user)
+    if not form.is_valid():
+        errors = form.errors.get("content") or ["Komentar belum valid."]
+        messages.error(request, " ".join(errors))
+        return redirect(_safe_next(request, fallback))
+
+    comment = form.save(commit=False)
+    comment.project = project
+    comment.target_type = target_type
+    comment.target_id = target.pk
+    comment.author = request.user
+    comment.save()
+    form.save_mentions(comment)
+
+    label = target_label(target_type)
+    title = target_title(target_type, target)
+    record_activity(
+        project,
+        request.user,
+        ActivityAction.COMMENT_ADDED,
+        f'Komentar ditambahkan di {label} "{title}".',
+    )
+    notify(
+        request.user,
+        "comment.added",
+        target,
+        recipients=form.mentioned_users,
+        title=f"Komentar baru: {title}",
+        body=f'{user_display(request.user)} mengomentari {label} "{title}".',
+        url=target_url(target_type, target),
+        dedupe_suffix=f"comment:{comment.pk}",
+        project=project,
+        allow_management=False,
+    )
+    messages.success(request, "Komentar ditambahkan.")
+    return redirect(_safe_next(request, fallback))
 
 
 # ================================================================ MY TASKS ===
@@ -175,13 +254,25 @@ def issue_update(request: HttpRequest, pk: int) -> HttpResponse:
         ),
         pk=pk,
     )
+    comment_context = {
+        "comments": paginate(
+            request,
+            thread(issue.project, CommentTarget.ISSUE, issue.pk, limit=None),
+            THREAD_PAGE_SIZE,
+        ),
+        "comment_count": thread(
+            issue.project, CommentTarget.ISSUE, issue.pk, limit=None
+        ).count(),
+        "can_comment": not is_management(request.user) or request.user.is_staff,
+    }
+    comment_context["comments_page"] = comment_context["comments"]
     if not can_manage_project(request.user, issue.project):
         if request.method != "GET":
             raise PermissionDenied
         return render(
             request,
             "work/issue_detail.html",
-            {"issue": issue, "can_manage": False},
+            {"issue": issue, "can_manage": False, **comment_context},
         )
     form = IssueForm(request.POST or None, instance=issue, project=issue.project)
     if request.method == "POST" and form.is_valid():
@@ -222,7 +313,8 @@ def issue_update(request: HttpRequest, pk: int) -> HttpResponse:
     return render(
         request,
         "work/issue_form.html",
-        {"form": form, "project": issue.project, "title": issue.title},
+        {"form": form, "project": issue.project, "issue": issue, "title": issue.title,
+         **comment_context},
     )
 
 

@@ -6,7 +6,7 @@ from apps.form_widgets import fill_missing_defaults, style_form
 from apps.projects.models import Project
 from apps.richtext import SanitizeRichTextMixin
 
-from .models import TASK_STATUS_LABELS, Issue, IssueStatus, Task, TaskComment
+from .models import TASK_STATUS_LABELS, Comment, Issue, IssueStatus, Task, TaskComment
 
 
 class TaskForm(SanitizeRichTextMixin, forms.ModelForm):
@@ -267,6 +267,41 @@ class TaskCommentForm(forms.ModelForm):
 
         Mention.objects.bulk_create(
             [Mention(task_comment=comment, user=user) for user in self.mentioned_users],
+            ignore_conflicts=True,
+        )
+
+
+class ObjectCommentForm(SanitizeRichTextMixin, forms.ModelForm):
+    """Comment on an issue, note, milestone, or project (B4)."""
+
+    class Meta:
+        model = Comment
+        fields = ["content"]
+        error_messages = {"content": {"required": "Tulis komentar terlebih dahulu."}}
+
+    def __init__(self, *args, project=None, user=None, **kwargs):
+        self.project = project
+        self.user = user
+        self.mentioned_users = []
+        super().__init__(*args, **kwargs)
+        style_form(self)
+        self.fields["content"].widget.attrs["data-mention-input"] = "true"
+
+    def clean_content(self):
+        from .mentions import resolve_mentions
+
+        content = self.cleaned_data["content"]
+        users, errors = resolve_mentions(content, self.project)
+        if errors:
+            raise ValidationError(errors)
+        self.mentioned_users = users
+        return content
+
+    def save_mentions(self, comment):
+        from .models import CommentMention
+
+        CommentMention.objects.bulk_create(
+            [CommentMention(comment=comment, user=user) for user in self.mentioned_users],
             ignore_conflicts=True,
         )
 

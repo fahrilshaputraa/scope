@@ -1,0 +1,51 @@
+{% load pcc_tags %}
+<section class="pcc-panel" id="comments-{{ target_type }}-{{ target_id }}">
+    <details class="comment-thread" {% if not collapsible %}open{% endif %}>
+        <summary class="pcc-section flex cursor-pointer flex-wrap items-baseline justify-between gap-2">
+            <span class="font-normal">{{ heading|default:"Komentar" }}</span>
+            <span class="text-xs tabular-nums text-muted-foreground">({{ comment_count }})</span>
+        </summary>
+        <div class="border-t">
+            {% for comment in comments %}
+                <div class="border-b px-5 py-4">
+                    <div class="flex flex-wrap items-baseline justify-between gap-2">
+                        <span class="text-sm font-normal">{{ comment.author|person_name|default:"—" }}</span>
+                        <span class="text-xs text-muted-foreground">{{ comment.created_at|date:"d M Y H:i" }}</span>
+                    </div>
+                    <div class="rich-text mt-1 text-sm text-muted-foreground">{{ comment.content|rich_mentions }}</div>
+                </div>
+            {% empty %}
+                <p class="px-5 py-6 text-center text-sm text-muted-foreground">Belum ada komentar.</p>
+            {% endfor %}
+            {% if comment_count > comments|length %}
+                <p class="px-5 py-3 text-xs text-muted-foreground">Menampilkan {{ comments|length }} komentar terbaru dari {{ comment_count }}.</p>
+            {% endif %}
+            {% if can_comment %}
+                <form method="post"
+                      action="{% url 'work:comment_create' %}"
+                      class="border-t p-5"
+                      data-mention-form
+                      data-mention-url="{% url 'work:mention_suggest' %}"
+                      data-mention-project="{{ project.pk }}">
+                    {% csrf_token %}
+                    <input type="hidden" name="target_type" value="{{ target_type }}">
+                    <input type="hidden" name="target_id" value="{{ target_id }}">
+                    <input type="hidden" name="project" value="{{ project.pk }}">
+                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                    <label for="comment-content-{{ target_type }}-{{ target_id }}" class="text-sm font-normal">Tambah komentar</label>
+                    <textarea name="content"
+                              id="comment-content-{{ target_type }}-{{ target_id }}"
+                              rows="3"
+                              class="pcc-field mt-2"
+                              aria-required="true"
+                              required
+                              placeholder="Tulis komentar…"></textarea>
+                    <p class="mt-1 text-xs text-muted-foreground">Ketik @ untuk menyebut anggota project.</p>
+                    <div class="mt-3 flex justify-end">
+                        <button type="submit" class="pcc-button">Kirim</button>
+                    </div>
+                </form>
+            {% endif %}
+        </div>
+    </details>
+</section>
