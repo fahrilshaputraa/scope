@@ -1,5 +1,6 @@
 """Views aplikasi work: task, kanban status, gantt dates, issue, comments."""
 
+from datetime import timedelta
 from decimal import Decimal, InvalidOperation
 from urllib.parse import parse_qs
 
@@ -7,7 +8,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Case, F, IntegerField, Q, When
 from django.http import FileResponse, Http404, HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -43,9 +44,11 @@ from .forms import AttachmentForm, IssueForm, ObjectCommentForm, TaskCommentForm
 from .mentions import suggestion_payload
 from .models import (
     OPEN_ISSUE_STATUSES,
+    TASK_STATUS_LABELS,
     CommentTarget,
     Issue,
     IssueStatus,
+    Priority,
     Task,
     TaskAttachment,
     TaskStatus,
@@ -151,28 +154,133 @@ def comment_create(request: HttpRequest) -> HttpResponse:
 # ================================================================ MY TASKS ===
 
 
+SOON_DAYS = 7
+DUE_FILTERS = ("all", "overdue", "soon", "none")
+GROUP_FILTERS = ("status", "project")
+
+
+def _priority_rank():
+    return Case(
+        *[When(priority=value, then=index) for index, value in enumerate(Priority.values)],
+        default=len(Priority.values),
+        output_field=IntegerField(),
+    )
+
+
 @login_required
 def my_tasks(request: HttpRequest) -> HttpResponse:
-    qs = (
+    today = timezone.localdate()
+    soon_end = today + timedelta(days=SOON_DAYS)
+
+    query = (request.GET.get("q") or "").strip()
+    status_filter = request.GET.get("status", "")
+    if status_filter not in TaskStatus.values:
+        status_filter = ""
+    due_filter = request.GET.get("due", "all")
+    if due_filter not in DUE_FILTERS:
+        due_filter = "all"
+    group = request.GET.get("group", "status")
+    if group not in GROUP_FILTERS:
+        group = "status"
+
+    projects = visible_projects(request.user).order_by("name", "code")
+    selected_project = None
+    project_id = request.GET.get("project", "")
+    if project_id:
+        selected_project = get_object_or_404(visible_projects(request.user), pk=project_id)
+
+    base = (
         Task.objects.filter(
             Q(assignee=request.user) | Q(collaborators=request.user),
             project__in=visible_projects(request.user),
         )
         .distinct()
         .select_related("project", "phase")
-        .prefetch_related("issues", "collaborators")
+        .prefetch_related("issues", "collaborators", "subtasks")
     )
-    current = list(qs.filter(status=TaskStatus.IN_PROGRESS).order_by("due_date"))
-    review = list(qs.filter(status=TaskStatus.REVIEW).order_by("due_date"))
-    next_up = list(
-        qs.filter(status__in=[TaskStatus.TODO, TaskStatus.BACKLOG]).order_by("order", "due_date")[
-            :10
-        ]
+    if query:
+        base = base.filter(title__icontains=query)
+    if status_filter:
+        base = base.filter(status=status_filter)
+    if selected_project is not None:
+        base = base.filter(project=selected_project)
+
+    open_qs = base.exclude(status=TaskStatus.DONE)
+    due_counts = {
+        "all": base.count(),
+        "overdue": open_qs.filter(due_date__lt=today).count(),
+        "soon": open_qs.filter(due_date__gte=today, due_date__lte=soon_end).count(),
+        "none": open_qs.filter(due_date__isnull=True).count(),
+    }
+
+    filtered = base
+    if due_filter == "overdue":
+        filtered = filtered.filter(due_date__lt=today).exclude(status=TaskStatus.DONE)
+    elif due_filter == "soon":
+        filtered = filtered.filter(
+            due_date__gte=today, due_date__lte=soon_end
+        ).exclude(status=TaskStatus.DONE)
+    elif due_filter == "none":
+        filtered = filtered.filter(due_date__isnull=True).exclude(status=TaskStatus.DONE)
+
+    tasks = list(
+        filtered.annotate(priority_rank=_priority_rank()).order_by(
+            F("due_date").asc(nulls_last=True), "priority_rank", "order", "id"
+        )
     )
-    blocked = list(qs.filter(status=TaskStatus.BLOCKED).order_by("due_date"))
-    done = list(qs.filter(status=TaskStatus.DONE).order_by("-updated_at")[:10])
-    for task in current + review + next_up + done + blocked:
+    for task in tasks:
         task.can_edit = can_edit_task(request.user, task)
+
+    # Existing status sections stay intact for callers that read these keys.
+    current = [task for task in tasks if task.status == TaskStatus.IN_PROGRESS]
+    review = [task for task in tasks if task.status == TaskStatus.REVIEW]
+    next_up = [
+        task for task in tasks if task.status in (TaskStatus.TODO, TaskStatus.BACKLOG)
+    ][:10]
+    blocked = [task for task in tasks if task.status == TaskStatus.BLOCKED]
+    done = sorted(
+        (task for task in tasks if task.status == TaskStatus.DONE),
+        key=lambda task: task.updated_at,
+        reverse=True,
+    )[:10]
+
+    # Attention buckets claim each open task once so nothing renders twice.
+    overdue, due_soon, undated, remaining = [], [], [], []
+    for task in tasks:
+        if task.status == TaskStatus.DONE:
+            continue
+        if task.is_overdue:
+            overdue.append(task)
+        elif task.due_date and task.due_date <= soon_end:
+            due_soon.append(task)
+        elif not task.due_date:
+            undated.append(task)
+        else:
+            remaining.append(task)
+    bucket_blocked = [task for task in remaining if task.status == TaskStatus.BLOCKED]
+    bucket_current = [task for task in remaining if task.status == TaskStatus.IN_PROGRESS]
+    bucket_review = [task for task in remaining if task.status == TaskStatus.REVIEW]
+    bucket_next = [
+        task for task in remaining if task.status in (TaskStatus.TODO, TaskStatus.BACKLOG)
+    ][:10]
+
+    project_groups = []
+    if group == "project":
+        grouped = {}
+        for task in tasks:
+            if task.status == TaskStatus.DONE:
+                continue
+            entry = grouped.setdefault(
+                task.project_id, {"project": task.project, "tasks": []}
+            )
+            entry["tasks"].append(task)
+        project_groups = sorted(
+            grouped.values(),
+            key=lambda entry: (entry["project"].name.lower(), entry["project"].code),
+        )
+        for entry in project_groups:
+            entry["count"] = len(entry["tasks"])
+
     return render(
         request,
         "work/my_tasks.html",
@@ -182,6 +290,25 @@ def my_tasks(request: HttpRequest) -> HttpResponse:
             "next_up": next_up,
             "done": done,
             "blocked": blocked,
+            "bucket_overdue": overdue,
+            "bucket_soon": due_soon,
+            "bucket_undated": undated,
+            "bucket_blocked": bucket_blocked,
+            "bucket_current": bucket_current,
+            "bucket_review": bucket_review,
+            "bucket_next": bucket_next,
+            "open_count": len(overdue) + len(due_soon) + len(undated) + len(remaining),
+            "done_count": len(done),
+            "project_groups": project_groups,
+            "projects": projects,
+            "selected_project": selected_project,
+            "status_labels": TASK_STATUS_LABELS,
+            "due_counts": due_counts,
+            "query": query,
+            "status_filter": status_filter,
+            "due_filter": due_filter,
+            "group": group,
+            "has_filters": bool(query or status_filter or selected_project or due_filter != "all"),
         },
     )
 

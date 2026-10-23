@@ -1,0 +1,41 @@
+{% load pcc_tags %}
+<div class="task-quick"
+     data-quick-update
+     data-task-id="{{ task.pk }}"
+     {% if show_status %}data-has-status="true"{% endif %}>
+    {% if show_status %}
+        <label class="sr-only" for="quick-status-{{ task.pk }}">Status {{ task.title }}</label>
+        <select id="quick-status-{{ task.pk }}"
+                class="pcc-field task-quick-select"
+                data-quick-status
+                data-current="{{ task.status }}"
+                data-url="{% url 'work:task_status' task.pk %}">
+            {% for value, label in status_labels.items %}
+                <option value="{{ value }}" {% if task.status == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+    {% endif %}
+    <span class="task-quick-progress">
+        <label class="sr-only" for="quick-progress-{{ task.pk }}">Progress {{ task.title }} (persen)</label>
+        <input id="quick-progress-{{ task.pk }}"
+               class="pcc-field task-quick-input"
+               type="number"
+               min="0"
+               max="100"
+               step="1"
+               inputmode="numeric"
+               value="{{ task.display_progress|floatformat:0 }}"
+               data-quick-progress
+               data-url="{% url 'work:task_progress' task.pk %}"
+               {% if task.has_details %}disabled data-locked="true" aria-describedby="quick-progress-hint-{{ task.pk }}"{% endif %}>
+        <button type="button"
+                class="pcc-button pcc-button-secondary task-quick-save"
+                data-quick-save
+                {% if task.has_details %}disabled data-locked="true"{% endif %}>Simpan</button>
+    </span>
+    <p class="task-quick-hint"
+       id="quick-progress-hint-{{ task.pk }}"
+       {% if not task.has_details %}hidden{% endif %}>Progress mengikuti detail activity.</p>
+    <p class="task-quick-error" data-quick-error role="alert" hidden></p>
+    <p class="sr-only" data-quick-status-text aria-live="polite"></p>
+</div>
