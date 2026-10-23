@@ -1,0 +1,83 @@
+{% extends "projects/_base.html" %}
+{% load pcc_tags %}
+{% block project_content %}
+    <div class="mt-6 visualization-toolbar">
+        <div>
+            <h2 class="text-lg">Riwayat perubahan</h2>
+            <p class="mt-1 text-sm text-muted-foreground">
+                Perubahan field penting pada project, task, milestone, issue, dan risiko. Pulihkan nilai sebelumnya bila diperlukan.
+            </p>
+        </div>
+    </div>
+    <section class="pcc-panel mt-4">
+        <div class="pcc-section border-b">
+            <h2>Perubahan terbaru · {{ page_obj.paginator.count }}</h2>
+        </div>
+        {% for revision in revisions %}
+            <article class="pcc-section border-b last:border-b-0">
+                <div class="flex flex-wrap items-start justify-between gap-3">
+                    <div class="min-w-0">
+                        <p class="text-sm">
+                            <span class="font-medium">{{ revision.actor|person_name|default:"System" }}</span>
+                            <span class="text-muted-foreground">· {{ revision.created_at|date:"d M Y H:i" }}</span>
+                        </p>
+                        <p class="mt-1 break-words text-sm">{{ revision.object_repr|default:revision.entity_label }}</p>
+                        <p class="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                            <span class="rounded-md bg-muted px-1.5 py-0.5">{{ revision.entity_label }}</span>
+                            <span class="rounded-md bg-muted px-1.5 py-0.5">{{ revision.action_label }}</span>
+                        </p>
+                    </div>
+                    {% if can_manage %}
+                        <form method="post"
+                              action="{% url 'projects:project_history_restore' project.pk revision.pk %}"
+                              data-confirm="Pulihkan nilai sebelum perubahan ini?">
+                            {% csrf_token %}
+                            <button type="submit" class="pcc-button pcc-button-secondary">Pulihkan</button>
+                        </form>
+                    {% endif %}
+                </div>
+                {% if revision.change_rows %}
+                    <div class="mt-3 overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead>
+                                <tr class="text-left text-[11px] uppercase tracking-[0.06em] text-muted-foreground">
+                                    <th class="py-1 pr-4 font-normal">Field</th>
+                                    <th class="py-1 pr-4 font-normal">Sebelum</th>
+                                    <th class="py-1 font-normal">Sesudah</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in revision.change_rows %}
+                                    <tr class="border-t border-border align-top">
+                                        <td class="whitespace-nowrap py-2 pr-4 text-muted-foreground">{{ row.label }}</td>
+                                        <td class="py-2 pr-4">{{ row.old }}</td>
+                                        <td class="py-2">{{ row.new }}</td>
+                                    </tr>
+                                    {% if row.long %}
+                                        <tr>
+                                            <td></td>
+                                            <td colspan="2" class="pb-2">
+                                                <details>
+                                                    <summary class="cursor-pointer text-xs text-muted-foreground">Lihat teks lengkap</summary>
+                                                    <p class="mt-1 whitespace-pre-wrap text-sm">{{ row.old_full }}</p>
+                                                    <p class="mt-1 whitespace-pre-wrap text-sm">→ {{ row.new_full }}</p>
+                                                </details>
+                                            </td>
+                                        </tr>
+                                    {% endif %}
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="mt-2 text-sm text-muted-foreground">{{ revision.summary }}</p>
+                {% endif %}
+            </article>
+        {% empty %}
+            <div class="pcc-section py-10 text-center">
+                <p class="text-sm text-muted-foreground">Belum ada riwayat perubahan untuk project ini.</p>
+            </div>
+        {% endfor %}
+    </section>
+    {% include "partials/_pagination.html" %}
+{% endblock %}

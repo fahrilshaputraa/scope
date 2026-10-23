@@ -62,6 +62,7 @@ class ActivityAction(models.TextChoices):
     TASK_RESTORED = "task.restored", "Task restored"
     ISSUE_ARCHIVED = "issue.archived", "Issue archived"
     ISSUE_RESTORED = "issue.restored", "Issue restored"
+    HISTORY_RESTORED = "history.restored", "History restored"
 
 
 class Project(ArchivableModel):
@@ -379,6 +380,54 @@ class ActivityEvent(models.Model):
 
     def __str__(self):
         return f"[{self.action}] {self.message}"
+
+
+class RevisionEntity(models.TextChoices):
+    PROJECT = "project", "Project"
+    TASK = "task", "Task"
+    MILESTONE = "milestone", "Milestone"
+    ISSUE = "issue", "Issue"
+    RISK = "risk", "Risk"
+
+
+class RevisionAction(models.TextChoices):
+    CREATED = "created", "Dibuat"
+    UPDATED = "updated", "Diperbarui"
+    RESTORED = "restored", "Dipulihkan"
+
+
+class Revision(models.Model):
+    """Field-level history untuk project, task, milestone, issue, dan risk."""
+
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="revisions")
+    entity = models.CharField(max_length=20, choices=RevisionEntity.choices)
+    object_id = models.PositiveBigIntegerField()
+    object_repr = models.CharField(max_length=200, blank=True)
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
+    action = models.CharField(
+        max_length=20, choices=RevisionAction.choices, default=RevisionAction.UPDATED
+    )
+    changes = models.JSONField(default=dict, blank=True)
+    summary = models.CharField(max_length=300, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at", "-id"]
+        indexes = [
+            models.Index(
+                fields=["entity", "object_id", "-created_at"],
+                name="rev_entity_object_created_idx",
+            )
+        ]
+
+    def __str__(self):
+        return f"[{self.action}] {self.entity}:{self.object_id}"
 
 
 class Risk(models.Model):

@@ -92,6 +92,12 @@ urlpatterns = [
     path("projects/<int:pk>/milestones/", views.project_milestones, name="project_milestones"),
     path("projects/<int:pk>/notes/", views.project_notes, name="project_notes"),
     path("projects/<int:pk>/activity/", views.project_activity, name="project_activity"),
+    path("projects/<int:pk>/history/", views.project_history, name="project_history"),
+    path(
+        "projects/<int:pk>/history/<int:revision_id>/restore/",
+        views.project_history_restore,
+        name="project_history_restore",
+    ),
     # CRUD — phases / milestones / baseline / notes / decisions
     path("projects/<int:pk>/phases/create/", views.phase_create, name="phase_create"),
     path(
