@@ -27,7 +27,7 @@ def _target_project(target):
 
 
 def _target_ref(target):
-    from apps.projects.models import Milestone, Project
+    from apps.projects.models import Milestone, Note, Project
     from apps.work.models import Issue, Task
 
     if isinstance(target, Task):
@@ -36,6 +36,8 @@ def _target_ref(target):
         return NotificationTarget.ISSUE, target.pk
     if isinstance(target, Milestone):
         return NotificationTarget.MILESTONE, target.pk
+    if isinstance(target, Note):
+        return NotificationTarget.NOTE, target.pk
     if isinstance(target, Project):
         return NotificationTarget.PROJECT, target.pk
     return "", getattr(target, "pk", None)
@@ -76,9 +78,13 @@ def _target_watchers(target):
     return users
 
 
-def resolve_recipients(actor, target, recipients=None, project=None):
-    """Active users who may see the project, excluding the actor."""
-    from apps.identity.permissions import visible_projects
+def resolve_recipients(actor, target, recipients=None, project=None, allow_management=True):
+    """Active users who may see the project, excluding the actor.
+
+    ``allow_management=False`` keeps read-only management users out of action
+    notifications they cannot perform (for example commenting).
+    """
+    from apps.identity.permissions import is_management, visible_projects
 
     project = project or _target_project(target)
     candidates = list(recipients or []) + _target_users(target) + _target_watchers(target)
@@ -90,6 +96,8 @@ def resolve_recipients(actor, target, recipients=None, project=None):
         if not getattr(user, "is_authenticated", False):
             continue
         if actor is not None and actor.pk == user.pk:
+            continue
+        if not allow_management and is_management(user) and not user.is_staff:
             continue
         if user.pk in seen:
             continue
@@ -111,6 +119,7 @@ def notify(
     url="",
     dedupe_suffix="",
     project=None,
+    allow_management=True,
 ):
     """Create one in-app notification per eligible recipient.
 
@@ -121,7 +130,13 @@ def notify(
     target_type, target_id = _target_ref(target)
     if not target_type:
         return []
-    recipients = resolve_recipients(actor, target, recipients=recipients, project=project)
+    recipients = resolve_recipients(
+        actor,
+        target,
+        recipients=recipients,
+        project=project,
+        allow_management=allow_management,
+    )
     if not recipients:
         return []
     preferences = {

@@ -8,4 +8,9 @@
         {% url 'work:issue_list' as list_url %}
         {% include "partials/_form_card.html" with back_url=list_url title=title subtitle="Pilih project tempat issue terjadi" %}
     {% endif %}
+    {% if issue %}
+        <div class="mx-auto mt-4 max-w-2xl">
+            {% include "work/partials/_comment_thread.html" with comments=comments comment_count=comment_count target_type="issue" target_id=issue.pk heading="Diskusi issue" can_comment=can_comment %}
+        </div>
+    {% endif %}
 {% endblock %}

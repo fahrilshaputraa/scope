@@ -15,12 +15,20 @@ from apps.identity.permissions import (
     can_edit_task,
     can_manage_project,
     can_report_issue,
+    is_management,
     is_pm,
     visible_projects,
 )
 from apps.notifications.models import SubscriptionTarget
 from apps.notifications.subscriptions import watch_state
-from apps.work.models import TASK_STATUS_LABELS, Issue, Task, TaskStatus
+from apps.work.comments import THREAD_PAGE_SIZE, attach_threads, thread
+from apps.work.models import (
+    TASK_STATUS_LABELS,
+    CommentTarget,
+    Issue,
+    Task,
+    TaskStatus,
+)
 
 from .forms import BaselinePointForm, DecisionForm, MilestoneForm, NoteForm, PhaseForm, ProjectForm
 from .models import (
@@ -77,6 +85,7 @@ def project_context(request, project, active_tab):
         "active_tab": active_tab,
         "can_manage": can_manage_project(request.user, project),
         "can_report": can_report_issue(request.user),
+        "can_comment": not is_management(request.user) or request.user.is_staff,
         **watch_state(request.user, SubscriptionTarget.PROJECT, project.pk),
     }
 
@@ -357,6 +366,14 @@ def project_detail(request: HttpRequest, pk: int) -> HttpResponse:
             "milestones": milestones,
             "chart": progress_chart_data(baseline, snapshots, actual_progress(project)),
             "chart_has_plan": bool(baseline),
+            "comments": paginate(
+                request,
+                thread(project, CommentTarget.PROJECT, project.pk, limit=None),
+                THREAD_PAGE_SIZE,
+            ),
+            "comment_count": thread(
+                project, CommentTarget.PROJECT, project.pk, limit=None
+            ).count(),
         },
     )
 
@@ -598,7 +615,9 @@ def project_issues(request: HttpRequest, pk: int) -> HttpResponse:
 @login_required
 def project_milestones(request: HttpRequest, pk: int) -> HttpResponse:
     project = _project_or_404(request, pk)
-    milestones = project.milestones.select_related("owner").all()
+    milestones = attach_threads(
+        list(project.milestones.select_related("owner").all()), CommentTarget.MILESTONE
+    )
     return render(
         request,
         "projects/project/milestones.html",
@@ -613,7 +632,9 @@ def project_milestones(request: HttpRequest, pk: int) -> HttpResponse:
 @login_required
 def project_notes(request: HttpRequest, pk: int) -> HttpResponse:
     project = _project_or_404(request, pk)
-    notes = project.notes.select_related("author").all()
+    notes = attach_threads(
+        list(project.notes.select_related("author").all()), CommentTarget.NOTE
+    )
     decisions = project.decisions.select_related("decision_maker").all()
     entries = [{"kind": "note", "item": n, "date": n.created_at} for n in notes] + [
         {"kind": "decision", "item": d, "date": d.created_at} for d in decisions

@@ -319,6 +319,72 @@ class Mention(models.Model):
         return f"@{self.user_id} on comment {self.task_comment_id}"
 
 
+class CommentTarget(models.TextChoices):
+    ISSUE = "issue", "Issue"
+    NOTE = "note", "Note"
+    MILESTONE = "milestone", "Milestone"
+    PROJECT = "project", "Project"
+
+
+class Comment(models.Model):
+    """Comment on an issue, note, milestone, or project (B4).
+
+    ``TaskComment`` stays untouched; this model covers the remaining entities so
+    mentions and notifications can be shared without migrating task history.
+    """
+
+    project = models.ForeignKey(
+        "projects.Project", on_delete=models.CASCADE, related_name="object_comments"
+    )
+    target_type = models.CharField(max_length=20, choices=CommentTarget.choices)
+    target_id = models.PositiveBigIntegerField()
+    author = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
+    content = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at"]
+        indexes = [
+            models.Index(
+                fields=["target_type", "target_id", "created_at"],
+                name="comment_target_created_idx",
+            )
+        ]
+
+    def __str__(self):
+        return f"Comment on {self.target_type}:{self.target_id}"
+
+
+class CommentMention(models.Model):
+    """A user explicitly mentioned with ``@username`` in an object comment."""
+
+    comment = models.ForeignKey(Comment, on_delete=models.CASCADE, related_name="mentions")
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="comment_mentions",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["comment", "user"],
+                name="commentmention_unique_comment_user",
+            )
+        ]
+
+    def __str__(self):
+        return f"@{self.user_id} on comment {self.comment_id}"
+
+
 class Issue(ArchivableModel):
     """Issue / hambatan project (PRD §21)."""
 

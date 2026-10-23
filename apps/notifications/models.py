@@ -8,6 +8,7 @@ class NotificationTarget(models.TextChoices):
     TASK = "task", "Task"
     ISSUE = "issue", "Issue"
     MILESTONE = "milestone", "Milestone"
+    NOTE = "note", "Note"
 
 
 class Notification(models.Model):
