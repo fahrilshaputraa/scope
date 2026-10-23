@@ -4,6 +4,8 @@
     <div class="mt-6">
         <h2 class="text-lg font-normal tracking-tight">Activity Log</h2>
         <p class="text-sm text-muted-foreground">Riwayat perubahan project secara kronologis.</p>
+        <a class="pcc-button pcc-button-secondary mt-3 inline-flex"
+           href="{% url 'projects:project_history' project.pk %}">Riwayat perubahan per field</a>
     </div>
     <div class="mt-4">
         {% for event in activities %}

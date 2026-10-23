@@ -30,8 +30,10 @@ from .models import (
     Phase,
     ProgressBaselinePoint,
     ProjectStatus,
+    Revision,
 )
 from .pagination import paginate
+from .revisions import RestoreError, decorate_revisions, restore_revision
 from .search import search_workspace
 from .services import (
     actual_progress,
@@ -52,6 +54,7 @@ PROJECT_TABS = [
     ("milestones", "Milestone"),
     ("notes", "Catatan"),
     ("activity", "Aktivitas"),
+    ("history", "Riwayat"),
 ]
 
 STATUS_CHOICES = ProjectStatus.choices
@@ -646,6 +649,44 @@ def project_activity(request: HttpRequest, pk: int) -> HttpResponse:
     )
 
 
+@login_required
+def project_history(request: HttpRequest, pk: int) -> HttpResponse:
+    project = _project_or_404(request, pk)
+    revisions = project.revisions.select_related("actor").all()
+    page_obj = paginate(request, revisions, 25)
+    return render(
+        request,
+        "projects/project/history.html",
+        {
+            **project_context(request, project, "history"),
+            "revisions": decorate_revisions(page_obj),
+            "page_obj": page_obj,
+        },
+    )
+
+
+@login_required
+@require_POST
+def project_history_restore(request: HttpRequest, pk: int, revision_id: int) -> HttpResponse:
+    project = _project_or_404(request, pk)
+    if not can_manage_project(request.user, project):
+        raise PermissionDenied
+    revision = get_object_or_404(Revision, pk=revision_id, project=project)
+    try:
+        restore_revision(revision, request.user)
+    except RestoreError as exc:
+        messages.error(request, str(exc))
+    else:
+        record_activity(
+            project,
+            request.user,
+            ActivityAction.HISTORY_RESTORED,
+            f"Perubahan {revision.object_repr} dipulihkan dari riwayat.",
+        )
+        messages.success(request, "Perubahan berhasil dipulihkan.")
+    return redirect("projects:project_history", pk=pk)
+
+
 # ---------------------------------------------------------- global pages ---
 
 
@@ -747,6 +788,7 @@ TAB_URL_NAMES = {
     "milestones": "project_milestones",
     "notes": "project_notes",
     "activity": "project_activity",
+    "history": "project_history",
 }
 
 

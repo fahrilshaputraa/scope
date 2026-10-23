@@ -5,6 +5,7 @@ from django.dispatch import receiver
 
 from apps.work.models import Task
 
+from . import revisions  # noqa: F401  (registers revision capture signals)
 from .models import Project
 from .services import record_snapshot
 
