@@ -1,4 +1,15 @@
 // Keep the mounted timeline and its viewing position across daily-update saves.
+document.querySelectorAll('[data-toggle-details]').forEach(button => {
+    const grid = button.closest('[data-timeline-grid]');
+    const rows = [...grid.querySelectorAll('[data-parent-task]')]
+        .filter(row => row.dataset.parentTask === button.dataset.toggleDetails);
+    button.setAttribute('aria-controls', rows.map(row => row.id).join(' '));
+    button.addEventListener('click', () => {
+        const expanded = button.getAttribute('aria-expanded') !== 'true';
+        button.setAttribute('aria-expanded', String(expanded));
+        rows.forEach(row => { row.hidden = !expanded; });
+    });
+});
 document.querySelectorAll('[data-timeline-controls]').forEach(controls => {
     const panel = controls.closest('[data-fullscreen-panel]');
     const scroller = panel.querySelector('[data-timeline-scroll]');

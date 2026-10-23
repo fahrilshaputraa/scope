@@ -4,16 +4,21 @@ from django.contrib.auth import login as django_login
 from django.contrib.auth import logout as django_logout
 from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.forms import AuthenticationForm, PasswordChangeForm, UserCreationForm
+from django.contrib.auth.forms import AuthenticationForm, PasswordChangeForm
 from django.contrib.auth.models import User
+from django.core.exceptions import PermissionDenied
+from django.db.models import Q
 from django.http import HttpRequest, HttpResponse
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.cache import never_cache
+from django.views.decorators.http import require_POST
 
 from apps.form_widgets import style_form
+from apps.projects.pagination import paginate
 
+from .forms import LocalUserCreateForm, StaffPasswordResetForm, UserEditForm
 from .models import Role
 from .oidc import get_entra_client
 from .services import upsert_user_from_claims
@@ -126,26 +131,166 @@ def settings_view(request):
     )
 
 
-@login_required
-def user_create(request):
-    from django import forms
-    from django.core.exceptions import PermissionDenied
-
+def _require_staff(request) -> None:
     if not request.user.is_staff:
         raise PermissionDenied
 
-    class LocalUserForm(UserCreationForm):
-        role = forms.ChoiceField(choices=Role.choices, initial=Role.MEMBER)
 
-        class Meta(UserCreationForm.Meta):
-            fields = ["username", "first_name", "last_name", "email"]
+def _display_name(user) -> str:
+    profile = getattr(user, "pcc_profile", None)
+    if profile is not None:
+        return profile.name
+    return user.get_full_name() or user.username
 
-    form = LocalUserForm(request.POST or None)
-    style_form(form)
+
+@login_required
+def user_list(request: HttpRequest) -> HttpResponse:
+    _require_staff(request)
+
+    filters = {
+        "q": request.GET.get("q", "").strip(),
+        "role": request.GET.get("role", "").strip(),
+        "status": request.GET.get("status", "").strip(),
+    }
+    users = User.objects.select_related("pcc_profile").order_by(
+        "first_name", "last_name", "username"
+    )
+    if filters["q"]:
+        query = filters["q"]
+        users = users.filter(
+            Q(username__icontains=query)
+            | Q(first_name__icontains=query)
+            | Q(last_name__icontains=query)
+            | Q(email__icontains=query)
+            | Q(pcc_profile__display_name__icontains=query)
+        )
+    if filters["role"] in Role.values:
+        users = users.filter(pcc_profile__role=filters["role"])
+    if filters["status"] == "active":
+        users = users.filter(is_active=True)
+    elif filters["status"] == "inactive":
+        users = users.filter(is_active=False)
+
+    total_users = User.objects.count()
+    active_users = User.objects.filter(is_active=True).count()
+    page_obj = paginate(request, users, per_page=25)
+    return render(
+        request,
+        "identity/user_list.html",
+        {
+            "users": page_obj.object_list,
+            "page_obj": page_obj,
+            "filters": filters,
+            "role_choices": Role.choices,
+            "total_users": total_users,
+            "active_users": active_users,
+            "inactive_users": total_users - active_users,
+        },
+    )
+
+
+@login_required
+def user_create(request: HttpRequest) -> HttpResponse:
+    _require_staff(request)
+
+    form = LocalUserCreateForm(request.POST or None)
+    style_form(
+        form,
+        primary=[
+            "username",
+            "first_name",
+            "last_name",
+            "email",
+            "role",
+            "password1",
+            "password2",
+        ],
+    )
     if request.method == "POST" and form.is_valid():
         user = form.save()
-        user.pcc_profile.role = form.cleaned_data["role"]
-        user.pcc_profile.save()
         messages.success(request, f"Akun {user.username} dibuat.")
-        return redirect("identity:settings")
-    return render(request, "identity/user_form.html", {"form": form})
+        return redirect(_safe_next(request, "identity:user_list"))
+    return render(
+        request,
+        "identity/user_create.html",
+        {
+            "form": form,
+            "back_url": reverse("identity:user_list"),
+            "subtitle": (
+                "Akun baru dapat langsung dipakai untuk masuk. "
+                "Bagikan kata sandi awal melalui kanal yang aman."
+            ),
+        },
+    )
+
+
+@login_required
+def user_edit(request: HttpRequest, pk: int) -> HttpResponse:
+    _require_staff(request)
+
+    target = get_object_or_404(User.objects.select_related("pcc_profile"), pk=pk)
+    form = UserEditForm(request.POST or None, instance=target)
+    if request.method == "POST" and form.is_valid():
+        if target == request.user and not form.cleaned_data["is_active"]:
+            form.add_error("is_active", "Anda tidak dapat menonaktifkan akun sendiri.")
+        else:
+            form.save()
+            messages.success(request, f"Akun {target.username} diperbarui.")
+            return redirect(_safe_next(request, "identity:user_list"))
+    style_form(form)
+    subtitle = f"{_display_name(target)} · @{target.username}"
+    if target == request.user:
+        subtitle += ". Anda mengedit akun sendiri; akun ini tidak dapat dinonaktifkan."
+    return render(
+        request,
+        "identity/user_edit.html",
+        {
+            "form": form,
+            "target": target,
+            "is_self": target == request.user,
+            "back_url": reverse("identity:user_list"),
+            "subtitle": subtitle,
+        },
+    )
+
+
+@login_required
+def user_password(request: HttpRequest, pk: int) -> HttpResponse:
+    _require_staff(request)
+
+    target = get_object_or_404(User, pk=pk)
+    form = StaffPasswordResetForm(target, request.POST or None)
+    style_form(form)
+    if request.method == "POST" and form.is_valid():
+        form.save()
+        messages.success(request, f"Kata sandi {target.username} telah direset.")
+        return redirect(_safe_next(request, "identity:user_list"))
+    return render(
+        request,
+        "identity/user_password.html",
+        {
+            "form": form,
+            "target": target,
+            "back_url": reverse("identity:user_list"),
+            "subtitle": (
+                f"Atur kata sandi baru untuk {_display_name(target)} (@{target.username}). "
+                "Kata sandi lama tidak diperlukan."
+            ),
+        },
+    )
+
+
+@login_required
+@require_POST
+def user_toggle_active(request: HttpRequest, pk: int) -> HttpResponse:
+    _require_staff(request)
+
+    target = get_object_or_404(User, pk=pk)
+    if target == request.user:
+        messages.error(request, "Anda tidak dapat menonaktifkan akun sendiri.")
+        return redirect(_safe_next(request, "identity:user_list"))
+    target.is_active = not target.is_active
+    target.save(update_fields=["is_active"])
+    state = "diaktifkan" if target.is_active else "dinonaktifkan"
+    messages.success(request, f"Akun {target.username} {state}.")
+    return redirect(_safe_next(request, "identity:user_list"))

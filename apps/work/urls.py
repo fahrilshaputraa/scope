@@ -12,6 +12,8 @@ urlpatterns = [
     path("my-tasks/", views.my_tasks, name="my_tasks"),
     # Tasks
     path("tasks/new/", views.task_create, name="task_create"),
+    path("tasks/<int:pk>/archive/", views.task_archive, name="task_archive"),
+    path("tasks/<int:pk>/restore/", views.task_restore, name="task_restore"),
     path("tasks/<int:pk>/", views.task_detail, name="task_detail"),
     path("tasks/<int:pk>/edit/", views.task_update, name="task_update"),
     path("tasks/<int:pk>/status/", views.task_status, name="task_status"),
@@ -19,5 +21,7 @@ urlpatterns = [
     # Issues
     path("issues/", views.issue_list, name="issue_list"),
     path("issues/new/", views.issue_create, name="issue_create"),
+    path("issues/<int:pk>/archive/", views.issue_archive, name="issue_archive"),
+    path("issues/<int:pk>/restore/", views.issue_restore, name="issue_restore"),
     path("issues/<int:pk>/", views.issue_update, name="issue_update"),
 ]

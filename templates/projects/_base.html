@@ -96,6 +96,10 @@
                         <a href="{% url 'projects:project_share' project.pk %}"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 10.5 6.8-4M8.6 13.5l6.8 4"/></svg>Bagikan project</a>
                         <a data-project-action href="{% url 'projects:phase_create' project.pk %}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 9 5-9 5-9-5zM3 13l9 5 9-5M3 17l9 5 9-5"/></svg>Tambah tahap project</a>
                         <a data-project-action href="{% url 'projects:project_edit' project.pk %}"><svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4zM14 6l4 4"/></svg>Edit informasi project</a>
+                        <form method="post" action="{% url 'projects:project_archive' project.pk %}" data-confirm="Arsipkan project ini? Project akan hilang dari daftar, laporan, dan tautan publik sampai dipulihkan.">
+                            {% csrf_token %}
+                            <button type="submit" class="project-menu-danger"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M5 6v14h14V6M8 6V4h8v2M10 11v5M14 11v5"/></svg>Arsipkan project</button>
+                        </form>
                     </div>
                 </details>
             {% endif %}

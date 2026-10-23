@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% block title %}Buat akun lokal — Scope{% endblock %}
+{% block content %}
+    {% include "identity/_settings_nav.html" with active_settings="users" %}
+    {% include "partials/_form_card.html" with back_url=back_url title="Buat akun lokal" subtitle=subtitle submit_label="Buat akun" %}
+{% endblock %}

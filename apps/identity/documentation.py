@@ -196,7 +196,8 @@ ARTICLES = (
                         ],
                         [
                             "Administrator (staff)",
-                            "Mengelola semua proyek dan membuat akun lokal melalui Pengaturan.",
+                            "Mengelola semua proyek dan mengelola akun pengguna melalui "
+                            "Pengaturan → Pengguna.",
                         ],
                     ],
                 },
@@ -1143,13 +1144,24 @@ ARTICLES = (
             ),
             section(
                 "akun-baru",
-                "Buat akun lokal untuk anggota baru",
-                "Administrator melihat tombol Buat akun lokal di Pengaturan → Akun. "
-                "Isi nama pengguna, identitas, kata sandi, dan peran, lalu simpan. "
-                "Sesudah akun tersedia, PM dapat menambahkannya ke anggota proyek dan "
-                "penugasan task.",
-                "Pengguna biasa tidak dapat menaikkan perannya sendiri melalui profil. "
-                "Hubungi administrator untuk koreksi hak akses.",
+                "Kelola akun pengguna",
+                steps=[
+                    "Buka Pengaturan → Pengguna. Halaman ini hanya tersedia untuk "
+                    "administrator.",
+                    "Pilih Buat akun lokal, isi identitas, peran, dan kata sandi awal, "
+                    "lalu simpan.",
+                    "Gunakan Edit untuk mengubah nama, peran, atau status akun.",
+                    "Gunakan Reset kata sandi untuk menetapkan kata sandi baru tanpa meminta "
+                    "kata sandi lama.",
+                    "Gunakan Nonaktifkan untuk mencabut akses tanpa menghapus data. "
+                    "Aktifkan kembali kapan saja dari halaman yang sama.",
+                ],
+                paragraphs=[
+                    "Akun nonaktif tidak dapat masuk dan sesi aktifnya berakhir pada permintaan "
+                    "berikutnya. Riwayat pekerjaan, penugasan, dan catatan tetap tersimpan.",
+                    "Administrator tidak dapat menonaktifkan akunnya sendiri. Kata sandi Microsoft "
+                    "dikelola melalui akun Microsoft, bukan melalui reset lokal Scope.",
+                ],
             ),
             section(
                 "docs",

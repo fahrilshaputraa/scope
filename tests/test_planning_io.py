@@ -132,7 +132,10 @@ def test_import_done_normalization_parent_and_export_refs(plan_case):
     payload["tasks"][1]["parent_task"] = "task-1"
     import_plan(payload, pm, project)
     first, second = project.tasks.order_by("order")
-    assert first.progress == 100 and first.completed_at
+    # An unfinished detail reopens an imported Done activity; displayed progress follows details.
+    assert first.progress == 100 and first.completed_at is None
+    assert first.status == "in_progress"
+    assert first.display_progress == second.display_progress
     assert second.parent_task == first
     exported = export_plan(project)
     assert exported["tasks"][1]["dependencies"] == [f"task-{first.pk}"]

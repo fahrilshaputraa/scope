@@ -3,19 +3,22 @@ from collections import Counter
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
+from django.core.exceptions import PermissionDenied
 from django.db.models import Q
 from django.http import HttpRequest, HttpResponse
-from django.shortcuts import get_object_or_404, redirect, render
+from django.shortcuts import get_object_or_404, redirect, render, reverse
 from django.utils import timezone
+from django.views.decorators.http import require_POST
 
 from apps.identity.permissions import (
     can_create_project,
     can_edit_task,
     can_manage_project,
     can_report_issue,
+    is_pm,
     visible_projects,
 )
-from apps.work.models import TASK_STATUS_LABELS, Task, TaskStatus
+from apps.work.models import TASK_STATUS_LABELS, Issue, Task, TaskStatus
 
 from .forms import BaselinePointForm, DecisionForm, MilestoneForm, NoteForm, PhaseForm, ProjectForm
 from .models import (
@@ -24,9 +27,12 @@ from .models import (
     Milestone,
     MilestoneStatus,
     Note,
+    Phase,
     ProgressBaselinePoint,
     ProjectStatus,
 )
+from .pagination import paginate
+from .search import search_workspace
 from .services import (
     actual_progress,
     planned_progress_on,
@@ -51,11 +57,11 @@ PROJECT_TABS = [
 STATUS_CHOICES = ProjectStatus.choices
 
 
-def _project_qs(user):
+def _project_qs(user, *, include_archived=False):
     return (
-        visible_projects(user)
+        visible_projects(user, include_archived=include_archived)
         .select_related("manager")
-        .prefetch_related("baseline_points", "tasks", "milestones", "phases")
+        .prefetch_related("baseline_points", "tasks__subtasks", "milestones", "phases")
     )
 
 
@@ -151,7 +157,11 @@ def dashboard(request: HttpRequest) -> HttpResponse:
 
 @login_required
 def project_list(request: HttpRequest) -> HttpResponse:
-    qs = _project_qs(request.user)
+    can_view_archived = request.user.is_staff or is_pm(request.user)
+    show_archived = request.GET.get("archived") == "1" and can_view_archived
+    qs = _project_qs(request.user, include_archived=show_archived)
+    if show_archived:
+        qs = qs.filter(archived_at__isnull=False)
     search = (request.GET.get("q") or "").strip()
     status = request.GET.get("status") or ""
     pm = request.GET.get("pm") or ""
@@ -215,12 +225,23 @@ def project_list(request: HttpRequest) -> HttpResponse:
             "variance": variance(p),
             "level": p.variance_level,
             "next_milestone": p.next_milestone,
+            "can_restore": can_manage_project(request.user, p),
         }
         for p in projects
     ]
+    page_obj = paginate(request, rows, 20)
     view = request.GET.get("view") or "list"
-    if view not in {"list", "card"}:
+    if show_archived:
         view = "list"
+    elif view not in {"list", "card"}:
+        view = "list"
+    archived_count = (
+        visible_projects(request.user, include_archived=True)
+        .filter(archived_at__isnull=False)
+        .count()
+        if can_view_archived
+        else 0
+    )
 
     # opsi filter
     teams = [
@@ -241,7 +262,12 @@ def project_list(request: HttpRequest) -> HttpResponse:
         request,
         "projects/portfolio/list.html",
         {
-            "rows": rows,
+            "rows": page_obj,
+            "page_obj": page_obj,
+            "total_rows": page_obj.paginator.count,
+            "show_archived": show_archived,
+            "can_view_archived": can_view_archived,
+            "archived_count": archived_count,
             "view": view,
             "filters": {
                 "q": search,
@@ -458,6 +484,13 @@ def project_timeline(request: HttpRequest, pk: int) -> HttpResponse:
     data = timeline_data(project)
     for row in data["timeline_rows"]:
         row["can_edit"] = can_edit_task(request.user, row["task"])
+    archived_phases = []
+    if can_manage_project(request.user, project):
+        archived_phases = list(
+            Phase.all_objects.filter(project=project, archived_at__isnull=False).order_by(
+                "sequence"
+            )
+        )
     return render(
         request,
         "projects/project/timeline.html",
@@ -465,6 +498,7 @@ def project_timeline(request: HttpRequest, pk: int) -> HttpResponse:
             **project_context(request, project, "timeline"),
             **data,
             "phases": project.phases.all(),
+            "archived_phases": archived_phases,
         },
     )
 
@@ -480,8 +514,8 @@ def project_tasks(request: HttpRequest, pk: int) -> HttpResponse:
     )
     by_column = {column.pk: [] for column in custom_columns}
     tasks = (
-        project.tasks.select_related("assignee", "phase")
-        .prefetch_related("issues", "collaborators")
+        project.tasks.select_related("assignee", "phase", "parent_task")
+        .prefetch_related("issues", "collaborators", "subtasks__assignee")
         .order_by("order", "due_date")
     )
     for task in tasks:
@@ -493,6 +527,15 @@ def project_tasks(request: HttpRequest, pk: int) -> HttpResponse:
     for column in custom_columns:
         column.board_tasks = by_column[column.pk]
     columns = [(status, by_status[status]) for status in TaskStatus.values]
+    archived_tasks = []
+    if can_manage_project(request.user, project):
+        archived_tasks = list(
+            Task.all_objects.filter(
+                project=project, archived_at__isnull=False, parent_task__isnull=True
+            )
+            .select_related("assignee", "phase")
+            .order_by("-archived_at")[:100]
+        )
     return render(
         request,
         "projects/project/tasks.html",
@@ -501,6 +544,7 @@ def project_tasks(request: HttpRequest, pk: int) -> HttpResponse:
             "columns": columns,
             "custom_columns": custom_columns,
             "status_labels": TASK_STATUS_LABELS,
+            "archived_tasks": archived_tasks,
         },
     )
 
@@ -515,18 +559,28 @@ def project_issues(request: HttpRequest, pk: int) -> HttpResponse:
     selected_severity = request.GET.get("severity", "all")
     if selected_severity in severity_order:
         open_issues = [issue for issue in open_issues if issue.severity == selected_severity]
+    page_obj = paginate(request, open_issues, 20)
     resolved = list(
         project.issues.filter(status__in=["resolved", "closed"])
         .select_related("owner", "task")
         .order_by("-resolved_at", "-updated_at")[:10]
     )
+    archived_issues = []
+    if can_manage_project(request.user, project):
+        archived_issues = list(
+            Issue.all_objects.filter(project=project, archived_at__isnull=False)
+            .select_related("owner", "task")
+            .order_by("-archived_at")[:100]
+        )
     return render(
         request,
         "projects/project/issues.html",
         {
             **project_context(request, project, "issues"),
-            "open_issues": open_issues,
+            "open_issues": page_obj,
+            "page_obj": page_obj,
             "resolved_issues": resolved,
+            "archived_issues": archived_issues,
             "issue_counts": issue_counts,
             "selected_severity": selected_severity,
             "risks": project.risks.select_related("owner").all(),
@@ -561,6 +615,7 @@ def project_notes(request: HttpRequest, pk: int) -> HttpResponse:
     selected = request.GET.get("type", "all")
     if selected in {"note", "decision"}:
         entries = [entry for entry in entries if entry["kind"] == selected]
+    page_obj = paginate(request, entries, 20)
     return render(
         request,
         "projects/project/notes.html",
@@ -568,7 +623,8 @@ def project_notes(request: HttpRequest, pk: int) -> HttpResponse:
             **project_context(request, project, "notes"),
             "notes": notes,
             "decisions": decisions,
-            "entries": entries,
+            "entries": page_obj,
+            "page_obj": page_obj,
             "entry_type": selected,
         },
     )
@@ -578,12 +634,14 @@ def project_notes(request: HttpRequest, pk: int) -> HttpResponse:
 def project_activity(request: HttpRequest, pk: int) -> HttpResponse:
     project = _project_or_404(request, pk)
     activities = project.activities.select_related("actor").all()
+    page_obj = paginate(request, activities, 30)
     return render(
         request,
         "projects/project/activity.html",
         {
             **project_context(request, project, "activity"),
-            "activities": activities,
+            "activities": page_obj,
+            "page_obj": page_obj,
         },
     )
 
@@ -599,11 +657,11 @@ def note_list(request: HttpRequest) -> HttpResponse:
     q = (request.GET.get("q") or "").strip()
     if q:
         notes = notes.filter(Q(title__icontains=q) | Q(content__icontains=q) | Q(tags__icontains=q))
-    notes = notes[:50]
+    page_obj = paginate(request, notes, 24)
     return render(
         request,
         "projects/portfolio/notes.html",
-        {"notes": notes, "q": q},
+        {"notes": page_obj, "page_obj": page_obj, "q": q},
     )
 
 
@@ -1038,8 +1096,6 @@ def capture_timeline_baseline(request, pk):
 
 @login_required
 def phase_edit(request, pk, phase_id):
-    from .models import Phase
-
     project = _project_or_404(request, pk)
     phase = get_object_or_404(Phase, project=project, pk=phase_id)
     if not _pm_check(request, project):
@@ -1061,21 +1117,106 @@ def phase_edit(request, pk, phase_id):
 
 @login_required
 def nav_search(request: HttpRequest) -> HttpResponse:
-    """Live suggestions for the workspace navbar search (projects + tasks)."""
+    """Live suggestions for the workspace navbar search."""
     query = request.GET.get("q", "").strip()
-    projects, tasks = [], []
-    if query:
-        scope = visible_projects(request.user)
-        projects = list(
-            scope.filter(Q(name__icontains=query) | Q(code__icontains=query)).order_by("name")[:6]
-        )
-        tasks = list(
-            Task.objects.filter(project__in=scope.values("pk"), title__icontains=query)
-            .select_related("project")
-            .order_by("title")[:5]
-        )
+    results = search_workspace(request.user, query, limit=5)
     return render(
         request,
         "projects/partials/_nav_search_results.html",
-        {"query": query, "projects": projects, "tasks": tasks},
+        {"query": query, **results},
     )
+
+
+@login_required
+def search(request: HttpRequest) -> HttpResponse:
+    query = request.GET.get("q", "").strip()
+    results = search_workspace(request.user, query, limit=50)
+    return render(
+        request,
+        "projects/portfolio/search.html",
+        {"query": query, **results},
+    )
+
+
+@login_required
+@require_POST
+def project_archive(request: HttpRequest, pk: int) -> HttpResponse:
+    project = get_object_or_404(visible_projects(request.user, include_archived=True), pk=pk)
+    if not can_manage_project(request.user, project):
+        raise PermissionDenied
+    if project.archive(request.user):
+        record_activity(
+            project,
+            request.user,
+            ActivityAction.PROJECT_ARCHIVED,
+            f'Project "{project.name}" diarsipkan.',
+        )
+        messages.success(request, "Project diarsipkan. Pulihkan dari daftar arsip.")
+    else:
+        messages.info(request, "Project sudah diarsipkan.")
+    return redirect("projects:project_list")
+
+
+@login_required
+@require_POST
+def project_restore(request: HttpRequest, pk: int) -> HttpResponse:
+    project = get_object_or_404(visible_projects(request.user, include_archived=True), pk=pk)
+    if not can_manage_project(request.user, project):
+        raise PermissionDenied
+    if project.restore():
+        record_activity(
+            project,
+            request.user,
+            ActivityAction.PROJECT_RESTORED,
+            f'Project "{project.name}" dipulihkan dari arsip.',
+        )
+        messages.success(request, "Project dipulihkan.")
+    else:
+        messages.info(request, "Project tidak sedang diarsipkan.")
+    return redirect(f"{reverse('projects:project_list')}?archived=1")
+
+
+@login_required
+@require_POST
+def phase_archive(request: HttpRequest, pk: int, phase_id: int) -> HttpResponse:
+    project = _project_or_404(request, pk)
+    if not _pm_check(request, project):
+        return _tab_redirect(pk, "timeline")
+    phase = get_object_or_404(Phase.all_objects, project=project, pk=phase_id)
+    if phase.archive(request.user):
+        record_activity(
+            project,
+            request.user,
+            ActivityAction.PHASE_ARCHIVED,
+            f'Phase "{phase.name}" diarsipkan bersama task di dalamnya.',
+        )
+        messages.success(request, "Phase diarsipkan.")
+    else:
+        messages.info(request, "Phase sudah diarsipkan.")
+    return _tab_redirect(pk, "timeline")
+
+
+@login_required
+@require_POST
+def phase_restore(request: HttpRequest, pk: int, phase_id: int) -> HttpResponse:
+    project = _project_or_404(request, pk)
+    if not _pm_check(request, project):
+        return _tab_redirect(pk, "timeline")
+    phase = get_object_or_404(Phase.all_objects, project=project, pk=phase_id)
+    if Phase.objects.filter(project=project, sequence=phase.sequence).exists():
+        messages.error(
+            request,
+            "Urutan phase ini sudah dipakai phase aktif lain. Ubah urutan phase tersebut dulu.",
+        )
+        return _tab_redirect(pk, "timeline")
+    if phase.restore():
+        record_activity(
+            project,
+            request.user,
+            ActivityAction.PHASE_RESTORED,
+            f'Phase "{phase.name}" dipulihkan dari arsip.',
+        )
+        messages.success(request, "Phase dipulihkan.")
+    else:
+        messages.info(request, "Phase tidak sedang diarsipkan.")
+    return _tab_redirect(pk, "timeline")

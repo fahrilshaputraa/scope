@@ -44,3 +44,5 @@ Ringkasan compact tampil di atas tab project. Grafik Rencana vs progress menjadi
 Satu task dapat dikerjakan oleh assignee dan satu rekan. Keduanya dapat update, tanpa menggandakan bobot progress. PM dapat menyelesaikan issue tanpa owner. Catatan dan keputusan tampil sebagai feed bertanggal dengan jenis yang eksplisit. Laporan portfolio membandingkan semua project yang dapat diakses pada peta waktu dan tabel. Light/Dark/System tersimpan per browser dan menyesuaikan grafik.
 
 Target kemudahan 90% perlu diuji dengan pengguna, mengikuti `docs/ux-simplification.md`; hasil tes teknis bukan ukuran kemudahan.
+
+Pekerjaan mengikuti hierarki Phase → Activity → Detail Activity (opsional), memakai Task dan parent_task yang sama. Detail memiliki PIC, jadwal, status, dan progress sendiri; project dan phase mengikuti induknya. Progress activity yang memiliki detail dihitung dari bobot detail, sedangkan phase dan project hanya menghitung bobot activity utama. Activity baru boleh selesai setelah seluruh detail selesai; membuka kembali detail juga membuka activity yang sudah selesai. Daftar detail dapat dibuka/tutup pada board dan timeline.

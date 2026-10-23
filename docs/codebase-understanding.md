@@ -28,7 +28,7 @@ Reviewed 7 October 2026, revision `3b97925`. Working tree was clean before this 
 - `apps/identity`: Microsoft Entra OIDC client, Django sessions, user profiles, and global management/PM/member roles.
 - `apps/projects`: projects, phases, milestones, baseline points, snapshots, notes, decisions, activity. Services calculate progress and health; views prepare template contexts and perform writes.
 - `apps/work`: tasks, issues, comments; endpoints for Kanban status and Gantt date updates.
-- Chart.js renders plan versus actual. Frappe Gantt renders tasks. Templates and local vendor assets supply the frontend.
+- Chart.js renders plan versus actual. The custom timeline renders tasks. Templates and local vendor assets supply the frontend.
 - Existing project list supports list/card views, name/code search, and status/manager/team filters. Dashboard shows status counts and portfolio progress rows. Overview includes health, progress chart, phase, milestone, current/next work, issues, activity.
 
 ## Traced flows

@@ -35,11 +35,15 @@ class TaskForm(SanitizeRichTextMixin, forms.ModelForm):
             "blocked_dependency",
         ]
 
-    def __init__(self, *args, project=None, can_plan=True, **kwargs):
+    def __init__(self, *args, project=None, can_plan=True, parent=None, **kwargs):
         self.project = project
         super().__init__(*args, **kwargs)
         if project:
             self.instance.project = project
+        if parent:
+            self.instance.parent_task = parent
+            self.instance.phase_id = parent.phase_id
+            self.initial.update(parent_task=parent.pk, phase=parent.phase_id)
         if not can_plan:
             allowed = {"status", "progress", "blocked_reason", "blocked_dependency"}
             for name in list(self.fields):
@@ -54,10 +58,16 @@ class TaskForm(SanitizeRichTextMixin, forms.ModelForm):
         )
         if not can_plan:
             primary = ["status", "progress", "blocked_reason", "blocked_dependency"]
+        elif parent or self.instance.parent_task_id:
+            primary.append("parent_task")
         if self.project and can_plan:
             self.fields["phase"].queryset = self.project.phases.all()
             self.fields["milestone"].queryset = self.project.milestones.all()
-            self.fields["parent_task"].queryset = self.project.tasks.exclude(pk=self.instance.pk)
+            self.fields["parent_task"].queryset = self.project.tasks.filter(
+                parent_task__isnull=True
+            ).exclude(pk=self.instance.pk)
+            if self.instance.has_details:
+                self.fields["parent_task"].queryset = self.project.tasks.none()
             self.fields["dependencies"].queryset = self.project.tasks.exclude(pk=self.instance.pk)
             from django.contrib.auth.models import User
 
@@ -73,6 +83,21 @@ class TaskForm(SanitizeRichTextMixin, forms.ModelForm):
             )
 
             self.fields["collaborators"].queryset = self.fields["assignee"].queryset
+        if "parent_task" in self.fields:
+            self.fields["parent_task"].help_text = (
+                "Opsional. Pilih untuk menjadikan pekerjaan ini detail activity. "
+                "Phase mengikuti induk."
+            )
+            if parent:
+                self.fields["parent_task"].disabled = True
+        if "phase" in self.fields and (parent or self.instance.parent_task_id):
+            self.fields["phase"].disabled = True
+            self.initial["phase"] = self.instance.parent_task.phase_id
+            self.fields["phase"].help_text = "Mengikuti phase activity induk."
+        if self.instance.has_details:
+            self.fields["progress"].disabled = True
+            self.initial["progress"] = self.instance.display_progress
+            self.fields["progress"].help_text = "Otomatis dihitung dari bobot detail activity."
         style_form(self, primary=primary)
         if "collaborators" in self.fields:
             self.fields[
@@ -137,13 +162,9 @@ class TaskForm(SanitizeRichTextMixin, forms.ModelForm):
 
     def clean_parent_task(self):
         parent = self.cleaned_data.get("parent_task")
-        seen = {self.instance.pk} if self.instance.pk else set()
-        current = parent
-        while current:
-            if current.pk in seen:
-                raise ValidationError("Induk task membentuk siklus.")
-            seen.add(current.pk)
-            current = current.parent_task
+        if parent:
+            # Let model validation own depth/project rules and inherited phase.
+            self.cleaned_data["phase"] = parent.phase
         return parent
 
 

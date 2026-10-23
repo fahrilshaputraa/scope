@@ -1,12 +1,12 @@
-from decimal import Decimal
 from uuid import uuid4
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
+from django.utils import timezone
 
-_DP = Decimal("0.01")
+from .managers import ArchivableModel
 
 
 class ProjectStatus(models.TextChoices):
@@ -54,9 +54,17 @@ class ActivityAction(models.TextChoices):
     ISSUE_CREATED = "issue.created", "Issue created"
     ISSUE_UPDATED = "issue.updated", "Issue updated"
     ISSUE_RESOLVED = "issue.resolved", "Issue resolved"
+    PROJECT_ARCHIVED = "project.archived", "Project archived"
+    PROJECT_RESTORED = "project.restored", "Project restored"
+    PHASE_ARCHIVED = "phase.archived", "Phase archived"
+    PHASE_RESTORED = "phase.restored", "Phase restored"
+    TASK_ARCHIVED = "task.archived", "Task archived"
+    TASK_RESTORED = "task.restored", "Task restored"
+    ISSUE_ARCHIVED = "issue.archived", "Issue archived"
+    ISSUE_RESTORED = "issue.restored", "Issue restored"
 
 
-class Project(models.Model):
+class Project(ArchivableModel):
     """Project utama (PRD §31)."""
 
     name = models.CharField(max_length=200)
@@ -170,7 +178,7 @@ class Project(models.Model):
         return project_health(self)
 
 
-class Phase(models.Model):
+class Phase(ArchivableModel):
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="phases")
     name = models.CharField(max_length=200)
     sequence = models.PositiveIntegerField(default=1)
@@ -182,7 +190,13 @@ class Phase(models.Model):
 
     class Meta:
         ordering = ["sequence", "id"]
-        unique_together = [("project", "sequence")]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["project", "sequence"],
+                condition=models.Q(archived_at__isnull=True),
+                name="unique_active_phase_sequence",
+            )
+        ]
 
     def __str__(self):
         return f"P{self.sequence} — {self.name}"
@@ -195,14 +209,40 @@ class Phase(models.Model):
     @property
     def progress(self):
         """Weighted progress task dalam phase ini (%)."""
-        total_weight = 0
-        weighted = 0
-        for task in self.tasks.filter(parent_task__isnull=True):
-            total_weight += task.weight
-            weighted += task.display_progress * task.weight
-        if total_weight <= 0:
-            return None
-        return (weighted / total_weight).quantize(_DP)
+        from apps.work.progress import weighted_progress
+
+        return weighted_progress(
+            self.tasks.filter(parent_task__isnull=True).prefetch_related("subtasks"), empty=None
+        )
+
+    def archive(self, user=None, at=None):
+        if self.archived_at:
+            return False
+        at = at or timezone.now()
+        super().archive(user=user, at=at)
+        from apps.work.models import Task
+
+        for task in Task.all_objects.filter(
+            phase=self, parent_task__isnull=True, archived_at__isnull=True
+        ):
+            task.archive(user=user, at=at)
+        Project.all_objects.filter(pk=self.project_id, current_phase=self).update(
+            current_phase=None
+        )
+        return True
+
+    def restore(self):
+        if not self.archived_at:
+            return False
+        at = self.archived_at
+        super().restore()
+        from apps.work.models import Task
+
+        for task in Task.all_objects.filter(
+            phase=self, parent_task__isnull=True, archived_at=at
+        ):
+            task.restore()
+        return True
 
 
 class Milestone(models.Model):

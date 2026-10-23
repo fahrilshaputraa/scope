@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+{% load pcc_tags %}
+{% block title %}Manajemen pengguna — Scope{% endblock %}
+{% block content %}
+    <div class="mx-auto max-w-5xl">
+        {% include "identity/_settings_nav.html" with active_settings="users" %}
+        <div class="flex flex-wrap items-end justify-between gap-4">
+            <div>
+                <h1 class="text-2xl font-normal tracking-tight">Manajemen pengguna</h1>
+                <p class="mt-1 text-sm text-muted-foreground">
+                    Kelola peran, status akun, dan kata sandi anggota workspace.
+                </p>
+            </div>
+            <a href="{% url 'identity:user_create' %}" class="pcc-button">
+                <svg class="size-4"
+                     viewBox="0 0 24 24"
+                     fill="none"
+                     stroke="currentColor"
+                     stroke-width="2"
+                     stroke-linecap="round"
+                     aria-hidden="true">
+                    <path d="M12 5v14M5 12h14" />
+                </svg>
+                Buat akun lokal
+            </a>
+        </div>
+        <div class="mt-6 flex w-max items-center gap-1 rounded-lg border bg-card p-1 shadow-sm">
+            <a href="{% query_replace status="" page=None %}"
+               class="rounded-md px-3 py-1.5 text-sm font-normal {% if not filters.status %}bg-primary text-primary-foreground shadow-sm{% else %}text-muted-foreground hover:text-foreground{% endif %}">
+                Semua <span class="tabular-nums">({{ total_users }})</span>
+            </a>
+            <a href="{% query_replace status="active" page=None %}"
+               class="rounded-md px-3 py-1.5 text-sm font-normal {% if filters.status == 'active' %}bg-primary text-primary-foreground shadow-sm{% else %}text-muted-foreground hover:text-foreground{% endif %}">
+                Aktif <span class="tabular-nums">({{ active_users }})</span>
+            </a>
+            <a href="{% query_replace status="inactive" page=None %}"
+               class="rounded-md px-3 py-1.5 text-sm font-normal {% if filters.status == 'inactive' %}bg-primary text-primary-foreground shadow-sm{% else %}text-muted-foreground hover:text-foreground{% endif %}">
+                Nonaktif <span class="tabular-nums">({{ inactive_users }})</span>
+            </a>
+        </div>
+        <form method="get" class="pcc-panel mt-4 p-4" role="search">
+            <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                <div class="sm:col-span-2">
+                    <label for="q" class="text-xs font-normal text-muted-foreground">Cari</label>
+                    <input id="q"
+                           name="q"
+                           type="search"
+                           value="{{ filters.q }}"
+                           maxlength="200"
+                           placeholder="Nama, nama pengguna, atau surel"
+                           class="mt-1 flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
+                </div>
+                <div>
+                    <label for="role" class="text-xs font-normal text-muted-foreground">Peran</label>
+                    <select id="role"
+                            name="role"
+                            class="mt-1 flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm">
+                        <option value="">Semua peran</option>
+                        {% for value, label in role_choices %}
+                            <option value="{{ value }}" {% if filters.role == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label for="status" class="text-xs font-normal text-muted-foreground">Status</label>
+                    <select id="status"
+                            name="status"
+                            class="mt-1 flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm">
+                        <option value="">Semua status</option>
+                        <option value="active" {% if filters.status == "active" %}selected{% endif %}>Aktif</option>
+                        <option value="inactive" {% if filters.status == "inactive" %}selected{% endif %}>Nonaktif</option>
+                    </select>
+                </div>
+                <div class="flex items-end gap-2">
+                    <button type="submit" class="pcc-button">
+                        <svg class="size-4"
+                             viewBox="0 0 24 24"
+                             fill="none"
+                             stroke="currentColor"
+                             stroke-width="1.75"
+                             stroke-linecap="round"
+                             stroke-linejoin="round"
+                             aria-hidden="true">
+                            <path d="M3 5h18l-7 8v6l-4 2v-8z" />
+                        </svg>
+                        Filter
+                    </button>
+                    {% if filters.q or filters.role or filters.status %}
+                        <a href="{% url 'identity:user_list' %}"
+                           class="inline-flex h-9 items-center gap-1.5 rounded-md border bg-background px-3 text-sm font-normal shadow-xs hover:bg-accent">
+                            <svg class="size-3.5"
+                                 viewBox="0 0 24 24"
+                                 fill="none"
+                                 stroke="currentColor"
+                                 stroke-width="1.75"
+                                 stroke-linecap="round"
+                                 stroke-linejoin="round"
+                                 aria-hidden="true">
+                                <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
+                                <path d="M3 3v5h5" />
+                            </svg>
+                            Reset
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        </form>
+        <div class="mt-4 overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm">
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="border-b bg-muted/40">
+                            <th class="h-10 px-6 text-left font-normal text-muted-foreground">Pengguna</th>
+                            <th class="h-10 px-4 text-left font-normal text-muted-foreground">Peran</th>
+                            <th class="h-10 px-4 text-left font-normal text-muted-foreground">Status</th>
+                            <th class="h-10 px-6 text-right font-normal text-muted-foreground">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for account in users %}
+                            <tr class="border-b transition-colors hover:bg-muted/40">
+                                <td class="px-6 py-3">
+                                    <div class="flex items-center gap-3">
+                                        <span class="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-normal uppercase text-foreground"
+                                              aria-hidden="true">{{ account|initials }}</span>
+                                        <div class="min-w-0">
+                                            <p class="truncate font-normal">
+                                                {{ account|person_name }}
+                                                {% if account == request.user %}
+                                                    <span class="ml-1 rounded-md bg-muted px-1.5 py-0.5 text-xs font-normal text-muted-foreground">Anda</span>
+                                                {% endif %}
+                                            </p>
+                                            <p class="truncate text-xs text-muted-foreground">
+                                                @{{ account.username }}
+                                                {% if account.email %}· {{ account.email }}{% endif %}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-4 py-3 whitespace-nowrap">
+                                    <span class="rounded-md bg-muted px-1.5 py-0.5 text-xs font-normal text-muted-foreground">{{ account.pcc_profile.get_role_display|default:"Project Member" }}</span>
+                                    {% if account.is_staff %}
+                                        <span class="mt-1 block w-max rounded-md border border-border px-1.5 py-0.5 text-xs text-muted-foreground">Administrator</span>
+                                    {% endif %}
+                                </td>
+                                <td class="px-4 py-3 whitespace-nowrap">
+                                    {% if account.is_active %}
+                                        <span class="pcc-status pcc-status-success">Aktif</span>
+                                    {% else %}
+                                        <span class="pcc-status pcc-status-neutral">Nonaktif</span>
+                                    {% endif %}
+                                    <span class="mt-1 block text-xs text-muted-foreground"
+                                          title="Terakhir masuk">
+                                        {{ account.last_login|date:"d M Y"|default:"Belum pernah masuk" }}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-3 whitespace-nowrap">
+                                    <div class="flex items-center justify-end gap-2">
+                                        <a href="{% url 'identity:user_edit' account.pk %}"
+                                           class="subtle-action">Edit</a>
+                                        <a href="{% url 'identity:user_password' account.pk %}"
+                                           class="subtle-action"
+                                           title="Reset kata sandi">Reset sandi</a>
+                                        {% if account != request.user %}
+                                            <form method="post"
+                                                  action="{% url 'identity:user_toggle_active' account.pk %}"
+                                                  class="inline"
+                                                  {% if account.is_active %}data-confirm="Nonaktifkan akun {{ account.username }}? Pengguna akan langsung keluar dari sesi aktifnya."{% else %}data-confirm="Aktifkan kembali akun {{ account.username }}?"{% endif %}>
+                                                {% csrf_token %}
+                                                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                                <button type="submit" class="subtle-action">
+                                                    {% if account.is_active %}Nonaktifkan{% else %}Aktifkan{% endif %}
+                                                </button>
+                                            </form>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="5"
+                                    class="px-6 py-12 text-center text-sm text-muted-foreground">
+                                    Tidak ada pengguna yang cocok dengan filter.
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% include "partials/_pagination.html" %}
+    </div>
+{% endblock %}

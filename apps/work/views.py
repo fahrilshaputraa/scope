@@ -22,6 +22,7 @@ from apps.identity.permissions import (
     visible_projects,
 )
 from apps.projects.models import ActivityAction, Project
+from apps.projects.pagination import paginate
 from apps.projects.services import record_activity
 
 from .forms import AttachmentForm, IssueForm, TaskCommentForm, TaskForm
@@ -37,7 +38,9 @@ from .models import (
 
 def _task_or_404(request, pk):
     return get_object_or_404(
-        Task.objects.select_related("project", "assignee", "phase", "milestone", "parent_task"),
+        Task.objects.select_related(
+            "project", "assignee", "phase", "milestone", "parent_task"
+        ).prefetch_related("subtasks"),
         pk=pk,
         project__in=visible_projects(request.user),
     )
@@ -101,12 +104,13 @@ def issue_list(request: HttpRequest) -> HttpResponse:
         qs = qs.filter(status__in=OPEN_ISSUE_STATUSES)
     elif status == "resolved":
         qs = qs.filter(status__in=[IssueStatus.RESOLVED, IssueStatus.CLOSED])
-    issues = qs[:100]
+    page_obj = paginate(request, qs, 25)
     return render(
         request,
         "work/issue_list.html",
         {
-            "issues": issues,
+            "issues": page_obj,
+            "page_obj": page_obj,
             "filter": status,
             "can_report": can_report_issue(request.user),
             "open_count": Issue.objects.filter(
@@ -157,7 +161,11 @@ def issue_update(request: HttpRequest, pk: int) -> HttpResponse:
     if not can_manage_project(request.user, issue.project):
         if request.method != "GET":
             raise PermissionDenied
-        return render(request, "work/issue_detail.html", {"issue": issue})
+        return render(
+            request,
+            "work/issue_detail.html",
+            {"issue": issue, "can_manage": False},
+        )
     form = IssueForm(request.POST or None, instance=issue, project=issue.project)
     if request.method == "POST" and form.is_valid():
         issue = form.save()
@@ -190,6 +198,52 @@ def issue_update(request: HttpRequest, pk: int) -> HttpResponse:
     )
 
 
+@login_required
+@require_http_methods(["POST"])
+def issue_archive(request, pk):
+    issue = get_object_or_404(
+        Issue.all_objects.select_related("project"),
+        pk=pk,
+        project__in=visible_projects(request.user, include_archived=True),
+    )
+    if not can_manage_project(request.user, issue.project):
+        raise PermissionDenied
+    if issue.archive(request.user):
+        record_activity(
+            issue.project,
+            request.user,
+            ActivityAction.ISSUE_ARCHIVED,
+            f'Issue "{issue.title}" diarsipkan.',
+        )
+        messages.success(request, "Issue diarsipkan.")
+    else:
+        messages.info(request, "Issue sudah diarsipkan.")
+    return redirect("projects:project_issues", pk=issue.project_id)
+
+
+@login_required
+@require_http_methods(["POST"])
+def issue_restore(request, pk):
+    issue = get_object_or_404(
+        Issue.all_objects.select_related("project"),
+        pk=pk,
+        project__in=visible_projects(request.user, include_archived=True),
+    )
+    if not can_manage_project(request.user, issue.project):
+        raise PermissionDenied
+    if issue.restore():
+        record_activity(
+            issue.project,
+            request.user,
+            ActivityAction.ISSUE_RESTORED,
+            f'Issue "{issue.title}" dipulihkan dari arsip.',
+        )
+        messages.success(request, "Issue dipulihkan.")
+    else:
+        messages.info(request, "Issue tidak sedang diarsipkan.")
+    return redirect("projects:project_issues", pk=issue.project_id)
+
+
 # =================================================================== TASKS ===
 
 
@@ -203,7 +257,13 @@ def task_create(request: HttpRequest) -> HttpResponse:
     if not can_manage_project(request.user, project):
         messages.error(request, "Hanya Project Manager yang bisa membuat task.")
         return redirect("projects:project_tasks", pk=project.pk)
-    form = TaskForm(request.POST or None, project=project)
+    parent_id = request.GET.get("parent_task")
+    parent = None
+    if parent_id:
+        parent = get_object_or_404(
+            project.tasks.select_related("phase"), pk=parent_id, parent_task__isnull=True
+        )
+    form = TaskForm(request.POST or None, project=project, parent=parent)
     if request.method == "POST" and form.is_valid():
         task = form.save(commit=False)
         task.project = project
@@ -216,11 +276,18 @@ def task_create(request: HttpRequest) -> HttpResponse:
             f'Task "{task.title}" dibuat. Status: {task.get_status_display()}.',
         )
         messages.success(request, f"Task {task.title} dibuat.")
+        if task.parent_task_id:
+            return redirect("work:task_detail", pk=task.parent_task_id)
         return redirect("projects:project_tasks", pk=task.project_id)
     return render(
         request,
         "work/task_form.html",
-        {"form": form, "project": project, "title": "Tambah task"},
+        {
+            "form": form,
+            "project": project,
+            "parent": parent,
+            "title": "Tambah detail activity" if parent else "Tambah activity",
+        },
     )
 
 
@@ -229,11 +296,17 @@ def task_detail(request: HttpRequest, pk: int) -> HttpResponse:
     task = get_object_or_404(
         Task.objects.select_related(
             "project", "assignee", "phase", "milestone", "parent_task"
-        ).prefetch_related("comments__author", "issues"),
+        ).prefetch_related(
+            "comments__author", "issues", "subtasks__assignee", "subtasks__collaborators"
+        ),
         pk=pk,
         project__in=visible_projects(request.user),
     )
     comment_form = TaskCommentForm()
+    comments_page = paginate(
+        request, task.comments.select_related("author").order_by("created_at"), 20
+    )
+    details = list(task.subtasks.all())
     if request.method == "POST":
         if is_management(request.user) and not request.user.is_staff:
             raise PermissionDenied
@@ -256,9 +329,12 @@ def task_detail(request: HttpRequest, pk: int) -> HttpResponse:
         "work/task_detail.html",
         {
             "task": task,
+            "details": details,
             "can_edit": can_edit_task(request.user, task),
             "can_manage": can_manage_project(request.user, task.project),
             "comment_form": comment_form,
+            "comments": comments_page,
+            "comments_page": comments_page,
             "can_comment": not is_management(request.user) or request.user.is_staff,
             "attachment_form": AttachmentForm(),
         },
@@ -316,6 +392,57 @@ def task_update(request: HttpRequest, pk: int) -> HttpResponse:
             "title": f"Update pekerjaan — {task.title}" if work_update else f"Edit — {task.title}",
         },
     )
+
+
+@login_required
+@require_http_methods(["POST"])
+def task_archive(request, pk):
+    task = get_object_or_404(
+        Task.all_objects.select_related("project"),
+        pk=pk,
+        project__in=visible_projects(request.user, include_archived=True),
+    )
+    if not can_manage_project(request.user, task.project):
+        raise PermissionDenied
+    if task.archive(request.user):
+        record_activity(
+            task.project,
+            request.user,
+            ActivityAction.TASK_ARCHIVED,
+            f'Task "{task.title}" diarsipkan.',
+        )
+        messages.success(request, "Task diarsipkan.")
+    else:
+        messages.info(request, "Task sudah diarsipkan.")
+    return redirect("projects:project_tasks", pk=task.project_id)
+
+
+@login_required
+@require_http_methods(["POST"])
+def task_restore(request, pk):
+    task = get_object_or_404(
+        Task.all_objects.select_related("project"),
+        pk=pk,
+        project__in=visible_projects(request.user, include_archived=True),
+    )
+    if not can_manage_project(request.user, task.project):
+        raise PermissionDenied
+    if task.parent_task_id and Task.all_objects.filter(
+        pk=task.parent_task_id, archived_at__isnull=False
+    ).exists():
+        messages.error(request, "Pulihkan activity induk terlebih dahulu.")
+        return redirect("projects:project_tasks", pk=task.project_id)
+    if task.restore():
+        record_activity(
+            task.project,
+            request.user,
+            ActivityAction.TASK_RESTORED,
+            f'Task "{task.title}" dipulihkan dari arsip.',
+        )
+        messages.success(request, "Task dipulihkan.")
+    else:
+        messages.info(request, "Task tidak sedang diarsipkan.")
+    return redirect("work:task_detail", pk=task.pk)
 
 
 def _params(request):
@@ -376,6 +503,11 @@ def task_progress(request, pk):
     if not can_edit_task(request.user, task):
         return JsonResponse(
             {"ok": False, "error": "Anda tidak dapat mengubah progress task ini."}, status=403
+        )
+    if task.has_details:
+        return JsonResponse(
+            {"ok": False, "error": "Progress activity dihitung otomatis dari detail activity."},
+            status=400,
         )
     try:
         value = Decimal(_params(request).get("progress", ""))

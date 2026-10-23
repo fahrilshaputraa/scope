@@ -56,17 +56,20 @@ def can_report_issue(user) -> bool:
     return user.is_authenticated and (user.is_staff or not is_management(user))
 
 
-def visible_projects(user):
+def visible_projects(user, include_archived=False):
     """The single read scope for pages, exports, comments, and downloads."""
     from apps.projects.models import Project
 
-    qs = Project.objects.all()
+    qs = Project.all_objects.all() if include_archived else Project.objects.all()
     if not user.is_authenticated:
         return qs.none()
     if user.is_staff or is_management(user):
         return qs
     return qs.filter(
-        Q(manager=user) | Q(members=user) | Q(tasks__assignee=user) | Q(tasks__collaborators=user)
+        Q(manager=user)
+        | Q(members=user)
+        | Q(tasks__assignee=user, tasks__archived_at__isnull=True)
+        | Q(tasks__collaborators=user, tasks__archived_at__isnull=True)
     ).distinct()
 
 

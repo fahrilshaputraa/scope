@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% load pcc_tags %}
+{% block title %}Pencarian — Scope{% endblock %}
+{% block content %}
+    <div>
+        <h1 class="text-2xl font-normal tracking-tight">Pencarian</h1>
+        <p class="mt-1 text-sm text-muted-foreground">Cari project, task, issue, catatan, milestone, dan keputusan yang dapat Anda akses.</p>
+    </div>
+    <form method="get" action="{% url 'projects:search' %}" class="mt-6 max-w-2xl">
+        <div class="flex gap-2">
+            <input name="q"
+                   value="{{ query }}"
+                   autofocus
+                   placeholder="Kata kunci…"
+                   class="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
+            <button type="submit" class="pcc-button">
+                <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10" cy="10" r="6"/><path d="m15 15 5 5"/></svg>Cari
+            </button>
+        </div>
+    </form>
+    {% if query %}
+        <p class="mt-6 text-sm text-muted-foreground">{{ total }} hasil untuk &ldquo;{{ query }}&rdquo;.</p>
+        {% if not total %}
+            <div class="mt-4 rounded-xl border border-dashed bg-card px-6 py-14 text-center text-sm text-muted-foreground">
+                Tidak ada hasil. Coba kata kunci lain atau periksa ejaan.
+            </div>
+        {% endif %}
+        <div class="mt-4 space-y-4">
+            {% if projects %}
+                <section class="pcc-panel">
+                    <div class="pcc-section flex items-center justify-between border-b">
+                        <h2 class="text-base font-normal">Project</h2>
+                        <span class="text-sm tabular-nums text-muted-foreground">{{ projects|length }}</span>
+                    </div>
+                    <div class="divide-y">
+                        {% for p in projects %}
+                            <a class="block pcc-section hover:bg-muted/40" href="{% url 'projects:project_detail' p.pk %}">
+                                <div class="flex flex-wrap items-baseline gap-2">
+                                    <span class="font-normal">{{ p.name }}</span>
+                                    <span class="rounded-md bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">{{ p.code }}</span>
+                                </div>
+                                {% if p.description %}<p class="mt-1 text-sm text-muted-foreground">{{ p.description|plain|truncatechars:180 }}</p>{% endif %}
+                            </a>
+                        {% endfor %}
+                    </div>
+                </section>
+            {% endif %}
+            {% if tasks %}
+                <section class="pcc-panel">
+                    <div class="pcc-section flex items-center justify-between border-b">
+                        <h2 class="text-base font-normal">Task</h2>
+                        <span class="text-sm tabular-nums text-muted-foreground">{{ tasks|length }}</span>
+                    </div>
+                    <div class="divide-y">
+                        {% for t in tasks %}
+                            <a class="block pcc-section hover:bg-muted/40" href="{% url 'work:task_detail' t.pk %}">
+                                <div class="flex flex-wrap items-baseline gap-2">
+                                    <span class="font-normal">{{ t.title }}</span>
+                                    <span class="rounded-md bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">{{ t.project.code }}</span>
+                                    <span class="{{ t.status|status_style }}">{{ t.status|status_label }}</span>
+                                </div>
+                                {% if t.description %}<p class="mt-1 text-sm text-muted-foreground">{{ t.description|plain|truncatechars:180 }}</p>{% endif %}
+                            </a>
+                        {% endfor %}
+                    </div>
+                </section>
+            {% endif %}
+            {% if issues %}
+                <section class="pcc-panel">
+                    <div class="pcc-section flex items-center justify-between border-b">
+                        <h2 class="text-base font-normal">Issue</h2>
+                        <span class="text-sm tabular-nums text-muted-foreground">{{ issues|length }}</span>
+                    </div>
+                    <div class="divide-y">
+                        {% for i in issues %}
+                            <a class="block pcc-section hover:bg-muted/40" href="{% url 'work:issue_update' i.pk %}">
+                                <div class="flex flex-wrap items-baseline gap-2">
+                                    <span class="font-normal">{{ i.title }}</span>
+                                    <span class="rounded-md bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">{{ i.project.code }}</span>
+                                    <span class="{{ i.status|status_style }}">{{ i.status|status_label }}</span>
+                                </div>
+                                {% if i.description %}<p class="mt-1 text-sm text-muted-foreground">{{ i.description|plain|truncatechars:180 }}</p>{% endif %}
+                            </a>
+                        {% endfor %}
+                    </div>
+                </section>
+            {% endif %}
+            {% if notes %}
+                <section class="pcc-panel">
+                    <div class="pcc-section flex items-center justify-between border-b">
+                        <h2 class="text-base font-normal">Catatan</h2>
+                        <span class="text-sm tabular-nums text-muted-foreground">{{ notes|length }}</span>
+                    </div>
+                    <div class="divide-y">
+                        {% for n in notes %}
+                            <a class="block pcc-section hover:bg-muted/40" href="{% url 'projects:project_notes' n.project.pk %}">
+                                <div class="flex flex-wrap items-baseline gap-2">
+                                    <span class="font-normal">{{ n.title }}</span>
+                                    <span class="rounded-md bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">{{ n.project.code }}</span>
+                                </div>
+                                <p class="mt-1 text-sm text-muted-foreground">{{ n.content|plain|truncatechars:180 }}</p>
+                            </a>
+                        {% endfor %}
+                    </div>
+                </section>
+            {% endif %}
+            {% if milestones %}
+                <section class="pcc-panel">
+                    <div class="pcc-section flex items-center justify-between border-b">
+                        <h2 class="text-base font-normal">Milestone</h2>
+                        <span class="text-sm tabular-nums text-muted-foreground">{{ milestones|length }}</span>
+                    </div>
+                    <div class="divide-y">
+                        {% for m in milestones %}
+                            <a class="block pcc-section hover:bg-muted/40" href="{% url 'projects:project_milestones' m.project.pk %}">
+                                <div class="flex flex-wrap items-baseline gap-2">
+                                    <span class="font-normal">{{ m.name }}</span>
+                                    <span class="rounded-md bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">{{ m.project.code }}</span>
+                                    <span class="text-xs tabular-nums text-muted-foreground">{{ m.date|date:"d M Y" }}</span>
+                                </div>
+                                {% if m.description %}<p class="mt-1 text-sm text-muted-foreground">{{ m.description|plain|truncatechars:180 }}</p>{% endif %}
+                            </a>
+                        {% endfor %}
+                    </div>
+                </section>
+            {% endif %}
+            {% if decisions %}
+                <section class="pcc-panel">
+                    <div class="pcc-section flex items-center justify-between border-b">
+                        <h2 class="text-base font-normal">Keputusan</h2>
+                        <span class="text-sm tabular-nums text-muted-foreground">{{ decisions|length }}</span>
+                    </div>
+                    <div class="divide-y">
+                        {% for d in decisions %}
+                            <a class="block pcc-section hover:bg-muted/40" href="{% url 'projects:project_notes' d.project.pk %}?type=decision">
+                                <div class="flex flex-wrap items-baseline gap-2">
+                                    <span class="font-normal">{{ d.title }}</span>
+                                    <span class="rounded-md bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">{{ d.project.code }}</span>
+                                </div>
+                                <p class="mt-1 text-sm text-muted-foreground">{{ d.decision|plain|truncatechars:180 }}</p>
+                            </a>
+                        {% endfor %}
+                    </div>
+                </section>
+            {% endif %}
+        </div>
+    {% else %}
+        <div class="mt-4 rounded-xl border border-dashed bg-card px-6 py-14 text-center text-sm text-muted-foreground">
+            Masukkan kata kunci untuk mulai mencari.
+        </div>
+    {% endif %}
+{% endblock %}

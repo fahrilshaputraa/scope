@@ -1,1 +1,45 @@
-{% if query %}<div class="search-suggest-panel">{% if projects %}<p class="search-suggest-label">Project</p>{% for p in projects %}<a class="search-suggest-item" href="{% url 'projects:project_detail' p.pk %}"><span class="search-suggest-title">{{ p.name }}</span><small>{{ p.code }}</small></a>{% endfor %}{% endif %}{% if tasks %}<p class="search-suggest-label">Task</p>{% for t in tasks %}<a class="search-suggest-item" href="{% url 'work:task_detail' t.pk %}"><span class="search-suggest-title">{{ t.title }}</span><small>{{ t.project.code }}</small></a>{% endfor %}{% endif %}{% if not projects and not tasks %}<p class="search-suggest-empty">Tidak ada hasil untuk &ldquo;{{ query }}&rdquo;.</p>{% endif %}</div>{% endif %}
+{% if query %}
+    <div class="search-suggest-panel">
+        {% if projects %}
+            <p class="search-suggest-label">Project</p>
+            {% for p in projects %}
+                <a class="search-suggest-item" href="{% url 'projects:project_detail' p.pk %}"><span class="search-suggest-title">{{ p.name }}</span><small>{{ p.code }}</small></a>
+            {% endfor %}
+        {% endif %}
+        {% if tasks %}
+            <p class="search-suggest-label">Task</p>
+            {% for t in tasks %}
+                <a class="search-suggest-item" href="{% url 'work:task_detail' t.pk %}"><span class="search-suggest-title">{{ t.title }}</span><small>{{ t.project.code }}</small></a>
+            {% endfor %}
+        {% endif %}
+        {% if issues %}
+            <p class="search-suggest-label">Issue</p>
+            {% for i in issues %}
+                <a class="search-suggest-item" href="{% url 'work:issue_update' i.pk %}"><span class="search-suggest-title">{{ i.title }}</span><small>{{ i.project.code }}</small></a>
+            {% endfor %}
+        {% endif %}
+        {% if notes %}
+            <p class="search-suggest-label">Catatan</p>
+            {% for n in notes %}
+                <a class="search-suggest-item" href="{% url 'projects:project_notes' n.project.pk %}"><span class="search-suggest-title">{{ n.title }}</span><small>{{ n.project.code }}</small></a>
+            {% endfor %}
+        {% endif %}
+        {% if milestones %}
+            <p class="search-suggest-label">Milestone</p>
+            {% for m in milestones %}
+                <a class="search-suggest-item" href="{% url 'projects:project_milestones' m.project.pk %}"><span class="search-suggest-title">{{ m.name }}</span><small>{{ m.project.code }} · {{ m.date|date:"d M Y" }}</small></a>
+            {% endfor %}
+        {% endif %}
+        {% if decisions %}
+            <p class="search-suggest-label">Keputusan</p>
+            {% for d in decisions %}
+                <a class="search-suggest-item" href="{% url 'projects:project_notes' d.project.pk %}?type=decision"><span class="search-suggest-title">{{ d.title }}</span><small>{{ d.project.code }}</small></a>
+            {% endfor %}
+        {% endif %}
+        {% if total %}
+            <a class="search-suggest-item search-suggest-all" href="{% url 'projects:search' %}?q={{ query|urlencode }}">Lihat semua hasil ({{ total }})</a>
+        {% else %}
+            <p class="search-suggest-empty">Tidak ada hasil untuk &ldquo;{{ query }}&rdquo;.</p>
+        {% endif %}
+    </div>
+{% endif %}

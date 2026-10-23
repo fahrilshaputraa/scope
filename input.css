@@ -412,6 +412,9 @@ html[data-rail="expanded"] .rail-toggle [data-rail-icon="collapse"] { display: b
 .project-add-options a { display: flex; align-items: center; gap: 10px; padding: 9px 12px; font-size: 13px; border-radius: var(--radius-sm); color: var(--ink); }
 .project-add-options a > svg { flex: 0 0 16px; width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 .project-add-options a:hover { background: var(--sunken); }
+.project-add-options .project-menu-danger { display: flex; align-items: center; gap: 10px; width: 100%; padding: 9px 12px; border: 0; border-radius: var(--radius-sm); background: none; color: var(--danger); font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
+.project-add-options .project-menu-danger > svg { flex: 0 0 16px; width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.project-add-options .project-menu-danger:hover { background: var(--sunken); }
 
 /* ------------------------------------------------------------------ Dashboard / portfolio */
 .dashboard-page-title, .workspace-content h1 { font-size: clamp(26px, 3vw, var(--text-heading-lg)); line-height: 1.1; letter-spacing: -0.03em; font-weight: 600; }
@@ -471,6 +474,18 @@ html[data-rail="expanded"] .rail-toggle [data-rail-icon="collapse"] { display: b
 .task-timeline-compact { min-width: 720px; --task-label-width: 190px; }
 .task-timeline-row { display: grid; grid-template-columns: var(--task-label-width) minmax(0, 1fr); align-items: stretch; border-bottom: 1px solid var(--line); }
 .timeline-task-label { position: sticky; left: 0; z-index: 2; background: var(--card); padding: 11px 16px; border-right: 1px solid var(--line); min-width: 0; font-size: 13px; }
+.task-timeline-row[hidden] { display: none; }
+.timeline-task-label.timeline-detail-label { padding-inline-start: 2rem; }
+.timeline-detail-toggle {
+  display: block;
+  margin-block-end: .35rem;
+  color: var(--muted);
+  font-size: .75rem;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: .2em;
+}
+
 .timeline-task-label > a { display: block; overflow-wrap: anywhere; text-decoration: underline; text-underline-offset: 3px; color: var(--brand); }
 .timeline-task-label p { margin-top: 4px; font-size: 11px; color: var(--muted); line-height: 1.5; }
 .timeline-task-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 8px; font-size: 11px; }
@@ -490,25 +505,6 @@ html[data-rail="expanded"] .rail-toggle [data-rail-icon="collapse"] { display: b
 .task-plan-fill { background: color-mix(in srgb, var(--timeline-plan) 42%, transparent); }
 .task-actual-fill { background: var(--timeline-actual); }
 .timeline-now { position: absolute; top: 0; bottom: 0; width: 1px; border-left: 1px dashed var(--ink); pointer-events: none; }
-
-/* Gantt (frappe) tokens */
-.gantt-container {
-    --g-arrow-color: var(--muted); --g-bar-color: var(--sunken); --g-bar-border: var(--line-strong);
-    --g-progress-color: var(--brand); --g-expected-progress: var(--muted);
-    --g-text-dark: var(--ink); --g-text-muted: var(--muted); --g-text-light: var(--surface);
-    --g-border-color: var(--line); --g-header-background: var(--surface);
-    --g-today-highlight: var(--brand); --g-actions-background: var(--sunken);
-    --g-row-color: var(--surface); --g-row-border-color: var(--line);
-    --g-weekend-highlight-color: var(--sunken); --g-weekend-label-color: var(--sunken);
-    --g-popup-actions: var(--sunken); --g-tick-color: var(--sunken); --g-tick-color-thick: var(--line-strong);
-    border-radius: var(--radius-cards);
-}
-.gantt-container .popup-wrapper { box-shadow: var(--shadow-pop); border: 1px solid var(--line); border-radius: var(--radius-lg); }
-.gantt-container .popup-wrapper .title, .gantt-container .upper-text, .gantt-container .side-header * { font-weight: 500; }
-.gantt-container .side-header *, .gantt-container .current-date-highlight { border-radius: var(--radius-sm); }
-body .gantt-container, body .gantt text, body .gantt .bar-label { font-family: var(--font-ui); }
-.task-blocked .bar { fill: var(--sunken) !important; stroke: var(--line-strong); stroke-dasharray: 4 3; }
-.task-blocked .bar-progress { fill: var(--muted) !important; }
 
 /* ------------------------------------------------------------------ Kanban */
 #kanban { position: relative; }
@@ -647,7 +643,6 @@ body:has(.project-action-drawer[open]) { overflow: hidden; }
 [data-fullscreen-panel]::backdrop { background: var(--surface); }
 .visualization-fullscreen .visualization-header { position: sticky; top: 0; z-index: 3; background: var(--surface); border-bottom: 1px solid var(--line); padding: 20px 24px; }
 .visualization-fullscreen [data-chart-frame] { height: calc(100dvh - 220px); min-height: 300px; }
-.visualization-fullscreen .gantt-container { height: calc(100dvh - 180px); min-height: 320px; border-radius: 0; }
 .visualization-fullscreen .portfolio-chart { height: calc(100dvh - 340px); min-height: 240px; margin-inline: 24px; }
 .visualization-fullscreen .portfolio-chart-labels { margin-inline: 24px; }
 .visualization-fullscreen .portfolio-value, .visualization-fullscreen .portfolio-legend,
@@ -771,6 +766,8 @@ html[data-theme="dark"] .login-shell img { filter: brightness(0) invert(1); }
 .search-suggest-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .search-suggest-item small { flex-shrink: 0; color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
 .search-suggest-empty { padding: 12px 10px; font-size: 13px; color: var(--muted); }
+.search-suggest-all { margin-top: 4px; border-top: 1px solid var(--line); color: var(--brand); }
+.project-add-options form { margin: 0; }
 
 /* Account dropdown (profile + theme + logout) */
 .account-menu-options { width: 268px; padding: 8px; }
@@ -876,7 +873,6 @@ html[data-theme="dark"] .login-shell img { filter: brightness(0) invert(1); }
     .presentation-navigation select { max-width: 175px; padding: 10px 6px; }
     .slide-issue h2 { font-size: 20px; }
     .visualization-fullscreen .visualization-header { padding: 16px; }
-    .visualization-fullscreen .gantt-container,
     .visualization-fullscreen [data-chart-frame] { height: calc(100dvh - 260px); }
     .presentation-period-fields { grid-template-columns: 1fr; }
     .presentation-drawer-actions { padding: 14px 18px; }

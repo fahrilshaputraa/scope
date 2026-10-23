@@ -7,6 +7,7 @@
                                 <p class="text-sm font-normal leading-snug">{{ task.title }}</p>
                                 <span class="shrink-0 {{ task.priority|status_style }}">{{ task.get_priority_display }}</span>
                             </div>
+                            {% if task.parent_task_id %}<p class="mt-2 text-xs text-muted-foreground">Detail dari {{ task.parent_task.title }}</p>{% elif task.phase_id %}<p class="mt-2 text-xs text-muted-foreground">{{ task.phase.name }}</p>{% endif %}
                             {% if task.label_list %}
                                 <div class="mt-2 flex flex-wrap gap-1">
                                     {% for label in task.label_list %}
@@ -41,6 +42,7 @@
                                 </div>
                             {% endif %}
                         </a>
+                        {% if task.has_details %}<div class="px-3 pb-3">{% include 'work/_activity_details.html' with details=task.subtasks.all expand_details=False %}</div>{% endif %}
                         {% if task.can_edit %}
                             <label class="sr-only" for="status-{{ task.pk }}">Status {{ task.title }}</label>
                             <select id="status-{{ task.pk }}"

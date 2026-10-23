@@ -8,6 +8,22 @@ from apps.richtext import render_html, strip_html
 register = template.Library()
 
 
+@register.simple_tag(takes_context=True)
+def query_replace(context, **kwargs):
+    """Build a querystring from the current request, replacing given keys."""
+    request = context.get("request")
+    if request is None:
+        return "?"
+    params = request.GET.copy()
+    for key, value in kwargs.items():
+        if value is None or value == "":
+            params.pop(key, None)
+        else:
+            params[key] = value
+    encoded = params.urlencode()
+    return f"?{encoded}" if encoded else "?"
+
+
 @register.filter
 def rich(value):
     """HTML ter-sanitasi (aman) untuk catatan & deskripsi kaya."""

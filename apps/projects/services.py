@@ -6,6 +6,8 @@ from decimal import Decimal
 from django.conf import settings
 from django.utils import timezone
 
+from apps.work.progress import weighted_progress
+
 from .models import ActivityAction, ActivityEvent, ProgressSnapshot
 
 _DP = Decimal("0.01")
@@ -41,21 +43,14 @@ def _eligible_tasks(project):
     cached = getattr(project, "_prefetched_objects_cache", {})
     if "tasks" in cached:
         return [t for t in cached["tasks"] if t.parent_task_id is None]
-    return list(project.tasks.filter(parent_task__isnull=True))
+    return list(project.tasks.filter(parent_task__isnull=True).prefetch_related("subtasks"))
 
 
 def actual_progress(project) -> Decimal:
     """Actual progress (%) — weighted task (PRD §32), atau override PM (PRD §10.4)."""
     if project.progress_override is not None:
         return project.progress_override
-    total_weight = Decimal("0")
-    weighted = Decimal("0")
-    for task in _eligible_tasks(project):
-        total_weight += task.weight
-        weighted += task.display_progress * task.weight
-    if total_weight <= 0:
-        return Decimal("0.00")
-    return (weighted / total_weight).quantize(_DP)
+    return weighted_progress(_eligible_tasks(project))
 
 
 def variance(project) -> Decimal | None:
@@ -179,10 +174,21 @@ def timeline_data(project):
     from datetime import timedelta
 
     tasks = list(
-        project.tasks.select_related("assignee", "phase")
-        .prefetch_related("dependencies", "collaborators")
+        project.tasks.select_related("assignee", "phase", "parent_task")
+        .prefetch_related("dependencies", "collaborators", "subtasks")
         .order_by("phase__sequence", "start_date", "id")
     )
+    # Keep each activity directly followed by its details, regardless of their dates.
+    children = {}
+    for task in tasks:
+        if task.parent_task_id:
+            children.setdefault(task.parent_task_id, []).append(task)
+    ordered = []
+    for task in tasks:
+        if task.parent_task_id is None:
+            ordered.extend([task, *children.get(task.pk, [])])
+    included = {task.pk for task in ordered}
+    tasks = ordered + [task for task in tasks if task.pk not in included]
     milestones = list(project.milestones.all())
     dates = [project.start_date, project.target_end_date]
     for task in tasks:
@@ -207,7 +213,7 @@ def timeline_data(project):
         }
 
     today = timezone.localdate()
-    rows, gantt = [], []
+    rows = []
     previous_phase = object()
     for task in tasks:
         first = task.start_date or project.start_date
@@ -237,17 +243,6 @@ def timeline_data(project):
             }
         )
         previous_phase = task.phase_id
-        gantt.append(
-            {
-                "id": str(task.pk),
-                "name": task.title,
-                "start": first.isoformat(),
-                "end": (last + timedelta(days=1)).isoformat(),
-                "progress": float(task.display_progress),
-                "dependencies": ",".join(str(t.pk) for t in task.dependencies.all()),
-                "custom_class": "task-" + task.status,
-            }
-        )
     mini_rows = []
     for phase in project.phases.all():
         phase_tasks = [t for t in tasks if t.phase_id == phase.pk]
@@ -256,8 +251,7 @@ def timeline_data(project):
         first = min(t.start_date or project.start_date for t in phase_tasks)
         last = max(t.due_date or t.start_date or project.start_date for t in phase_tasks)
         roots = [t for t in phase_tasks if t.parent_task_id is None]
-        total = sum(t.weight for t in roots)
-        progress = sum(t.display_progress * t.weight for t in roots) / total if total else 0
+        progress = weighted_progress(roots)
         mini_rows.append({"name": phase.name, "progress": progress, **geometry(first, last)})
     if any(t.phase_id is None for t in tasks):
         ungrouped = [t for t in tasks if t.phase_id is None]
@@ -276,7 +270,6 @@ def timeline_data(project):
         "mini_timeline_rows": mini_rows,
         "tasks": tasks,
         "timeline_rows": rows,
-        "gantt_tasks": gantt,
         "timeline_start": start,
         "timeline_end": end,
         "timeline_today": round((today - start).days / span * 100, 3)

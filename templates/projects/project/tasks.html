@@ -53,5 +53,6 @@
          </div>
         </div>{% endfor %}
     </div>
+    {% if archived_tasks %}<details class="pcc-panel mt-6"><summary class="pcc-section cursor-pointer">Pekerjaan diarsipkan · {{ archived_tasks|length }}</summary><div class="divide-y">{% for task in archived_tasks %}<div class="pcc-section flex flex-wrap items-center justify-between gap-3"><span>{{ task.title }}{% if task.parent_task_id %}<span class="text-xs text-muted-foreground"> · detail activity</span>{% endif %}</span><form method="post" action="{% url 'work:task_restore' task.pk %}" data-confirm="Pulihkan task ini ke board aktif?" class="inline">{% csrf_token %}<button class="pcc-button pcc-button-secondary">Pulihkan</button></form></div>{% endfor %}</div></details>{% endif %}
 {% endblock %}
 {% block extra_js %}<script src="{% static 'js/board.js' %}" defer></script>{% endblock %}

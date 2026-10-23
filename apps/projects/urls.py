@@ -68,7 +68,20 @@ urlpatterns = [
     path("", views.dashboard, name="dashboard"),
     # Projects
     path("projects/", views.project_list, name="project_list"),
+    path("search/", views.search, name="search"),
     path("projects/create/", views.project_create, name="project_create"),
+    path("projects/<int:pk>/archive/", views.project_archive, name="project_archive"),
+    path("projects/<int:pk>/restore/", views.project_restore, name="project_restore"),
+    path(
+        "projects/<int:pk>/phases/<int:phase_id>/archive/",
+        views.phase_archive,
+        name="phase_archive",
+    ),
+    path(
+        "projects/<int:pk>/phases/<int:phase_id>/restore/",
+        views.phase_restore,
+        name="phase_restore",
+    ),
     path("projects/<int:pk>/", views.project_detail, name="project_detail"),
     path("projects/<int:pk>/edit/", views.project_edit, name="project_edit"),
     # Project tabs

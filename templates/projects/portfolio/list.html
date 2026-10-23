@@ -7,7 +7,7 @@
             <h1 class="text-2xl font-normal tracking-tight">Projects</h1>
             <p class="mt-1 text-sm text-muted-foreground">Seluruh project di workspace.</p>
         </div>
-        {% if can_create %}<div class="flex gap-2"><a data-project-action class="pcc-button pcc-button-secondary" href="{% url 'projects:plan_import_new' %}"><svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 2 6 6 3-6 2-2 7-2-7-6-2 6-3zM21 2v4m-2-2h4"/></svg>Import dari AI</a>
+        {% if can_create %}<div class="flex flex-wrap gap-2">{% if can_view_archived %}<a class="pcc-button pcc-button-secondary" href="{% if show_archived %}{% url 'projects:project_list' %}{% else %}?archived=1{% endif %}"><svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M5 6v14h14V6M8 6V4h8v2M10 11v5M14 11v5"/></svg>{% if show_archived %}Kembali ke project aktif{% else %}Arsip ({{ archived_count }}){% endif %}</a>{% endif %}<a data-project-action class="pcc-button pcc-button-secondary" href="{% url 'projects:plan_import_new' %}"><svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 2 6 6 3-6 2-2 7-2-7-6-2 6-3zM21 2v4m-2-2h4"/></svg>Import dari AI</a>
             <a data-project-action href="{% url 'projects:project_create' %}"
                class="pcc-button">
                 <svg class="size-4"
@@ -25,6 +25,7 @@
     {# ------------------------------------------------------------ filters #}
     <form method="get" class="pcc-panel mt-6 p-4">
         <input type="hidden" name="view" value="{{ view }}">
+        {% if show_archived %}<input type="hidden" name="archived" value="1">{% endif %}
         <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
             <div>
                 <label for="q" class="text-xs font-normal text-muted-foreground">Search</label>
@@ -98,12 +99,12 @@
        value="{{ filters.progress_max }}"></label><label class="text-xs">Phase saat ini<select class="pcc-field mt-1" name="phase"><option value="">Semua phase</option>{% for phase in phases %}<option {% if filters.phase == phase %}selected{% endif %}>{{ phase }}</option>{% endfor %}</select></label></div><button class="pcc-button mt-4"><svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></svg>Terapkan filter</button></details></form>
     {# ----------------------------------------------------- view toggle #}
     <div class="mt-4 flex items-center justify-between">
-        <p class="text-sm text-muted-foreground">{{ rows|length }} project ditemukan</p>
-        <div class="flex gap-2"><a data-view-link="list"
+        <p class="text-sm text-muted-foreground">{{ total_rows }} project ditemukan{% if show_archived %} di arsip{% endif %}</p>
+        {% if not show_archived %}<div class="flex gap-2"><a data-view-link="list"
    class="pcc-button pcc-button-secondary"
    href="?view=list"><svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>List</a><a data-view-link="card"
    class="pcc-button pcc-button-secondary"
-   href="?view=card"><svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Card</a></div>
+   href="?view=card"><svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Card</a></div>{% endif %}
     </div>
     {# ------------------------------------------------------- list view #}
     {% if view == "list" %}
@@ -119,14 +120,19 @@
                             <th class="h-10 px-4 text-right font-normal text-muted-foreground">Actual</th>
                             <th class="h-10 px-4 text-right font-normal text-muted-foreground">Variance</th>
                             <th class="h-10 px-6 text-left font-normal text-muted-foreground">Status</th>
+                            {% if show_archived %}<th class="h-10 px-6 text-right font-normal text-muted-foreground">Aksi</th>{% endif %}
                         </tr>
                     </thead>
                     <tbody>
                         {% for row in rows %}
                             <tr class="border-b transition-colors hover:bg-muted/40">
                                 <td class="px-6 py-3">
-                                    <a href="{% url 'projects:project_detail' row.project.pk %}"
-                                       class="font-normal hover:underline">{{ row.project.name }}</a>
+                                    {% if show_archived %}
+                                        <span class="font-normal">{{ row.project.name }}</span>
+                                    {% else %}
+                                        <a href="{% url 'projects:project_detail' row.project.pk %}"
+                                           class="font-normal hover:underline">{{ row.project.name }}</a>
+                                    {% endif %}
                                     <span class="ml-2 rounded-md bg-muted px-1.5 py-0.5 text-xs font-normal tabular-nums text-muted-foreground">{{ row.project.code }}</span>
                                     <div class="mt-0.5 text-xs text-muted-foreground">{{ row.project.start_date|date:"d M Y" }} → {{ row.project.target_end_date|date:"d M Y" }}</div>
                                 </td>
@@ -140,10 +146,23 @@
                                 <td class="px-6 py-3">
                                     <span class="{{ row.project.status|status_style }}">{{ row.project.get_status_display }}</span>
                                 </td>
+                                {% if show_archived %}
+                                    <td class="px-6 py-3 text-right">
+                                        {% if row.can_restore %}
+                                            <form method="post"
+                                                  action="{% url 'projects:project_restore' row.project.pk %}"
+                                                  data-confirm="Pulihkan project ini ke daftar aktif?"
+                                                  class="inline">
+                                                {% csrf_token %}
+                                                <button class="pcc-button pcc-button-secondary">Pulihkan</button>
+                                            </form>
+                                        {% endif %}
+                                    </td>
+                                {% endif %}
                             </tr>
                         {% empty %}
                             <tr>
-                                <td colspan="7"
+                                <td colspan="{% if show_archived %}8{% else %}7{% endif %}"
                                     class="px-6 py-12 text-center text-sm text-muted-foreground">Tidak ada project yang cocok dengan filter.</td>
                             </tr>
                         {% endfor %}
@@ -192,6 +211,7 @@
             {% endfor %}
         </div>
     {% endif %}
+    {% include "partials/_pagination.html" %}
 {% endblock %}
 {% block extra_js %}
     <script>document.querySelectorAll('[data-view-link]').forEach(link=>{const params=new URLSearchParams(window.location.search);params.set('view',link.dataset.viewLink);link.href='?'+params.toString();});</script>

@@ -56,7 +56,7 @@ def style_form(form, primary=None):
         "blocked_reason": "Alasan hambatan",
         "blocked_dependency": "Menunggu siapa?",
         "order": "Urutan pekerjaan",
-        "parent_task": "Task induk",
+        "parent_task": "Activity induk",
         "dependencies": "Task prasyarat",
         "baseline_start_date": "Baseline mulai",
         "baseline_end_date": "Baseline selesai",
@@ -69,6 +69,16 @@ def style_form(form, primary=None):
         "decision_maker": "Pembuat keputusan",
         "first_name": "Nama depan",
         "last_name": "Nama belakang",
+        "username": "Nama pengguna",
+        "email": "Surel",
+        "role": "Peran",
+        "is_active": "Akun aktif",
+        "display_name": "Nama tampilan",
+        "job_title": "Jabatan",
+        "password1": "Kata sandi",
+        "password2": "Konfirmasi kata sandi",
+        "new_password1": "Kata sandi baru",
+        "new_password2": "Konfirmasi kata sandi baru",
     }
     for name, field in form.fields.items():
         field.label = labels.get(name, field.label)

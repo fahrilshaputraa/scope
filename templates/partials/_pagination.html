@@ -1,0 +1,22 @@
+{% load pcc_tags %}
+{% if page_obj.paginator.num_pages > 1 %}
+    <nav class="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm"
+         aria-label="Navigasi halaman">
+        <p class="text-muted-foreground">
+            Menampilkan {{ page_obj.start_index }}–{{ page_obj.end_index }} dari {{ page_obj.paginator.count }}
+        </p>
+        <div class="flex items-center gap-2">
+            {% if page_obj.has_previous %}
+                <a class="pcc-button pcc-button-secondary"
+                   href="{% query_replace page=page_obj.previous_page_number %}"
+                   rel="prev">Sebelumnya</a>
+            {% endif %}
+            <span class="px-1 tabular-nums text-muted-foreground">Halaman {{ page_obj.number }} dari {{ page_obj.paginator.num_pages }}</span>
+            {% if page_obj.has_next %}
+                <a class="pcc-button pcc-button-secondary"
+                   href="{% query_replace page=page_obj.next_page_number %}"
+                   rel="next">Berikutnya</a>
+            {% endif %}
+        </div>
+    </nav>
+{% endif %}

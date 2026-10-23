@@ -4,6 +4,10 @@ from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils import timezone
 
+from apps.projects.managers import ArchivableModel
+
+from .progress import weighted_progress
+
 
 class TaskStatus(models.TextChoices):
     BACKLOG = "backlog", "Backlog"
@@ -53,7 +57,7 @@ class IssueStatus(models.TextChoices):
 OPEN_ISSUE_STATUSES = [IssueStatus.OPEN, IssueStatus.IN_PROGRESS, IssueStatus.BLOCKED]
 
 
-class Task(models.Model):
+class Task(ArchivableModel):
     """Task project (PRD §17). Weight dipakai untuk weighted actual progress (§32)."""
 
     project = models.ForeignKey("projects.Project", on_delete=models.CASCADE, related_name="tasks")
@@ -137,24 +141,64 @@ class Task(models.Model):
             errors["baseline_end_date"] = "Baseline selesai harus setelah baseline mulai."
         if self.status == TaskStatus.BLOCKED and not self.blocked_reason.strip():
             errors["blocked_reason"] = "Jelaskan hambatan sebelum memblokir task."
-        for name in ("phase", "milestone", "parent_task"):
+        self._validate_hierarchy()
+        self._validate_completion()
+        for name in ("phase", "milestone"):
             obj = getattr(self, name) if getattr(self, name + "_id") else None
             if obj and obj.project_id != self.project_id:
                 errors[name] = "Pilih data dari project yang sama."
-        if self.pk and self.parent_task_id == self.pk:
-            errors["parent_task"] = "Task tidak dapat menjadi induk dirinya sendiri."
         if errors:
             raise ValidationError(errors)
 
+    def _validate_hierarchy(self):
+        if not self.parent_task_id:
+            return
+        parent = self.parent_task
+        if parent.project_id != self.project_id:
+            raise ValidationError({"parent_task": "Pilih activity dari project yang sama."})
+        if parent.pk == self.pk or parent.parent_task_id:
+            raise ValidationError(
+                {"parent_task": "Detail activity hanya boleh memiliki satu induk."}
+            )
+        if self.pk and self.subtasks.exists():
+            raise ValidationError(
+                {"parent_task": "Activity yang memiliki detail tidak bisa menjadi detail."}
+            )
+        self.phase_id = parent.phase_id
+
+    def _validate_completion(self):
+        if self.pk and not self.parent_task_id and self.status == TaskStatus.DONE:
+            if any(not child.is_done for child in self.subtasks.all()):
+                raise ValidationError(
+                    {"status": "Selesaikan seluruh detail activity terlebih dahulu."}
+                )
+
+    @property
+    def has_details(self):
+        return bool(self.pk and not self.parent_task_id and self.subtasks.all())
+
     def save(self, *args, **kwargs):
+        self._validate_hierarchy()
+        self._validate_completion()
         if self.status == TaskStatus.DONE:
             self.progress = 100
             self.completed_at = self.completed_at or timezone.now()
         else:
             self.completed_at = None
         if kwargs.get("update_fields") is not None:
-            kwargs["update_fields"] = set(kwargs["update_fields"]) | {"progress", "completed_at"}
+            kwargs["update_fields"] = set(kwargs["update_fields"]) | {
+                "progress",
+                "completed_at",
+                "phase",
+            }
         super().save(*args, **kwargs)
+        # Keep inherited grouping consistent when an activity moves to another phase.
+        if not self.parent_task_id:
+            self.subtasks.exclude(phase_id=self.phase_id).update(phase_id=self.phase_id)
+        if self.parent_task_id and not self.is_done:
+            Task.objects.filter(pk=self.parent_task_id, status=TaskStatus.DONE).update(
+                status=TaskStatus.IN_PROGRESS, completed_at=None, updated_at=timezone.now()
+            )
 
     @property
     def assignee_names(self):
@@ -192,10 +236,40 @@ class Task(models.Model):
 
     @property
     def display_progress(self):
-        """Progress tampilan: task done dianggap 100%."""
+        """Detail progress rolls up locally; only root weights count toward the project."""
+        children = list(self.subtasks.all()) if self.pk and not self.parent_task_id else []
+        if children:
+            return weighted_progress(children)
         if self.is_done:
             return 100
         return self.progress
+
+    def archive(self, user=None, at=None):
+        if self.archived_at:
+            return False
+        at = at or timezone.now()
+        super().archive(user=user, at=at)
+        Task.all_objects.filter(parent_task=self, archived_at__isnull=True).update(
+            archived_at=at, archived_by=self.archived_by
+        )
+        return True
+
+    def restore(self):
+        if not self.archived_at:
+            return False
+        at = self.archived_at
+        super().restore()
+        Task.all_objects.filter(parent_task=self, archived_at=at).update(
+            archived_at=None, archived_by=None
+        )
+        from apps.projects.models import Phase
+
+        if self.phase_id and Phase.all_objects.filter(
+            pk=self.phase_id, archived_at__isnull=False
+        ).exists():
+            self.phase = None
+            self.save(update_fields=["phase"])
+        return True
 
 
 class TaskComment(models.Model):
@@ -217,7 +291,7 @@ class TaskComment(models.Model):
         return f"Comment on {self.task_id}"
 
 
-class Issue(models.Model):
+class Issue(ArchivableModel):
     """Issue / hambatan project (PRD §21)."""
 
     project = models.ForeignKey("projects.Project", on_delete=models.CASCADE, related_name="issues")

@@ -1,2 +1,2 @@
 {% extends "base.html" %}
-{% block content %}{% url 'projects:project_tasks' project.pk as back_url %}{% include 'partials/_form_card.html' with back_url=back_url title=title subtitle=project.name submit_label='Simpan task' %}{% endblock %}
+{% block content %}{% if parent %}{% url 'work:task_detail' parent.pk as back_url %}{% else %}{% url 'projects:project_tasks' project.pk as back_url %}{% endif %}{% include 'partials/_form_card.html' with back_url=back_url title=title subtitle=project.name submit_label='Simpan pekerjaan' %}{% endblock %}
