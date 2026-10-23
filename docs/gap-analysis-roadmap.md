@@ -18,7 +18,7 @@ Fase 0 dikerjakan bertahap. Status saat ini:
 | E1 UI manajemen user | Selesai | Daftar + cari/filter, edit identitas & peran, aktif/nonaktif, reset kata sandi, buat akun lokal; khusus staff |
 | E5 History/version restore | Selesai | Revision per field untuk project, task, milestone, issue, risk; diff before/after; restore oleh PM/staff dengan validasi |
 | H1 Dead code Gantt | Selesai | Vendor Frappe Gantt, CSS, dan payload `gantt_tasks` dihapus |
-| H4 Audit aksesibilitas/mobile | Belum | — |
+| H4 Audit aksesibilitas/mobile | Selesai | Label/error association, aria icon, dialog announcement, kontras AA, tap target, tanpa overflow 360–390 px; audit + regression test |
 | H6 Scheduler snapshot | Selesai | `--due` idempoten + scheduler internal opt-in + docs deployment |
 
 Kanban dan visualisasi (timeline, laporan, roadmap) sengaja tidak dipaginate karena pagination akan memecah drag-and-drop dan konteks visual.
