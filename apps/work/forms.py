@@ -244,9 +244,31 @@ class TaskCommentForm(forms.ModelForm):
         model = TaskComment
         fields = ["content"]
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, project=None, user=None, **kwargs):
+        self.project = project
+        self.user = user
+        self.mentioned_users = []
         super().__init__(*args, **kwargs)
         style_form(self)
+        self.fields["content"].widget.attrs["data-mention-input"] = "true"
+
+    def clean_content(self):
+        from .mentions import resolve_mentions
+
+        content = self.cleaned_data["content"]
+        users, errors = resolve_mentions(content, self.project)
+        if errors:
+            raise ValidationError(errors)
+        self.mentioned_users = users
+        return content
+
+    def save_mentions(self, comment):
+        from .models import Mention
+
+        Mention.objects.bulk_create(
+            [Mention(task_comment=comment, user=user) for user in self.mentioned_users],
+            ignore_conflicts=True,
+        )
 
 
 class AttachmentForm(forms.Form):

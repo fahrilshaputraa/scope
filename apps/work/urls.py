@@ -10,6 +10,7 @@ urlpatterns = [
     path("attachments/<int:pk>/download/", views.attachment_download, name="attachment_download"),
     path("attachments/<int:pk>/delete/", views.attachment_delete, name="attachment_delete"),
     path("my-tasks/", views.my_tasks, name="my_tasks"),
+    path("mentions/suggest/", views.mention_suggest, name="mention_suggest"),
     # Tasks
     path("tasks/new/", views.task_create, name="task_create"),
     path("tasks/<int:pk>/archive/", views.task_archive, name="task_archive"),

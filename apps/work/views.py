@@ -8,8 +8,9 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.db.models import Q
-from django.http import FileResponse, HttpRequest, HttpResponse, JsonResponse
+from django.http import FileResponse, Http404, HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.utils.dateparse import parse_date
 from django.views.decorators.http import require_http_methods
@@ -22,12 +23,14 @@ from apps.identity.permissions import (
     visible_projects,
 )
 from apps.notifications.models import SubscriptionTarget
+from apps.notifications.services import notify, user_display
 from apps.notifications.subscriptions import watch_state
 from apps.projects.models import ActivityAction, Project
 from apps.projects.pagination import paginate
 from apps.projects.services import record_activity
 
 from .forms import AttachmentForm, IssueForm, TaskCommentForm, TaskForm
+from .mentions import suggestion_payload
 from .models import (
     OPEN_ISSUE_STATUSES,
     Issue,
@@ -53,6 +56,17 @@ def _project_from_request(request) -> Project | None:
     if pid:
         return get_object_or_404(visible_projects(request.user), pk=pid)
     return None
+
+
+@login_required
+def mention_suggest(request: HttpRequest) -> JsonResponse:
+    """Autocomplete ``@username`` inside a project the requester can see."""
+    try:
+        project_id = int(request.GET.get("project", ""))
+    except (TypeError, ValueError):
+        raise Http404 from None
+    project = get_object_or_404(visible_projects(request.user), pk=project_id)
+    return JsonResponse(suggestion_payload(project, request.GET.get("q", "")), safe=False)
 
 
 # ================================================================ MY TASKS ===
@@ -317,7 +331,7 @@ def task_detail(request: HttpRequest, pk: int) -> HttpResponse:
         pk=pk,
         project__in=visible_projects(request.user),
     )
-    comment_form = TaskCommentForm()
+    comment_form = TaskCommentForm(project=task.project, user=request.user)
     comments_page = paginate(
         request, task.comments.select_related("author").order_by("created_at"), 20
     )
@@ -325,12 +339,13 @@ def task_detail(request: HttpRequest, pk: int) -> HttpResponse:
     if request.method == "POST":
         if is_management(request.user) and not request.user.is_staff:
             raise PermissionDenied
-        comment_form = TaskCommentForm(request.POST)
+        comment_form = TaskCommentForm(request.POST, project=task.project, user=request.user)
         if comment_form.is_valid():
             comment = comment_form.save(commit=False)
             comment.task = task
             comment.author = request.user
             comment.save()
+            comment_form.save_mentions(comment)
             record_activity(
                 task.project,
                 request.user,
@@ -339,6 +354,20 @@ def task_detail(request: HttpRequest, pk: int) -> HttpResponse:
                 target=task,
                 dedupe_token=str(comment.pk),
             )
+            if comment_form.mentioned_users:
+                notify(
+                    request.user,
+                    "comment.added",
+                    task,
+                    recipients=comment_form.mentioned_users,
+                    title=f"Anda disebut di komentar: {task.title}",
+                    body=(
+                        f'{user_display(request.user)} menyebut Anda dalam komentar '
+                        f'di task "{task.title}".'
+                    ),
+                    url=reverse("work:task_detail", args=[task.pk]),
+                    dedupe_suffix=f"comment:{comment.pk}",
+                )
             messages.success(request, "Komentar ditambahkan.")
             return redirect("work:task_detail", pk=task.pk)
     return render(

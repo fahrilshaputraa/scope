@@ -291,6 +291,34 @@ class TaskComment(models.Model):
         return f"Comment on {self.task_id}"
 
 
+class Mention(models.Model):
+    """A user explicitly mentioned with ``@username`` in a task comment."""
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="mentions",
+    )
+    task_comment = models.ForeignKey(
+        TaskComment,
+        on_delete=models.CASCADE,
+        related_name="mentions",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["task_comment", "user"],
+                name="mention_unique_comment_user",
+            )
+        ]
+
+    def __str__(self):
+        return f"@{self.user_id} on comment {self.task_comment_id}"
+
+
 class Issue(ArchivableModel):
     """Issue / hambatan project (PRD §21)."""
 

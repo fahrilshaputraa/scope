@@ -31,6 +31,192 @@ window.PCC = {
     }
 };
 
+PCC.initMentions = function(root = document) {
+    const forms = root.matches?.('[data-mention-form]')
+        ? [root]
+        : [...root.querySelectorAll('[data-mention-form]')];
+    forms.forEach(form => {
+        const editor = form.querySelector('.wysiwyg-editor');
+        const textarea = form.querySelector('textarea[name=content]');
+        const surface = editor || (textarea && !textarea.hasAttribute('data-wysiwyg') ? textarea : null);
+        if (!surface || surface.dataset.mentionReady) return;
+        surface.dataset.mentionReady = 'true';
+
+        const url = form.dataset.mentionUrl;
+        const project = form.dataset.mentionProject;
+        if (!url || !project) return;
+
+        const listbox = document.createElement('div');
+        listbox.className = 'mention-suggest';
+        listbox.id = `mention-suggest-${Math.random().toString(36).slice(2, 8)}`;
+        listbox.setAttribute('role', 'listbox');
+        listbox.setAttribute('aria-label', 'Saran anggota project');
+        listbox.hidden = true;
+        document.body.append(listbox);
+        surface.setAttribute('aria-autocomplete', 'list');
+        surface.setAttribute('aria-controls', listbox.id);
+        surface.setAttribute('aria-expanded', 'false');
+
+        let items = [], active = -1, context = null, timer = null, controller = null;
+        const pattern = /(?:^|[\s([{"'])@([A-Za-z0-9_.@+\-]*)$/;
+
+        const close = () => {
+            listbox.hidden = true;
+            listbox.replaceChildren();
+            items = []; active = -1; context = null;
+            surface.setAttribute('aria-expanded', 'false');
+            surface.removeAttribute('aria-activedescendant');
+        };
+
+        const locate = () => {
+            if (surface instanceof HTMLTextAreaElement) {
+                const caret = surface.selectionStart ?? surface.value.length;
+                const match = surface.value.slice(0, caret).match(pattern);
+                return match ? { query: match[1], caret } : null;
+            }
+            const selection = window.getSelection();
+            if (!selection || !selection.rangeCount || !surface.contains(selection.anchorNode)) return null;
+            const range = selection.getRangeAt(0);
+            if (!range.collapsed) return null;
+            const before = range.cloneRange();
+            before.selectNodeContents(surface);
+            before.setEnd(range.startContainer, range.startOffset);
+            const match = before.toString().match(pattern);
+            return match ? { query: match[1], caretRange: range } : null;
+        };
+
+        const render = () => {
+            listbox.replaceChildren();
+            items.forEach((item, index) => {
+                const option = document.createElement('div');
+                option.id = `${listbox.id}-${index}`;
+                option.className = 'mention-suggest-item';
+                option.setAttribute('role', 'option');
+                option.setAttribute('aria-selected', String(index === active));
+                const name = document.createElement('strong');
+                name.textContent = item.name || item.username;
+                const handle = document.createElement('small');
+                handle.textContent = `@${item.username}`;
+                option.append(name, handle);
+                option.addEventListener('pointerdown', event => {
+                    event.preventDefault();
+                    choose(item);
+                });
+                listbox.append(option);
+            });
+            if (active >= 0) surface.setAttribute('aria-activedescendant', `${listbox.id}-${active}`);
+        };
+
+        const position = found => {
+            const rect = surface.getBoundingClientRect();
+            let left = rect.left, top = rect.bottom + 6;
+            if (found && found.caretRange) {
+                const caret = found.caretRange.getBoundingClientRect();
+                if (caret && (caret.top || caret.left)) { left = caret.left; top = caret.bottom + 6; }
+            }
+            listbox.hidden = false;
+            listbox.style.left = `${Math.max(8, Math.min(left, window.innerWidth - listbox.offsetWidth - 8))}px`;
+            if (top + listbox.offsetHeight > window.innerHeight - 8) {
+                top = Math.max(8, window.innerHeight - listbox.offsetHeight - 8);
+            }
+            listbox.style.top = `${top}px`;
+        };
+
+        const choose = item => {
+            const found = context || locate();
+            if (!found) { close(); return; }
+            const text = `@${item.username} `;
+            if (surface instanceof HTMLTextAreaElement) {
+                surface.setRangeText(text, found.caret - found.query.length - 1, found.caret, 'end');
+                surface.dispatchEvent(new Event('input', { bubbles: true }));
+            } else {
+                const range = found.caretRange;
+                const node = range.startContainer;
+                if (node.nodeType === Node.TEXT_NODE && range.startOffset >= found.query.length + 1) {
+                    const replace = document.createRange();
+                    replace.setStart(node, range.startOffset - found.query.length - 1);
+                    replace.setEnd(node, range.startOffset);
+                    replace.deleteContents();
+                    const textNode = document.createTextNode(text);
+                    replace.insertNode(textNode);
+                    const after = document.createRange();
+                    after.setStartAfter(textNode);
+                    after.collapse(true);
+                    const selection = window.getSelection();
+                    selection.removeAllRanges();
+                    selection.addRange(after);
+                } else {
+                    document.execCommand('insertText', false, text);
+                }
+                surface.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+            close();
+        };
+
+        const request = query => {
+            if (timer) clearTimeout(timer);
+            timer = setTimeout(async () => {
+                const found = locate();
+                if (!found || found.query !== query) return;
+                context = found;
+                controller?.abort();
+                controller = new AbortController();
+                try {
+                    const params = new URLSearchParams({ project, q: query });
+                    const response = await fetch(`${url}?${params}`, {
+                        credentials: 'same-origin',
+                        signal: controller.signal,
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    });
+                    if (!response.ok) { close(); return; }
+                    const data = await response.json();
+                    const latest = locate();
+                    if (!Array.isArray(data) || !latest || latest.query !== query) return;
+                    context = latest;
+                    items = data;
+                    active = data.length ? 0 : -1;
+                    if (!data.length) { close(); return; }
+                    render();
+                    position(latest);
+                    surface.setAttribute('aria-expanded', 'true');
+                } catch (error) {
+                    if (error.name !== 'AbortError') close();
+                }
+            }, 120);
+        };
+
+        surface.addEventListener('input', () => {
+            const found = locate();
+            if (!found) { close(); return; }
+            context = found;
+            request(found.query);
+        });
+        surface.addEventListener('keydown', event => {
+            if (event.isComposing) return;
+            if (listbox.hidden) return;
+            if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+                event.preventDefault();
+                const delta = event.key === 'ArrowDown' ? 1 : -1;
+                active = (active + delta + items.length) % items.length;
+                render();
+            } else if (event.key === 'Enter' || event.key === 'Tab') {
+                if (items[active]) { event.preventDefault(); choose(items[active]); }
+            } else if (event.key === 'Escape') {
+                event.preventDefault();
+                event.stopPropagation();
+                close();
+            }
+        });
+        document.addEventListener('pointerdown', event => {
+            if (!listbox.hidden && !listbox.contains(event.target) && event.target !== surface) close();
+        });
+        window.addEventListener('resize', close);
+        document.addEventListener('scroll', event => {
+            if (!listbox.hidden && !listbox.contains(event.target)) close();
+        }, true);
+    });
+};
+
 PCC.initForms = function(root = document) {
     root.querySelectorAll('[data-choice-picker]').forEach(picker => {
         if (picker.dataset.ready) return;
@@ -297,3 +483,4 @@ PCC.initNavSearch = function(root = document) {
     document.addEventListener('click', event => { if (!form.contains(event.target)) clear(); });
 };
 PCC.initNavSearch();
+PCC.initMentions();
