@@ -66,6 +66,65 @@ class Notification(models.Model):
             self.save(update_fields=["read_at"])
 
 
+class SubscriptionTarget(models.TextChoices):
+    PROJECT = "project", "Project"
+    TASK = "task", "Task"
+
+
+class Subscription(models.Model):
+    """A user explicitly or automatically following a project or task."""
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="subscriptions",
+    )
+    target_type = models.CharField(max_length=20, choices=SubscriptionTarget.choices)
+    target_id = models.PositiveBigIntegerField()
+    auto_subscribed = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "target_type", "target_id"],
+                name="sub_unique_user_target",
+            )
+        ]
+        indexes = [
+            models.Index(fields=["target_type", "target_id"], name="sub_target_idx"),
+        ]
+
+    def __str__(self):
+        return f"{self.user_id}: {self.target_type}:{self.target_id}"
+
+
+class SubscriptionOptOut(models.Model):
+    """Remembers an explicit unwatch so auto-subscribe never re-adds the user."""
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="subscription_opt_outs",
+    )
+    target_type = models.CharField(max_length=20, choices=SubscriptionTarget.choices)
+    target_id = models.PositiveBigIntegerField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "target_type", "target_id"],
+                name="sub_optout_unique_user_target",
+            )
+        ]
+
+    def __str__(self):
+        return f"opt-out {self.user_id}: {self.target_type}:{self.target_id}"
+
+
 class DigestFrequency(models.TextChoices):
     OFF = "off", "Mati"
     DAILY = "daily", "Harian"

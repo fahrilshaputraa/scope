@@ -27,6 +27,27 @@
                 {% endfor %}
             </div>
         </div>
+        <div class="flex flex-wrap items-center gap-2">
+            <form method="post"
+                  action="{% if is_watching %}{% url 'notifications:unwatch_task' task.pk %}{% else %}{% url 'notifications:watch_task' task.pk %}{% endif %}">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{{ request.path }}">
+                <button type="submit"
+                        class="pcc-button pcc-button-secondary whitespace-nowrap"
+                        aria-pressed="{{ is_watching|yesno:'true,false' }}"
+                        title="{% if is_watching %}Berhenti menerima notifikasi task ini{% else %}Ikuti task ini dan terima notifikasinya{% endif %}">
+                    <svg aria-hidden="true" focusable="false" class="size-4"
+                         viewBox="0 0 24 24"
+                         fill="none"
+                         stroke="currentColor"
+                         stroke-width="2"
+                         stroke-linecap="round"
+                         stroke-linejoin="round">
+                        {% if is_watching %}<path d="M18 6 6 18M6 6l12 12" />{% else %}<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0" />{% endif %}
+                    </svg>
+                    {% if is_watching %}Berhenti mengikuti{% else %}Ikuti{% endif %}
+                </button>
+            </form>
         {% if can_edit %}
             <a data-project-action href="{% url 'work:task_update' task.pk %}"
                class="inline-flex h-9 items-center gap-2 rounded-md border bg-background px-4 text-sm font-normal shadow-xs hover:bg-accent hover:text-accent-foreground">
@@ -49,6 +70,13 @@
                     <button class="pcc-button pcc-button-secondary">Arsipkan</button>
                 </form>
             {% endif %}
+        {% endif %}
+        </div>
+        {% if is_watching %}
+            <p class="w-full text-xs text-muted-foreground" data-watch-state>
+                {% if watch_is_auto %}Anda otomatis mengikuti task ini.{% else %}Anda mengikuti task ini.{% endif %}
+                Notifikasi status dan komentar dikirim ke akun Anda.
+            </p>
         {% endif %}
     </div>
     <div class="mt-6 grid gap-4 lg:grid-cols-3">

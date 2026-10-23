@@ -18,6 +18,8 @@ from apps.identity.permissions import (
     is_pm,
     visible_projects,
 )
+from apps.notifications.models import SubscriptionTarget
+from apps.notifications.subscriptions import watch_state
 from apps.work.models import TASK_STATUS_LABELS, Issue, Task, TaskStatus
 
 from .forms import BaselinePointForm, DecisionForm, MilestoneForm, NoteForm, PhaseForm, ProjectForm
@@ -75,6 +77,7 @@ def project_context(request, project, active_tab):
         "active_tab": active_tab,
         "can_manage": can_manage_project(request.user, project),
         "can_report": can_report_issue(request.user),
+        **watch_state(request.user, SubscriptionTarget.PROJECT, project.pk),
     }
 
 
@@ -435,6 +438,7 @@ def project_edit(request: HttpRequest, pk: int) -> HttpResponse:
             request.user,
             ActivityAction.PROJECT_UPDATED,
             f'Project details updated ("{project.name}").',
+            target=project,
         )
         messages.success(request, "Project disimpan.")
         return redirect("projects:project_detail", pk=pk)

@@ -21,6 +21,8 @@ from apps.identity.permissions import (
     is_management,
     visible_projects,
 )
+from apps.notifications.models import SubscriptionTarget
+from apps.notifications.subscriptions import watch_state
 from apps.projects.models import ActivityAction, Project
 from apps.projects.pagination import paginate
 from apps.projects.services import record_activity
@@ -352,6 +354,7 @@ def task_detail(request: HttpRequest, pk: int) -> HttpResponse:
             "comments_page": comments_page,
             "can_comment": not is_management(request.user) or request.user.is_staff,
             "attachment_form": AttachmentForm(),
+            **watch_state(request.user, SubscriptionTarget.TASK, task.pk),
         },
     )
 
