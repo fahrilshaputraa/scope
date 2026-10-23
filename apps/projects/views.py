@@ -868,6 +868,7 @@ def milestone_update(request: HttpRequest, pk: int, mid: int) -> HttpResponse:
                 ActivityAction.MILESTONE_COMPLETED,
                 f'Milestone "{milestone.name}" completed.',
                 milestone.name,
+                target=milestone,
             )
         else:
             record_activity(

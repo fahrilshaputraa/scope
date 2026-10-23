@@ -286,6 +286,10 @@ html[data-theme="dark"] .workspace-brand-mark img { filter: brightness(0) invert
 .header-search input { font-size: 13px; width: 220px; background: transparent; outline: none; color: var(--ink); }
 .header-date { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .header-profile { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; background: var(--sunken); color: var(--ink); font-size: 12px; font-weight: 500; }
+.notification-bell { position: relative; display: inline-grid; place-items: center; width: 34px; height: 34px; border-radius: var(--radius-md); color: var(--muted); transition: background-color var(--dur) var(--ease), color var(--dur) var(--ease); }
+.notification-bell:hover, .notification-bell:focus-visible { background: var(--sunken); color: var(--ink); }
+.notification-bell svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.notification-badge { position: absolute; top: 0; right: 0; display: inline-flex; align-items: center; justify-content: center; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 999px; background: var(--brand); color: #fff; font-size: 10px; font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums; }
 .icon-button { display: inline-grid; place-items: center; width: 34px; height: 34px; padding: 0; border: 1px solid transparent; border-radius: var(--radius-md); background: transparent; color: var(--muted); cursor: pointer; transition: background-color var(--dur) var(--ease), color var(--dur) var(--ease); }
 .icon-button:hover { background: var(--sunken); color: var(--ink); }
 .theme-toggle [data-theme-icon] { display: none; }
@@ -810,6 +814,7 @@ html[data-theme="dark"] .login-shell img { filter: brightness(0) invert(1); }
     .workspace-content { padding: 20px 16px 40px; }
     .mobile-menu { display: inline-flex; align-items: center; justify-content: center; min-width: 40px; min-height: 40px; padding: 5px; margin-left: -5px; border: 0; background: transparent; color: var(--ink); }
     .header-profile, .account-avatar { min-width: 40px; min-height: 40px; }
+    .notification-bell { min-width: 40px; min-height: 40px; }
     .pcc-button, .pcc-field, .subtle-action { min-height: 40px; }
     .issue-filters a, .project-nav-item { min-height: 40px; display: inline-flex; align-items: center; }
     .header-date { display: none; }

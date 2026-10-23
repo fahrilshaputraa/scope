@@ -23,6 +23,7 @@ INSTALLED_APPS = [
     "apps.identity.apps.IdentityConfig",
     "apps.projects.apps.ProjectsConfig",
     "apps.work.apps.WorkConfig",
+    "apps.notifications.apps.NotificationsConfig",
 ]
 
 MIDDLEWARE = [
@@ -49,6 +50,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "config.context_processors.settings",
+                "apps.notifications.context_processors.notifications",
             ]
         },
     }
