@@ -8,7 +8,7 @@ from django.utils import timezone
 
 from apps.work.progress import weighted_progress
 
-from .models import ActivityAction, ActivityEvent, ProgressSnapshot
+from .models import ActivityAction, ActivityEvent, ProgressSnapshot, Project, ProjectStatus
 
 _DP = Decimal("0.01")
 
@@ -154,6 +154,33 @@ def record_snapshot(project, on_date: date | None = None) -> ProgressSnapshot:
         },
     )
     return snapshot
+
+
+def projects_due_for_snapshot(on_date: date | None = None):
+    """Active projects that do not have a snapshot yet for ``on_date``.
+
+    Archived projects are excluded by the default manager. Completed and
+    cancelled projects are not considered active.
+    """
+    on_date = on_date or timezone.localdate()
+    existing = ProgressSnapshot.objects.filter(date=on_date).values("project_id")
+    return Project.objects.exclude(
+        status__in=[ProjectStatus.COMPLETED, ProjectStatus.CANCELLED]
+    ).exclude(pk__in=existing)
+
+
+def snapshot_due_projects(on_date: date | None = None) -> int:
+    """Capture ``on_date`` for every due project; safe to run repeatedly.
+
+    ``record_snapshot`` upserts on ``(project, date)`` so concurrent workers
+    cannot create duplicate rows for the same calendar day.
+    """
+    on_date = on_date or timezone.localdate()
+    count = 0
+    for project in projects_due_for_snapshot(on_date).iterator():
+        record_snapshot(project, on_date)
+        count += 1
+    return count
 
 
 def record_activity(project, actor, action: str, message: str, object_repr: str = ""):

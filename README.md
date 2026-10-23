@@ -71,12 +71,17 @@ sebelum task mulai; Blocked wajib memiliki alasan. Akses data, komentar,
 attachment, dan ekspor mengikuti keanggotaan project dan role.
 
 Snapshot hari ini diperbarui ketika task atau project berubah. Agar hari tanpa
-perubahan tetap tersimpan, jalankan perintah berikut sekali setiap hari dari
-scheduler deployment (misalnya cron). Scheduler belum dipasang oleh aplikasi.
+perubahan tetap tersimpan, jalankan perintah berikut sekali setiap hari:
 
 ```bash
-uv run manage.py snapshot_progress
+uv run manage.py snapshot_progress --due
 ```
+
+Perintah ini hanya mengisi project yang belum punya snapshot hari ini, sehingga
+aman dijalankan berulang kali. Pilih salah satu opsi penjadwalan: aktifkan
+scheduler internal lewat `SCOPE_SCHEDULER_ENABLED=true`, atau pasang systemd
+timer/cron eksternal. Detail dan contoh unit systemd ada di
+[docs/deployment.md](docs/deployment.md).
 
 Reports menyediakan CSV, XLSX, dan PDF untuk summary, progress, timeline,
 task, issue, dan milestone. UI mengikuti DESIGN.md (Precision): kanvas netral terang, panel putih dengan hairline,

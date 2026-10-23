@@ -19,7 +19,7 @@ Fase 0 dikerjakan bertahap. Status saat ini:
 | E5 History/version restore | Belum | — |
 | H1 Dead code Gantt | Belum | — |
 | H4 Audit aksesibilitas/mobile | Belum | — |
-| H6 Scheduler snapshot | Belum | — |
+| H6 Scheduler snapshot | Selesai | `--due` idempoten + scheduler internal opt-in + docs deployment |
 
 Kanban dan visualisasi (timeline, laporan, roadmap) sengaja tidak dipaginate karena pagination akan memecah drag-and-drop dan konteks visual.
 
