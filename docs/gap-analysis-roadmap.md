@@ -23,6 +23,20 @@ Fase 0 dikerjakan bertahap. Status saat ini:
 
 Kanban dan visualisasi (timeline, laporan, roadmap) sengaja tidak dipaginate karena pagination akan memecah drag-and-drop dan konteks visual.
 
+### Status fase 1 — loop eksekusi harian
+
+| Item | Status | Cakupan |
+|---|---|---|
+| H2 Fondasi notifikasi | Selesai | Model, service, resolver penerima, dedupe, preferensi in-app |
+| B1 Notification center | Selesai | Bell + unread count, filter, pagination, read/unread, deep link |
+| B2 Email + digest | Belum | — |
+| B3 Mention | Belum | — |
+| B4 Komentar lintas entitas | Belum | — |
+| B5 Watch/follow | Belum | — |
+| B6 My Tasks lanjutan | Belum | — |
+| B7 Quick update | Belum | — |
+| B8 Activity diff | Belum | — |
+
 ---
 
 ## 1. Ringkasan eksekutif
