@@ -122,3 +122,19 @@ PROGRESS_DELAYED_THRESHOLD = float(os.getenv("PCC_DELAYED_THRESHOLD", "-5"))
 PROGRESS_ON_TRACK_EPSILON = float(os.getenv("PCC_ON_TRACK_EPSILON", "1"))
 
 # Local username/password is the default authentication method.
+
+# --- Snapshot scheduler internal (H6) ---
+# Default mati. Nyalakan hanya pada satu opsi deployment: thread internal atau
+# systemd timer. Tick bersifat idempoten per project per hari.
+SCOPE_SCHEDULER_ENABLED = os.getenv("SCOPE_SCHEDULER_ENABLED", "false").strip().lower() in {
+    "1",
+    "true",
+    "yes",
+    "on",
+}
+try:
+    SCOPE_SCHEDULER_INTERVAL_MINUTES = float(
+        os.getenv("SCOPE_SCHEDULER_INTERVAL_MINUTES", "60")
+    )
+except ValueError:
+    SCOPE_SCHEDULER_INTERVAL_MINUTES = 60.0

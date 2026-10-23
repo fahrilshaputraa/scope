@@ -9,3 +9,6 @@ class ProjectsConfig(AppConfig):
 
     def ready(self):
         from . import signals  # noqa: F401
+        from .scheduler import start_scheduler
+
+        start_scheduler()
