@@ -31,6 +31,12 @@ def rich(value):
 
 
 @register.filter
+def rich_mentions(value):
+    """HTML ter-sanitasi dengan sebutan ``@username`` disorot."""
+    return mark_safe(render_html(value, mentions=True))
+
+
+@register.filter
 def plain(value):
     """Teks polos tanpa tag, untuk preview/kartu ringkas."""
     return strip_html(value)

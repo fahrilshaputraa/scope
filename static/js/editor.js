@@ -79,6 +79,7 @@
         textarea.classList.add('wysiwyg-source');
         if (textarea.form) textarea.form.addEventListener('submit', sync);
         sync();
+        if (window.PCC?.initMentions) PCC.initMentions(textarea.form);
     }
 
     function init(root = document) {
