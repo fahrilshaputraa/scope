@@ -16,8 +16,8 @@ Fase 0 dikerjakan bertahap. Status saat ini:
 | E3 Pagination | Selesai untuk list utama | Project, catatan global, issue, aktivitas, issue project, catatan project, komentar task |
 | E4 Search | Selesai | Project, task, issue, catatan, milestone, keputusan; halaman hasil dan saran navbar |
 | E1 UI manajemen user | Selesai | Daftar + cari/filter, edit identitas & peran, aktif/nonaktif, reset kata sandi, buat akun lokal; khusus staff |
-| E5 History/version restore | Belum | — |
-| H1 Dead code Gantt | Belum | — |
+| E5 History/version restore | Selesai | Revision per field untuk project, task, milestone, issue, risk; diff before/after; restore oleh PM/staff dengan validasi |
+| H1 Dead code Gantt | Selesai | Vendor Frappe Gantt, CSS, dan payload `gantt_tasks` dihapus |
 | H4 Audit aksesibilitas/mobile | Belum | — |
 | H6 Scheduler snapshot | Belum | — |
 
