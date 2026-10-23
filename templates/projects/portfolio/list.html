@@ -10,7 +10,7 @@
         {% if can_create %}<div class="flex flex-wrap gap-2">{% if can_view_archived %}<a class="pcc-button pcc-button-secondary" href="{% if show_archived %}{% url 'projects:project_list' %}{% else %}?archived=1{% endif %}"><svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M5 6v14h14V6M8 6V4h8v2M10 11v5M14 11v5"/></svg>{% if show_archived %}Kembali ke project aktif{% else %}Arsip ({{ archived_count }}){% endif %}</a>{% endif %}<a data-project-action class="pcc-button pcc-button-secondary" href="{% url 'projects:plan_import_new' %}"><svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 2 6 6 3-6 2-2 7-2-7-6-2 6-3zM21 2v4m-2-2h4"/></svg>Import dari AI</a>
             <a data-project-action href="{% url 'projects:project_create' %}"
                class="pcc-button">
-                <svg class="size-4"
+                <svg aria-hidden="true" focusable="false" class="size-4"
                      viewBox="0 0 24 24"
                      fill="none"
                      stroke="currentColor"
@@ -102,14 +102,16 @@
         <p class="text-sm text-muted-foreground">{{ total_rows }} project ditemukan{% if show_archived %} di arsip{% endif %}</p>
         {% if not show_archived %}<div class="flex gap-2"><a data-view-link="list"
    class="pcc-button pcc-button-secondary"
-   href="?view=list"><svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>List</a><a data-view-link="card"
+   href="?view=list"
+   {% if view == 'list' %}aria-current="page"{% endif %}><svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>List</a><a data-view-link="card"
    class="pcc-button pcc-button-secondary"
-   href="?view=card"><svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Card</a></div>{% endif %}
+   href="?view=card"
+   {% if view == 'card' %}aria-current="page"{% endif %}><svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Card</a></div>{% endif %}
     </div>
     {# ------------------------------------------------------- list view #}
     {% if view == "list" %}
         <div class="mt-3 overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm">
-            <div class="overflow-x-auto">
+            <div class="overflow-x-auto" tabindex="0" role="region" aria-label="Daftar project">
                 <table class="w-full text-sm">
                     <thead>
                         <tr class="border-b bg-muted/40">

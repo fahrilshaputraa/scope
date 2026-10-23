@@ -73,6 +73,8 @@ PCC.initForms = function(root = document) {
 (function() {
     const drawer = document.getElementById('project-action-panel');
     const content = drawer?.querySelector('[data-panel-content]');
+    const panelStatus = drawer?.querySelector('[data-panel-status]');
+    const announce = message => { if (panelStatus) panelStatus.textContent = message; };
     let actionURL, busy = false, controller, opener;
     function showForm(html) {
         const page = new DOMParser().parseFromString(html, 'text/html');
@@ -86,6 +88,7 @@ PCC.initForms = function(root = document) {
         drawer.scrollTop = 0;
         PCC.initForms(content);
         const invalid = form.querySelector('[aria-invalid=true]');
+        if (invalid) announce('Form berisi kesalahan. Periksa field yang ditandai.');
         const focusTarget = invalid?.matches('input,textarea,select') ? invalid
             : invalid?.querySelector('input,textarea,select')
                 || form.querySelector('input:not([type=hidden]):not([type=checkbox]), textarea, select');
@@ -101,6 +104,7 @@ PCC.initForms = function(root = document) {
         actionURL = link.href;
         drawer.removeAttribute('aria-labelledby');
         content.textContent = 'Memuat form…';
+        announce('Memuat form.');
         if (document.fullscreenElement) document.fullscreenElement.append(drawer);
         drawer.showModal();
         controller = new AbortController();
@@ -132,7 +136,7 @@ PCC.initForms = function(root = document) {
         const navigateAfterSave = submit.hasAttribute('data-panel-navigate');
         const label = submit.textContent;
         busy = true; submit.disabled = true; drawer.querySelector('[data-panel-close]').disabled = true; submit.textContent = 'Menyimpan…';
-        drawer.setAttribute('aria-busy','true');
+        drawer.setAttribute('aria-busy','true'); announce('Menyimpan perubahan…');
         try {
             const response = await fetch(actionURL, { method:'POST', body:payload, credentials:'same-origin' });
             if (!response.ok) throw new Error('Perubahan belum tersimpan. Periksa koneksi dan coba lagi.');
@@ -149,6 +153,7 @@ PCC.initForms = function(root = document) {
             let message = content.querySelector('[data-panel-error]');
             if (!message) { message = document.createElement('p'); message.dataset.panelError=''; message.className='workspace-message is-error mb-4'; message.setAttribute('role','alert'); content.prepend(message); }
             message.textContent = error.message;
+            announce(error.message);
         } finally { busy = false; submit.disabled = false; drawer.querySelector('[data-panel-close]').disabled = false; submit.textContent = label; drawer.removeAttribute('aria-busy'); }
     });
     const confirmedForms = new WeakSet();

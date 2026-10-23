@@ -1,6 +1,6 @@
 {% load pcc_tags %}
 {% if not hide_legend %}<div class="timeline-legend"><span><i class="swatch-future"></i>Rentang pekerjaan / belum waktunya</span><span><i class="swatch-plan"></i>Rencana sampai hari ini</span><span><i class="swatch-actual"></i>Actual tercatat</span><span>Garis: hari ini</span></div>{% endif %}
-<div class="task-timeline-scroll" tabindex="0" aria-label="Timeline pekerjaan, geser untuk melihat semua tanggal" data-timeline-scroll>
+<div class="task-timeline-scroll" tabindex="0" role="region" aria-label="Timeline pekerjaan, geser untuk melihat semua tanggal" data-timeline-scroll>
 <div class="task-timeline-grid{% if compact %} task-timeline-compact{% endif %}" data-timeline-grid data-today="{{ timeline_today|default_if_none:'' }}">
     <div class="task-timeline-row timeline-axis"><div class="timeline-task-label">Task / progress</div><div class="timeline-date-axis">{% for tick in timeline_ticks %}<time style="left:{{ tick.left }}%">{{ tick.date|date:"d M" }}</time>{% endfor %}</div></div>
     {% for row in timeline_rows %}

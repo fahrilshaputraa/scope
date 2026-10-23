@@ -8,9 +8,11 @@
             <p class="mt-1 text-sm text-muted-foreground">Dokumentasi project di seluruh workspace.</p>
         </div>
     </div>
-    <form method="get" class="mt-6 max-w-xl">
+    <form method="get" class="mt-6 max-w-xl" role="search">
         <div class="flex gap-2">
-            <input name="q"
+            <label class="sr-only" for="notes-q">Cari catatan berdasarkan judul, isi, atau tag</label>
+            <input id="notes-q"
+                   name="q"
                    value="{{ q }}"
                    placeholder="Cari judul, isi, atau tag..."
                    class="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">

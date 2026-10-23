@@ -9,12 +9,12 @@
         <label for="{{ field.id_for_label }}"
                class="text-sm font-normal leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
             {{ field.label }}
-            {% if field.field.required %}<span class="text-foreground">*</span>{% endif %}
+            {% if field.field.required %}<span class="text-foreground" aria-hidden="true">*</span><span class="sr-only"> (wajib)</span>{% endif %}
         </label>
         {{ field }}
-        {% if field.help_text %}<p class="text-xs text-muted-foreground">{{ field.help_text }}</p>{% endif %}
+        {% if field.help_text %}<p id="help-{{ field.name }}" class="text-xs text-muted-foreground">{{ field.help_text }}</p>{% endif %}
         {% for error in field.errors %}
-            <p id="error-{{ field.name }}"
+            <p {% if forloop.first %}id="error-{{ field.name }}"{% endif %}
                role="alert"
                class="text-xs font-normal text-foreground">{{ error }}</p>
         {% endfor %}

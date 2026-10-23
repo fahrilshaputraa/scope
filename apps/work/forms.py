@@ -252,6 +252,11 @@ class TaskCommentForm(forms.ModelForm):
 class AttachmentForm(forms.Form):
     file = forms.FileField(label="Lampiran")
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["file"].help_text = "Maksimal 10 MB per file."
+        style_form(self)
+
     def clean_file(self):
         file = self.cleaned_data["file"]
         if file.size > 10 * 1024 * 1024:

@@ -34,7 +34,7 @@
             </div>
             <div class="mt-2 flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-muted-foreground">
                 <span class="inline-flex items-center gap-1.5">
-                    <svg class="size-3.5"
+                    <svg aria-hidden="true" focusable="false" class="size-3.5"
                          viewBox="0 0 24 24"
                          fill="none"
                          stroke="currentColor"
@@ -47,7 +47,7 @@
                     {{ project.manager|person_name|default:"—" }}
                 </span>
                 <span class="inline-flex items-center gap-1.5">
-                    <svg class="size-3.5"
+                    <svg aria-hidden="true" focusable="false" class="size-3.5"
                          viewBox="0 0 24 24"
                          fill="none"
                          stroke="currentColor"
@@ -61,7 +61,7 @@
                 </span>
                 {% if project.team %}
                     <span class="inline-flex items-center gap-1.5">
-                        <svg class="size-3.5"
+                        <svg aria-hidden="true" focusable="false" class="size-3.5"
                              viewBox="0 0 24 24"
                              fill="none"
                              stroke="currentColor"
@@ -83,7 +83,7 @@
         </div>
         <div class="flex flex-wrap items-center gap-3">
             <span class="px-3 py-1 text-sm {{ project.status|status_style }}">{{ project.status|status_label }}</span>
-            <a data-project-action class="pcc-button pcc-button-secondary" href="{% url 'projects:presentation' project.pk %}"><svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 3h18M4 3v13h16V3M12 16v5m-4 0 4-3 4 3"/><path d="m10 7 5 3-5 3Z"/></svg>Presentasi</a>
+            <a data-project-action class="pcc-button pcc-button-secondary" href="{% url 'projects:presentation' project.pk %}"><svg aria-hidden="true" focusable="false" class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 3h18M4 3v13h16V3M12 16v5m-4 0 4-3 4 3"/><path d="m10 7 5 3-5 3Z"/></svg>Presentasi</a>
             {% if can_manage %}
                 <a data-project-action class="pcc-button" href="{% url 'work:task_create' %}?project={{ project.pk }}"><svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Tambah task</a>
                 <details class="project-add-menu"><summary class="pcc-button pcc-button-secondary"><svg class="size-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>Lainnya</summary>

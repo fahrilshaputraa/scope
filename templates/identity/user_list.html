@@ -26,15 +26,18 @@
         </div>
         <div class="mt-6 flex w-max items-center gap-1 rounded-lg border bg-card p-1 shadow-sm">
             <a href="{% query_replace status="" page=None %}"
-               class="rounded-md px-3 py-1.5 text-sm font-normal {% if not filters.status %}bg-primary text-primary-foreground shadow-sm{% else %}text-muted-foreground hover:text-foreground{% endif %}">
+               class="rounded-md px-3 py-1.5 text-sm font-normal {% if not filters.status %}bg-primary text-primary-foreground shadow-sm{% else %}text-muted-foreground hover:text-foreground{% endif %}"
+               {% if not filters.status %}aria-current="page"{% endif %}>
                 Semua <span class="tabular-nums">({{ total_users }})</span>
             </a>
             <a href="{% query_replace status="active" page=None %}"
-               class="rounded-md px-3 py-1.5 text-sm font-normal {% if filters.status == 'active' %}bg-primary text-primary-foreground shadow-sm{% else %}text-muted-foreground hover:text-foreground{% endif %}">
+               class="rounded-md px-3 py-1.5 text-sm font-normal {% if filters.status == 'active' %}bg-primary text-primary-foreground shadow-sm{% else %}text-muted-foreground hover:text-foreground{% endif %}"
+               {% if filters.status == 'active' %}aria-current="page"{% endif %}>
                 Aktif <span class="tabular-nums">({{ active_users }})</span>
             </a>
             <a href="{% query_replace status="inactive" page=None %}"
-               class="rounded-md px-3 py-1.5 text-sm font-normal {% if filters.status == 'inactive' %}bg-primary text-primary-foreground shadow-sm{% else %}text-muted-foreground hover:text-foreground{% endif %}">
+               class="rounded-md px-3 py-1.5 text-sm font-normal {% if filters.status == 'inactive' %}bg-primary text-primary-foreground shadow-sm{% else %}text-muted-foreground hover:text-foreground{% endif %}"
+               {% if filters.status == 'inactive' %}aria-current="page"{% endif %}>
                 Nonaktif <span class="tabular-nums">({{ inactive_users }})</span>
             </a>
         </div>
@@ -106,7 +109,7 @@
             </div>
         </form>
         <div class="mt-4 overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm">
-            <div class="overflow-x-auto">
+            <div class="overflow-x-auto" tabindex="0" role="region" aria-label="Daftar pengguna">
                 <table class="w-full text-sm">
                     <thead>
                         <tr class="border-b bg-muted/40">
