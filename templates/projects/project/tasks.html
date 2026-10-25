@@ -4,7 +4,7 @@
     <div class="mt-6 flex flex-wrap items-center justify-between gap-3">
         <div>
             <h2 class="text-lg font-normal tracking-tight">Kanban Board</h2>
-            <p class="text-sm text-muted-foreground">Seret kartu atau gunakan pilihan status pada task yang dapat Anda ubah.</p>
+            <p class="text-sm text-muted-foreground">Seret kartu untuk memindahkan status. Buka “Perbarui task” untuk mengubah detail.</p>
         </div>
         {% if can_manage %}
             <div class="flex flex-wrap gap-2"><a data-project-action class="pcc-button pcc-button-secondary" href="{% url 'projects:board_column_create' project.pk %}"><svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="6" height="16" rx="1"/><path d="M14 4h6v16h-6zM6 8v0M17 8v0M12 8v8"/></svg>Tambah kolom</a>

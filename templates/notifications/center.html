@@ -15,14 +15,14 @@
             </form>
         {% endif %}
     </div>
-    <div class="mt-6 flex w-max items-center gap-1 rounded-lg border bg-card p-1 shadow-sm">
+    <div class="mt-6 flex w-max items-center gap-1 rounded-lg border bg-card p-1">
         <a href="{% url 'notifications:center' %}?filter=all"
-           class="rounded-md px-3 py-1.5 text-sm font-normal {% if filter == 'all' %}bg-primary text-primary-foreground shadow-sm{% else %}text-muted-foreground hover:text-foreground{% endif %}"
+           class="rounded-md px-3 py-1.5 text-sm font-normal {% if filter == 'all' %}bg-primary text-primary-foreground {% else %}text-muted-foreground hover:text-foreground{% endif %}"
            {% if filter == 'all' %}aria-current="page"{% endif %}>
             Semua <span class="tabular-nums">({{ page_obj.paginator.count }})</span>
         </a>
         <a href="{% url 'notifications:center' %}?filter=unread"
-           class="rounded-md px-3 py-1.5 text-sm font-normal {% if filter == 'unread' %}bg-primary text-primary-foreground shadow-sm{% else %}text-muted-foreground hover:text-foreground{% endif %}"
+           class="rounded-md px-3 py-1.5 text-sm font-normal {% if filter == 'unread' %}bg-primary text-primary-foreground {% else %}text-muted-foreground hover:text-foreground{% endif %}"
            {% if filter == 'unread' %}aria-current="page"{% endif %}>
             Belum dibaca <span class="tabular-nums">({{ unread_count }})</span>
         </a>

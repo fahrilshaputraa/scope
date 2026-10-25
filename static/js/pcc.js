@@ -407,13 +407,13 @@ PCC.initVisualizations = function(root = document) {
         fallbackPanel = null;
         inertSiblings.forEach(([element, inert]) => { element.inert = inert; });
         inertSiblings.length = 0;
-        document.body.style.overflow = previousOverflow;
+        document.body.style.overflowY = previousOverflow;
         sync();
     };
     const enterFallback = panel => {
         fallbackPanel = panel;
-        previousOverflow = document.body.style.overflow;
-        document.body.style.overflow = 'hidden';
+        previousOverflow = document.body.style.overflowY;
+        document.body.style.overflowY = 'hidden';
         for (let ancestor = panel; ancestor.parentElement; ancestor = ancestor.parentElement) {
             [...ancestor.parentElement.children].filter(element => element !== ancestor && !element.matches('dialog,script,style,link')).forEach(element => {
                 inertSiblings.push([element, element.inert]); element.inert = true;

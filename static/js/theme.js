@@ -27,7 +27,8 @@
             const styles = getComputedStyle(root);
             const ash = styles.getPropertyValue('--color-ash').trim();
             const border = styles.getPropertyValue('--color-hairline').trim();
-            const brand = styles.getPropertyValue('--color-violet').trim();
+            const actualColor = styles.getPropertyValue('--timeline-actual').trim();
+            const planColor = styles.getPropertyValue('--timeline-plan').trim();
             const surface = styles.getPropertyValue('--color-paper').trim();
             Chart.defaults.color = ash;
             Object.values(Chart.instances).forEach(chart => {
@@ -38,10 +39,10 @@
                 });
                 chart.data.datasets.forEach(dataset => {
                     const planned = /planned|rencana/i.test(dataset.label);
-                    const color = planned ? ash : brand;
+                    const color = planned ? planColor : actualColor;
                     dataset.borderColor = color;
                     if ('pointBorderColor' in dataset) dataset.pointBorderColor = color;
-                    dataset.pointBackgroundColor = planned ? surface : brand;
+                    dataset.pointBackgroundColor = planned ? surface : actualColor;
                     if (typeof dataset.backgroundColor === 'string') dataset.backgroundColor = color;
                 });
                 if (chart.options.plugins?.legend?.labels) chart.options.plugins.legend.labels.color = ash;

@@ -6,7 +6,7 @@
         <h1 class="text-2xl font-normal tracking-tight">All Projects Timeline</h1>
         <p class="mt-1 text-sm text-muted-foreground">Rentang waktu dan progress seluruh project.</p>
     </div>
-    <div class="mt-6 overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm" data-fullscreen-panel="All Projects Timeline"><div class="pcc-section border-b flex flex-wrap items-center justify-between gap-3"><h2 class="text-lg">Timeline seluruh project</h2></div>
+    <div class="mt-6 overflow-hidden rounded-xl border bg-card text-card-foreground" data-fullscreen-panel="All Projects Timeline"><div class="pcc-section border-b flex flex-wrap items-center justify-between gap-3"><h2 class="text-lg">Timeline seluruh project</h2></div>
         <div class="overflow-x-auto" tabindex="0" role="region" aria-label="Timeline seluruh project">
             <table class="w-full text-sm">
                 <thead>
@@ -33,7 +33,7 @@
                                             <div class="absolute inset-y-0.5 rounded-md bg-border"
                                                  style="left: {{ pos.left }}%;
                                                         width: {{ pos.width }}%"></div>
-                                            <span class="absolute inset-0 flex items-center justify-center text-[10px] font-normal tabular-nums mix-blend-multiply text-foreground">
+                                            <span class="absolute inset-0 flex items-center justify-center text-xs font-normal tabular-nums mix-blend-multiply text-foreground">
                                                 {{ p.start_date|date:"d M" }} → {{ p.target_end_date|date:"d M Y" }}
                                             </span>
                                         </div>

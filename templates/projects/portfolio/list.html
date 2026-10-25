@@ -33,13 +33,13 @@
                        name="q"
                        value="{{ filters.q }}"
                        placeholder="Nama / code project"
-                       class="mt-1 flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
+                       class="mt-1 flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
             </div>
             <div>
                 <label for="status" class="text-xs font-normal text-muted-foreground">Status</label>
                 <select id="status"
                         name="status"
-                        class="mt-1 flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm">
+                        class="mt-1 flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm">
                     <option value="">Semua status</option>
                     {% for value, label in status_choices %}
                         <option value="{{ value }}"
@@ -51,7 +51,7 @@
                 <label for="pm" class="text-xs font-normal text-muted-foreground">Project Manager</label>
                 <select id="pm"
                         name="pm"
-                        class="mt-1 flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm">
+                        class="mt-1 flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm">
                     <option value="">Semua PM</option>
                     {% for pm in pms %}
                         <option value="{{ pm.username }}"
@@ -63,7 +63,7 @@
                 <label for="team" class="text-xs font-normal text-muted-foreground">Team</label>
                 <select id="team"
                         name="team"
-                        class="mt-1 flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm">
+                        class="mt-1 flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm">
                     <option value="">Semua team</option>
                     {% for team in teams %}
                         <option value="{{ team }}" {% if filters.team == team %}selected{% endif %}>{{ team }}</option>
@@ -78,7 +78,7 @@
                 </button>
                 {% if filters.q or filters.status or filters.pm or filters.team %}
                     <a href="{% url 'projects:project_list' %}"
-                       class="inline-flex h-9 items-center gap-1.5 rounded-md border bg-background px-3 text-sm font-normal shadow-xs hover:bg-accent"><svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>Reset</a>
+                       class="inline-flex h-9 items-center gap-1.5 rounded-md border bg-background px-3 text-sm font-normal hover:bg-accent"><svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>Reset</a>
                 {% endif %}
             </div>
         </div>
@@ -110,9 +110,9 @@
     </div>
     {# ------------------------------------------------------- list view #}
     {% if view == "list" %}
-        <div class="mt-3 overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm">
+        <div class="mt-3 overflow-hidden rounded-xl border bg-card text-card-foreground">
             <div class="overflow-x-auto" tabindex="0" role="region" aria-label="Daftar project">
-                <table class="w-full text-sm">
+                <table class="pcc-table responsive-table">
                     <thead>
                         <tr class="border-b bg-muted/40">
                             <th class="h-10 px-6 text-left font-normal text-muted-foreground">Project</th>
@@ -128,7 +128,7 @@
                     <tbody>
                         {% for row in rows %}
                             <tr class="border-b transition-colors hover:bg-muted/40">
-                                <td class="px-6 py-3">
+                                <td data-label="Project" class="px-6 py-3">
                                     {% if show_archived %}
                                         <span class="font-normal">{{ row.project.name }}</span>
                                     {% else %}
@@ -138,18 +138,18 @@
                                     <span class="ml-2 rounded-md bg-muted px-1.5 py-0.5 text-xs font-normal tabular-nums text-muted-foreground">{{ row.project.code }}</span>
                                     <div class="mt-0.5 text-xs text-muted-foreground">{{ row.project.start_date|date:"d M Y" }} → {{ row.project.target_end_date|date:"d M Y" }}</div>
                                 </td>
-                                <td class="px-4 py-3 text-muted-foreground">{{ row.project.manager|person_name|default:"—" }}</td>
-                                <td class="px-4 py-3">{{ row.project.effective_current_phase.name|default:"—" }}</td>
-                                <td class="px-4 py-3 text-right tabular-nums">{{ row.planned|pct }}</td>
-                                <td class="px-4 py-3 text-right font-normal tabular-nums">{{ row.actual|pct }}</td>
-                                <td class="px-4 py-3 text-right font-normal tabular-nums {{ row.variance|comp }}">
+                                <td data-label="PM" class="px-4 py-3 text-muted-foreground">{{ row.project.manager|person_name|default:"—" }}</td>
+                                <td data-label="Phase" class="px-4 py-3">{{ row.project.effective_current_phase.name|default:"—" }}</td>
+                                <td data-label="Rencana" class="px-4 py-3 text-right tabular-nums">{{ row.planned|pct }}</td>
+                                <td data-label="Actual" class="px-4 py-3 text-right font-normal tabular-nums">{{ row.actual|pct }}</td>
+                                <td data-label="Selisih" class="px-4 py-3 text-right font-normal tabular-nums {{ row.variance|comp }}">
                                     {% if row.variance > 0 %}+{% endif %}{{ row.variance|fmt2:" pp" }}
                                 </td>
-                                <td class="px-6 py-3">
+                                <td data-label="Status" class="px-6 py-3">
                                     <span class="{{ row.project.status|status_style }}">{{ row.project.get_status_display }}</span>
                                 </td>
                                 {% if show_archived %}
-                                    <td class="px-6 py-3 text-right">
+                                    <td data-label="Aksi" class="px-6 py-3 text-right">
                                         {% if row.can_restore %}
                                             <form method="post"
                                                   action="{% url 'projects:project_restore' row.project.pk %}"
@@ -177,7 +177,7 @@
         <div class="mt-3 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {% for row in rows %}
                 <a href="{% url 'projects:project_detail' row.project.pk %}"
-                   class="group rounded-xl border bg-card p-5 text-card-foreground shadow-sm transition-all hover:shadow-md">
+                   class="group rounded-xl border bg-card p-5 text-card-foreground transition-colors">
                     <div class="flex items-start justify-between gap-3">
                         <div class="min-w-0">
                             <p class="truncate font-normal group-hover:underline">{{ row.project.name }}</p>

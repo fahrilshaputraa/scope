@@ -13,11 +13,11 @@
                 <span class="pcc-status pcc-status-neutral">Privat</span>
             {% endif %}
         </div>
-        <section class="rounded-xl border bg-card p-6 shadow-sm">
+        <section class="rounded-xl border bg-card p-6">
             <h3 class="text-base font-normal">Tautan publik</h3>
             <div class="mt-3 flex flex-col gap-2 sm:flex-row">
                 <input id="public-url"
-                       class="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm"
+                       class="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
                        readonly
                        value="{{ public_url }}">
                 <button type="button"
@@ -44,7 +44,7 @@
                 {% endif %}
             </div>
         </section>
-        <section class="rounded-xl border bg-card p-6 shadow-sm">
+        <section class="rounded-xl border bg-card p-6">
             <h3 class="text-base font-normal">Buat ulang tautan</h3>
             <p class="mt-1 text-sm text-muted-foreground">Berguna jika tautan lama sudah tersebar. Tautan lama langsung tidak berlaku.</p>
             <form method="post"
@@ -55,11 +55,11 @@
                 <button type="submit" class="pcc-button pcc-button-secondary"><svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>Buat ulang tautan</button>
             </form>
         </section>
-        <section class="rounded-xl border bg-card p-6 shadow-sm">
+        <section class="rounded-xl border bg-card p-6">
             <h3 class="text-base font-normal">Yang terlihat oleh publik</h3>
             <div class="mt-3 grid gap-5 sm:grid-cols-2">
                 <div>
-                    <p class="text-xs font-normal text-muted-foreground">DITAMPILKAN</p>
+                    <p class="text-xs font-normal text-muted-foreground">Ditampilkan</p>
                     <ul class="mt-2 space-y-1 text-sm">
                         <li>Nama, kode, status, dan tanggal project</li>
                         <li>Progress rencana vs actual dan deviasinya</li>
@@ -69,7 +69,7 @@
                     </ul>
                 </div>
                 <div>
-                    <p class="text-xs font-normal text-muted-foreground">TIDAK DITAMPILKAN</p>
+                    <p class="text-xs font-normal text-muted-foreground">Tidak ditampilkan</p>
                     <ul class="mt-2 space-y-1 text-sm text-muted-foreground">
                         <li>Nama anggota/assignee, deskripsi task, komentar, dan lampiran</li>
                         <li>Project manager dan tim</li>

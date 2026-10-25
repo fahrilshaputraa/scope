@@ -1,4 +1,5 @@
 {% load pcc_tags %}
+                    <article class="kanban-record">
                         <a href="{% url 'work:task_detail' task.pk %}"
                            data-task-id="{{ task.pk }}"
                            data-draggable="{% if task.can_edit %}true{% else %}false{% endif %}"
@@ -11,7 +12,7 @@
                             {% if task.label_list %}
                                 <div class="mt-2 flex flex-wrap gap-1">
                                     {% for label in task.label_list %}
-                                        <span class="rounded-md border border-border px-1.5 py-0.5 text-[10px] font-normal text-muted-foreground">{{ label }}</span>
+                                        <span class="rounded-md border border-border px-1.5 py-0.5 text-xs font-normal text-muted-foreground">{{ label }}</span>
                                     {% endfor %}
                                 </div>
                             {% endif %}
@@ -44,6 +45,7 @@
                         </a>
                         {% if task.has_details %}<div class="px-3 pb-3">{% include 'work/_activity_details.html' with details=task.subtasks.all expand_details=False %}</div>{% endif %}
                         {% if task.can_edit %}
+                        <details class="kanban-edit"><summary>Perbarui task</summary><div class="kanban-edit-fields">
                             <label class="sr-only" for="status-{{ task.pk }}">Status {{ task.title }}</label>
                             <select id="status-{{ task.pk }}"
                                     class="pcc-field text-xs"
@@ -54,6 +56,8 @@
         {% if task.status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
                             </select>
                             {% include "work/partials/_task_quick_update.html" with show_status=False %}
+{% if custom_columns %}<label class="sr-only" for="column-{{ task.pk }}">Kolom {{ task.title }}</label><select class="pcc-field text-xs" id="column-{{ task.pk }}" data-column-select data-task-id-select="{{ task.pk }}" data-current="{{ task.board_column_id|default:'' }}"><option value="">Kolom berdasarkan status</option>{% for column in custom_columns %}<option value="{{ column.pk }}" {% if task.board_column_id == column.pk %}selected{% endif %}>{{ column.title }}</option>{% endfor %}</select>{% endif %}
+                        </div></details>
                         {% endif %}
                         {% if task.is_blocked %}<p class="px-2 text-xs text-foreground">{{ task.blocked_reason|default:"Alasan hambatan belum dicatat." }}</p>{% endif %}
-                        {% if task.can_edit and custom_columns %}<label class="sr-only" for="column-{{ task.pk }}">Kolom {{ task.title }}</label><select class="pcc-field text-xs" id="column-{{ task.pk }}" data-column-select data-task-id-select="{{ task.pk }}" data-current="{{ task.board_column_id|default:'' }}"><option value="">Kolom berdasarkan status</option>{% for column in custom_columns %}<option value="{{ column.pk }}" {% if task.board_column_id == column.pk %}selected{% endif %}>{{ column.title }}</option>{% endfor %}</select>{% endif %}
+                    </article>

@@ -15,14 +15,14 @@
                    name="q"
                    value="{{ q }}"
                    placeholder="Cari judul, isi, atau tag..."
-                   class="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
+                   class="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
             <button type="submit"
                     class="pcc-button"><svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10" cy="10" r="6"/><path d="m15 15 5 5"/></svg>Cari</button>
         </div>
     </form>
     <div class="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {% for note in notes %}
-            <div class="rounded-xl border bg-card text-card-foreground shadow-sm transition-shadow hover:shadow-md">
+            <div class="rounded-xl border bg-card text-card-foreground transition-shadow">
                 <div class="p-5">
                     <div class="flex items-start justify-between gap-2">
                         <a href="{% url 'projects:project_notes' note.project.pk %}"
@@ -35,7 +35,7 @@
                     {% if note.tag_list %}
                         <div class="mt-3 flex flex-wrap gap-1">
                             {% for tag in note.tag_list %}
-                                <span class="rounded-full bg-muted px-2 py-0.5 text-[10px] font-normal text-muted-foreground">#{{ tag }}</span>
+                                <span class="rounded-full bg-muted px-2 py-0.5 text-xs font-normal text-muted-foreground">#{{ tag }}</span>
                             {% endfor %}
                         </div>
                     {% endif %}

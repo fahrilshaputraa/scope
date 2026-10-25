@@ -23,20 +23,20 @@
         {% endif %}
     </div>
     {# -------------------------------------------------------------- filter #}
-    <div class="mt-6 flex items-center gap-1 rounded-lg border bg-card p-1 shadow-sm w-max">
+    <div class="mt-6 flex items-center gap-1 rounded-lg border bg-card p-1 w-max">
         <a href="{% url 'work:issue_list' %}?status=open"
-           class="rounded-md px-3 py-1.5 text-sm font-normal {% if filter == 'open' %}bg-primary text-primary-foreground shadow-sm{% else %}text-muted-foreground hover:text-foreground{% endif %}"
+           class="rounded-md px-3 py-1.5 text-sm font-normal {% if filter == 'open' %}bg-primary text-primary-foreground {% else %}text-muted-foreground hover:text-foreground{% endif %}"
            {% if filter == 'open' %}aria-current="page"{% endif %}>
             Open <span class="tabular-nums">({{ open_count }})</span>
         </a>
         <a href="{% url 'work:issue_list' %}?status=resolved"
-           class="rounded-md px-3 py-1.5 text-sm font-normal {% if filter == 'resolved' %}bg-primary text-primary-foreground shadow-sm{% else %}text-muted-foreground hover:text-foreground{% endif %}"
+           class="rounded-md px-3 py-1.5 text-sm font-normal {% if filter == 'resolved' %}bg-primary text-primary-foreground {% else %}text-muted-foreground hover:text-foreground{% endif %}"
            {% if filter == 'resolved' %}aria-current="page"{% endif %}>Resolved</a>
         <a href="{% url 'work:issue_list' %}?status=all"
-           class="rounded-md px-3 py-1.5 text-sm font-normal {% if filter == 'all' %}bg-primary text-primary-foreground shadow-sm{% else %}text-muted-foreground hover:text-foreground{% endif %}"
+           class="rounded-md px-3 py-1.5 text-sm font-normal {% if filter == 'all' %}bg-primary text-primary-foreground {% else %}text-muted-foreground hover:text-foreground{% endif %}"
            {% if filter == 'all' %}aria-current="page"{% endif %}>All</a>
     </div>
-    <div class="mt-4 overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm">
+    <div class="mt-4 overflow-hidden rounded-xl border bg-card text-card-foreground">
         <div class="overflow-x-auto" tabindex="0" role="region" aria-label="Daftar issue">
             <table class="w-full text-sm">
                 <thead>

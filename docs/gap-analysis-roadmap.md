@@ -33,8 +33,8 @@ Kanban dan visualisasi (timeline, laporan, roadmap) sengaja tidak dipaginate kar
 | B3 Mention | Selesai | `@username` tervalidasi akses, notifikasi sekali, autocomplete keyboard, render aman |
 | B4 Komentar lintas entitas | Selesai | Komentar di issue, catatan, milestone, project; mention, thread, notifikasi, tanpa efek status/progress |
 | B5 Watch/follow | Selesai | Subscription project/task, auto-subscribe dengan opt-out, notifikasi watcher |
-| B6 My Tasks lanjutan | Belum | — |
-| B7 Quick update | Belum | — |
+| B6 My Tasks lanjutan | Selesai | Bucket terlambat/jatuh tempo/tanpa target, filter project/status/q, grouping project/status |
+| B7 Quick update | Selesai | Status & progress inline di My Tasks dan daftar task project, error/live announcement |
 | B8 Activity diff | Belum | — |
 
 ---

@@ -9,7 +9,7 @@
  Chart.defaults.font.weight = 400;
  const chart = new Chart(canvas, { type: 'line', data: { labels: data.labels, datasets: [
  { label: 'Rencana', data: data.planned, borderColor: token('--timeline-plan'), borderDash: [6,4], borderWidth: 2, pointRadius: 3, pointHoverRadius: 5, pointBackgroundColor: token('--surface'), pointBorderColor: token('--timeline-plan'), pointBorderWidth: 1.5, tension: 0 },
- { label: 'Actual', data: data.actual, borderColor: token('--brand'), backgroundColor: token('--brand'), borderWidth: 2.5, pointRadius: 3, pointHoverRadius: 5, pointBackgroundColor: token('--brand'), pointBorderColor: token('--surface'), pointBorderWidth: 1.5, spanGaps: true, tension: 0 }
+ { label: 'Actual', data: data.actual, borderColor: token('--timeline-actual'), backgroundColor: token('--timeline-actual'), borderWidth: 2.5, pointRadius: 3, pointHoverRadius: 5, pointBackgroundColor: token('--timeline-actual'), pointBorderColor: token('--surface'), pointBorderWidth: 1.5, spanGaps: true, tension: 0 }
  ] }, options: { animation: canvas.closest('[data-presentation-player]') ? false : undefined, responsive: true, maintainAspectRatio: false, interaction: { mode:'index',intersect:false },
  plugins: {legend: {position:'bottom',labels:{usePointStyle:true,boxWidth:8}},tooltip:{callbacks:{label:c=>c.parsed.y === null ? '' : `${c.dataset.label}: ${c.parsed.y.toFixed(2)}%`}}},
  scales: { y:{min:0,max:100,ticks:{callback:v=>v+'%'},grid:{color:token('--color-hairline')}}, x:{grid:{display:false},ticks:{maxTicksLimit:8,maxRotation:0}} } } });

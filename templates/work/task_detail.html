@@ -23,7 +23,7 @@
                 <span class="{{ task.priority|status_style }}">{{ task.get_priority_display }}</span>
                 {% if task.phase %}<span class="rounded-md bg-muted px-2 py-0.5 text-xs font-normal text-muted-foreground">{{ task.phase.name }}</span>{% endif %}
                 {% for label in task.label_list %}
-                    <span class="rounded-md border border-border px-1.5 py-0.5 text-[10px] font-normal text-muted-foreground">{{ label }}</span>
+                    <span class="rounded-md border border-border px-1.5 py-0.5 text-xs font-normal text-muted-foreground">{{ label }}</span>
                 {% endfor %}
             </div>
         </div>
@@ -50,7 +50,7 @@
             </form>
         {% if can_edit %}
             <a data-project-action href="{% url 'work:task_update' task.pk %}"
-               class="inline-flex h-9 items-center gap-2 rounded-md border bg-background px-4 text-sm font-normal shadow-xs hover:bg-accent hover:text-accent-foreground">
+               class="inline-flex h-9 items-center gap-2 rounded-md border bg-background px-4 text-sm font-normal hover:bg-accent hover:text-accent-foreground">
                 <svg aria-hidden="true" focusable="false" class="size-4"
                      viewBox="0 0 24 24"
                      fill="none"
@@ -82,7 +82,7 @@
     <div class="mt-6 grid gap-4 lg:grid-cols-3">
         <div class="lg:col-span-2 space-y-4">
             {# ---------------------------------------------------- progress #}
-            <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
+            <div class="rounded-xl border bg-card text-card-foreground">
                 <div class="border-b px-5 py-4">
                     <div class="flex items-baseline justify-between">
                         <h2 class="text-base font-normal">Progress</h2>
@@ -108,7 +108,7 @@
                 </section>
             {% endif %}
             {# ------------------------------------------------- description #}
-            <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
+            <div class="rounded-xl border bg-card text-card-foreground">
                 <div class="border-b px-5 py-4">
                     <h2 class="text-base font-normal">Description</h2>
                 </div>
@@ -122,7 +122,7 @@
             </div>
             {# ---------------------------------------------------- blocked #}
             {% if task.is_blocked %}
-                <div class="rounded-xl border border-border bg-muted text-foreground shadow-sm">
+                <div class="rounded-xl border border-border bg-muted text-foreground">
                     <div class="px-5 py-4">
                         <h2 class="flex items-center gap-2 text-sm font-normal text-foreground">
                             <svg aria-hidden="true" focusable="false" class="size-4"
@@ -142,7 +142,7 @@
                 </div>
             {% endif %}
             {# ---------------------------------------------------- comments #}
-            <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
+            <div class="rounded-xl border bg-card text-card-foreground">
                 <div class="border-b px-5 py-4">
                     <h2 class="text-base font-normal">Comments <span class="text-sm font-normal text-muted-foreground">({{ comments_page.paginator.count }})</span></h2>
                 </div>
@@ -195,7 +195,7 @@
    role="alert"
    class="text-xs font-normal text-foreground">{{ error }}</p>{% endfor %}<p id="help-file" class="text-xs text-muted-foreground">{{ attachment_form.file.help_text }}</p><button class="pcc-button pcc-button-secondary"><svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21V9M7 14l5-5 5 5M4 3h16"/></svg>Unggah</button></form>{% endif %}</section>
             <section class="pcc-panel"><h2 class="pcc-section border-b font-normal">Dependency</h2><ul class="divide-y">{% for dependency in task.dependencies.all %}<li class="p-4 text-sm"><a class="underline" href="{% url 'work:task_detail' dependency.pk %}">{{ dependency.title }}</a><span class="mt-1 block text-xs text-muted-foreground">{{ dependency.get_status_display }}</span></li>{% empty %}<li class="p-4 text-sm text-muted-foreground">Tidak ada dependency.</li>{% endfor %}</ul></section>
-            <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
+            <div class="rounded-xl border bg-card text-card-foreground">
                 <div class="border-b px-5 py-4">
                     <h2 class="text-base font-normal">Details</h2>
                 </div>
@@ -244,7 +244,7 @@
             </div>
             {# ----------------------------------------------------- issues #}
             {% if task.issues.all %}
-                <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
+                <div class="rounded-xl border bg-card text-card-foreground">
                     <div class="border-b px-5 py-4">
                         <h2 class="text-base font-normal">Related Issues</h2>
                     </div>

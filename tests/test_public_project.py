@@ -244,5 +244,5 @@ def test_share_page_exposes_url_and_privacy_note(client, public_case):
     response = client.get(reverse("projects:project_share", args=[project.pk]))
     assert response.status_code == 200
     assert f"/p/{project.public_token}/".encode() in response.content
-    assert b"TIDAK DITAMPILKAN" in response.content
+    assert b"Tidak ditampilkan" in response.content
     assert b"Buat ulang tautan" in response.content

@@ -22,13 +22,13 @@
         {% endif %}
     </div>
     {# ------------------------------------------------- milestone list (timeline) #}
-    <div class="mt-4 rounded-xl border bg-card text-card-foreground shadow-sm">
+    <div class="mt-4 rounded-xl border bg-card text-card-foreground">
         <div class="divide-y">
             {% for ms in milestones %}
                 <div class="flex items-start gap-4 px-6 py-4">
                     <div class="mt-1 flex flex-col items-center">
                         {% if ms.status == "completed" %}
-                            <span class="flex size-5 items-center justify-center rounded-full bg-foreground text-white">
+                            <span class="flex size-5 items-center justify-center rounded-full bg-foreground text-background">
                                 <svg aria-hidden="true" focusable="false" class="size-3"
                                      viewBox="0 0 24 24"
                                      fill="none"
@@ -40,7 +40,7 @@
                                 </svg>
                             </span>
                         {% elif ms.status == "delayed" %}
-                            <span class="flex size-5 items-center justify-center rounded-full bg-foreground text-white">
+                            <span class="flex size-5 items-center justify-center rounded-full bg-foreground text-background">
                                 <svg aria-hidden="true" focusable="false" class="size-3"
                                      viewBox="0 0 24 24"
                                      fill="none"
@@ -88,7 +88,7 @@
                                       data-confirm="Hapus milestone ini?">
                                     {% csrf_token %}
                                     <button type="submit"
-                                            class="text-muted-foreground hover:text-foreground">Hapus</button>
+                                            class="subtle-action">Hapus</button>
                                 </form>
                             </div>
                         {% endif %}

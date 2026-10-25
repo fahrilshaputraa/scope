@@ -7,7 +7,7 @@
         <div class="workspace-shell"
              x-data="{ sidebarOpen: false, mobile: window.innerWidth < 768 }"
              @resize.window="mobile = window.innerWidth < 768"
-         x-effect="document.body.style.overflow = sidebarOpen && mobile ? 'hidden' : ''"
+         x-effect="document.body.style.overflowY = sidebarOpen && mobile ? 'hidden' : ''"
          @keydown.tab.window="if (sidebarOpen && mobile) PCC.trapSidebar($event)"
          @keydown.escape.window="if (sidebarOpen) { sidebarOpen = false; $nextTick(() => document.querySelector('.mobile-menu').focus()); }">
             <button class="sidebar-backdrop"

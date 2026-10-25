@@ -3,34 +3,33 @@
 {% block project_content %}
     {# ------------------------------------------------------- variance summary #}
     <div class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div class="rounded-xl border bg-card p-4 shadow-sm">
-            <p class="text-xs font-normal text-muted-foreground">PLANNED PROGRESS</p>
+        <div class="rounded-xl border bg-card p-4">
+            <p class="text-xs font-normal text-muted-foreground">Rencana progress</p>
             <p class="mt-2 text-2xl font-normal tabular-nums">{{ planned|pct }}</p>
             <p class="mt-1 text-xs text-muted-foreground">hari ini · {{ "now"|date:"d M Y" }}</p>
         </div>
-        <div class="rounded-xl border bg-card p-4 shadow-sm">
-            <p class="text-xs font-normal text-muted-foreground">ACTUAL PROGRESS</p>
+        <div class="rounded-xl border bg-card p-4">
+            <p class="text-xs font-normal text-muted-foreground">Actual progress</p>
             <p class="mt-2 text-2xl font-normal tabular-nums">{{ actual|pct }}</p>
             <p class="mt-1 text-xs text-muted-foreground">derivasi dari weighted task</p>
         </div>
-        <div class="rounded-xl border bg-card p-4 shadow-sm">
-            <p class="text-xs font-normal text-muted-foreground">DEVIASI PROGRESS</p>
+        <div class="rounded-xl border bg-card p-4">
+            <p class="text-xs font-normal text-muted-foreground">Deviasi progress</p>
             <p class="mt-2 text-2xl font-normal tabular-nums {{ variance|comp }}">
                 {% if variance > 0 %}+{% endif %}{{ variance|fmt2:"%" }}
             </p>
             <p class="mt-1 text-xs text-muted-foreground">Actual − rencana; selisih poin persentase</p>
         </div>
-        <div class="rounded-xl border bg-card p-4 shadow-sm">
-            <p class="text-xs font-normal text-muted-foreground">LEVEL</p>
+        <div class="rounded-xl border bg-card p-4">
+            <p class="text-xs font-normal text-muted-foreground">Kondisi progress</p>
             <div class="mt-2 flex items-center gap-2">
-                <span class="size-3 rounded-full {{ variance_level|default:'unknown'|level_dot }}"></span>
-                <span class="text-xl font-normal">{{ variance_level|default:"No Baseline"|level_label }}</span>
+                <span class="{{ variance_level|status_style }}">{{ variance_level|default:"No Baseline"|level_label }}</span>
             </div>
             <p class="mt-1 text-xs text-muted-foreground">threshold at-risk: {{ settings.PROGRESS_AT_RISK_THRESHOLD }}%</p>
         </div>
     </div>
     {# ------------------------------------------------------------- chart #}
-    <div class="mt-4 rounded-xl border bg-card text-card-foreground shadow-sm" data-fullscreen-panel="Plan vs Actual Progress">
+    <div class="mt-4 rounded-xl border bg-card text-card-foreground" data-fullscreen-panel="Plan vs Actual Progress">
         <div class="flex flex-wrap items-center justify-between gap-3 border-b px-6 py-4">
             <div>
                 <h2 class="text-base font-normal">Rencana vs progress</h2>
@@ -54,8 +53,8 @@
         <div class="p-4">
             {% if chart_has_plan %}
                 <div class="flex items-center justify-end gap-4 pb-2 text-xs text-muted-foreground">
-                    <span class="inline-flex items-center gap-1.5"><span class="h-0.5 w-4 rounded-md bg-muted-foreground"></span> Rencana</span>
-                    <span class="inline-flex items-center gap-1.5"><span class="h-0.5 w-4 rounded-md bg-primary"></span> Actual</span>
+                    <span class="inline-flex items-center gap-1.5"><span class="legend-swatch planned"></span> Rencana</span>
+                    <span class="inline-flex items-center gap-1.5"><span class="legend-swatch"></span> Actual</span>
                 </div>
                 <div class="relative h-80" data-chart-frame>
                     <canvas id="progress-chart"
@@ -74,7 +73,7 @@
     </div>
     <div class="mt-4 grid gap-4 lg:grid-cols-5">
         {# ------------------------------------------------ baseline editor #}
-        <div class="lg:col-span-2 rounded-xl border bg-card text-card-foreground shadow-sm" data-fullscreen-panel="Planned Baseline">
+        <div class="lg:col-span-2 rounded-xl border bg-card text-card-foreground" data-fullscreen-panel="Planned Baseline">
             <div class="border-b px-6 py-4 flex flex-wrap items-center justify-between gap-3"><div>
                 <h2 class="text-base font-normal">Planned Baseline</h2>
                 <p class="text-sm text-muted-foreground">Titik rencana progress (PRD §11).</p></div>
@@ -95,7 +94,7 @@
                                        required
                                        aria-required="true"
                                        value="{{ baseline_form.date.value }}"
-                                       class="mt-1 flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
+                                       class="mt-1 flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
                             </div>
                             <div>
                                 <label for="baseline-planned"
@@ -109,7 +108,7 @@
                                        min="0"
                                        max="100"
                                        placeholder="62.5"
-                                       class="mt-1 flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
+                                       class="mt-1 flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
                             </div>
                             <div>
                                 <label for="baseline-label"
@@ -118,7 +117,7 @@
                                        type="text"
                                        name="label"
                                        placeholder="Kickoff"
-                                       class="mt-1 flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
+                                       class="mt-1 flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
                             </div>
                         </div>
                         <button type="submit"
@@ -143,7 +142,7 @@
                                           data-confirm="Hapus baseline point ini?">
                                         {% csrf_token %}
                                         <button type="submit"
-                                                class="text-xs text-muted-foreground hover:text-foreground">hapus</button>
+                                                class="subtle-action">Hapus</button>
                                     </form>
                                 {% endif %}
                             </span>
@@ -155,7 +154,7 @@
             </div>
         </div>
         {# ------------------------------------------------ snapshots #}
-        <div class="lg:col-span-3 rounded-xl border bg-card text-card-foreground shadow-sm" data-fullscreen-panel="Progress Snapshot">
+        <div class="lg:col-span-3 rounded-xl border bg-card text-card-foreground" data-fullscreen-panel="Progress Snapshot">
             <div class="flex items-center justify-between gap-3 border-b px-6 py-4">
                 <div>
                     <h2 class="text-base font-normal">Progress Snapshot</h2>
@@ -165,7 +164,7 @@
                     <form method="post" action="{% url 'projects:snapshot_now' project.pk %}">
                         {% csrf_token %}
                         <button type="submit"
-                                class="inline-flex h-9 items-center gap-1.5 rounded-md border bg-background px-3 text-sm font-normal shadow-xs hover:bg-accent">
+                                class="inline-flex h-9 items-center gap-1.5 rounded-md border bg-background px-3 text-sm font-normal hover:bg-accent">
                             <svg aria-hidden="true" focusable="false" class="size-4"
                                  viewBox="0 0 24 24"
                                  fill="none"
