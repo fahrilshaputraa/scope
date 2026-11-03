@@ -13,6 +13,7 @@ from django.utils import timezone
 from django.utils.dateparse import parse_date
 
 from apps.identity.permissions import can_create_project, can_manage_project
+from apps.identity.roles import membership_codes
 from apps.work.models import Task
 
 from .models import ActivityAction, Milestone, Phase, PlanningImport, Project
@@ -233,7 +234,7 @@ def import_plan(payload, actor, project=None, baseline=False):
         manager = user_value(info.get("manager"), "Project Manager") or actor
         if not actor.is_staff and manager.pk != actor.pk:
             fail("Project baru harus menggunakan Anda sebagai PM.")
-        if not manager.is_staff and manager.pcc_profile.role != "pm":
+        if not manager.is_staff and "pm" not in membership_codes(manager):
             fail("Project Manager harus memiliki role PM.")
         project = Project(
             name=string(info.get("name"), "Nama project", True, 200),

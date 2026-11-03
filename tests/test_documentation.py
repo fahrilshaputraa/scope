@@ -6,6 +6,7 @@ from django.urls import reverse
 
 from apps.identity.documentation import ARTICLES
 from apps.identity.models import Role
+from apps.identity.roles import assign_roles
 from apps.projects.models import Project
 
 pytestmark = pytest.mark.django_db
@@ -45,8 +46,7 @@ def test_every_guide_renders_with_section_navigation(client, docs_user, article)
 def test_docs_are_available_to_all_roles_but_creation_links_follow_permissions(
     client, docs_user, role
 ):
-    docs_user.pcc_profile.role = role
-    docs_user.pcc_profile.save()
+    assign_roles(docs_user, [role])
     client.force_login(docs_user)
     response = client.get(reverse("identity:docs_article", args=["membuat-proyek"]))
     assert response.status_code == 200

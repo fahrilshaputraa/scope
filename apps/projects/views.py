@@ -11,11 +11,11 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from apps.identity.permissions import (
+    can_comment,
     can_create_project,
     can_edit_task,
     can_manage_project,
     can_report_issue,
-    is_management,
     is_pm,
     visible_projects,
 )
@@ -85,7 +85,7 @@ def project_context(request, project, active_tab):
         "active_tab": active_tab,
         "can_manage": can_manage_project(request.user, project),
         "can_report": can_report_issue(request.user),
-        "can_comment": not is_management(request.user) or request.user.is_staff,
+        "can_comment": can_comment(request.user),
         **watch_state(request.user, SubscriptionTarget.PROJECT, project.pk),
     }
 

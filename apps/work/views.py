@@ -18,6 +18,7 @@ from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_http_methods, require_POST
 
 from apps.identity.permissions import (
+    can_comment,
     can_edit_task,
     can_manage_project,
     can_report_issue,
@@ -390,7 +391,7 @@ def issue_update(request: HttpRequest, pk: int) -> HttpResponse:
         "comment_count": thread(
             issue.project, CommentTarget.ISSUE, issue.pk, limit=None
         ).count(),
-        "can_comment": not is_management(request.user) or request.user.is_staff,
+        "can_comment": can_comment(request.user),
     }
     comment_context["comments_page"] = comment_context["comments"]
     if not can_manage_project(request.user, issue.project):
@@ -600,7 +601,7 @@ def task_detail(request: HttpRequest, pk: int) -> HttpResponse:
             "comment_form": comment_form,
             "comments": comments_page,
             "comments_page": comments_page,
-            "can_comment": not is_management(request.user) or request.user.is_staff,
+            "can_comment": can_comment(request.user),
             "attachment_form": AttachmentForm(),
             **watch_state(request.user, SubscriptionTarget.TASK, task.pk),
         },

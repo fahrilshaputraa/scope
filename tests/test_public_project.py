@@ -7,6 +7,7 @@ from django.contrib.auth.models import User
 from django.urls import reverse
 
 from apps.identity.models import Role
+from apps.identity.roles import assign_roles
 from apps.projects.models import (
     ActivityAction,
     ActivityEvent,
@@ -25,7 +26,7 @@ pytestmark = pytest.mark.django_db
 @pytest.fixture
 def public_case():
     pm = User.objects.create_user("pm-user")
-    pm.pcc_profile.role = Role.PROJECT_MANAGER
+    assign_roles(pm, [Role.PROJECT_MANAGER])
     pm.pcc_profile.display_name = "Petra Manager"
     pm.pcc_profile.save()
     member = User.objects.create_user("member-user")

@@ -15,6 +15,7 @@ class ProjectForm(SanitizeRichTextMixin, forms.ModelForm):
             "code",
             "description",
             "manager",
+            "owner",
             "members",
             "current_phase",
             "team",
@@ -28,9 +29,18 @@ class ProjectForm(SanitizeRichTextMixin, forms.ModelForm):
         super().__init__(*args, **kwargs)
         from django.contrib.auth.models import User
 
-        self.fields["manager"].queryset = User.objects.filter(is_active=True).filter(
-            Q(pcc_profile__role="pm") | Q(is_staff=True)
+        self.fields["manager"].queryset = (
+            User.objects.filter(is_active=True)
+            .filter(Q(memberships__role__code="pm") | Q(is_staff=True))
+            .distinct()
         )
+        self.fields["owner"].queryset = (
+            User.objects.filter(is_active=True)
+            .filter(Q(memberships__role__code="owner") | Q(is_staff=True))
+            .distinct()
+        )
+        # Owner wajib untuk project baru; project lama tanpa owner boleh tetap kosong.
+        self.fields["owner"].required = not (self.instance.pk and not self.instance.owner_id)
         self.fields["members"].queryset = User.objects.filter(is_active=True)
         self.fields["current_phase"].queryset = (
             self.instance.phases.all() if self.instance.pk else Phase.objects.none()
@@ -55,7 +65,9 @@ class ProjectForm(SanitizeRichTextMixin, forms.ModelForm):
                 timezone.localdate() + timezone.timedelta(days=30)
             )
         fill_missing_defaults(self, ["manager", "start_date", "target_end_date", "status"])
-        style_form(self, primary=["name", "target_end_date", "members"])
+        style_form(self, primary=["name", "owner", "target_end_date", "members"])
+        self.fields["owner"].label = "Project Owner"
+        self.fields["owner"].help_text = "Penanggung jawab outcome project."
         self.fields["name"].widget.attrs["placeholder"] = "Contoh: Peluncuran portal pelanggan"
         self.fields[
             "members"

@@ -14,6 +14,7 @@ from django.db.models.signals import m2m_changed, post_save, pre_save
 from django.utils.dateparse import parse_date, parse_datetime
 from django.utils.html import strip_tags
 
+from apps.identity.roles import active_role
 from apps.work.models import (
     TASK_STATUS_LABELS,
     Issue,
@@ -54,6 +55,7 @@ REVISION_FIELDS: dict[str, dict[str, FieldSpec]] = {
         "current_phase": FieldSpec("Phase aktif", "phase", "current_phase_id"),
         "progress_override": FieldSpec("Progress manual", "percent"),
         "manager": FieldSpec("Manager", "user", "manager_id"),
+        "owner": FieldSpec("Owner", "user", "owner_id"),
         "members": FieldSpec("Anggota", "users"),
         "archived_at": FieldSpec("Status arsip", "datetime"),
     },
@@ -312,6 +314,7 @@ def _record_revision(instance, entity, changes, action):
         object_id=instance.pk,
         object_repr=_object_repr(instance, entity),
         actor=actor,
+        active_role=active_role(actor) if actor is not None else "",
         action=final_action,
         changes=changes,
         summary=_summary(instance, entity, final_action),

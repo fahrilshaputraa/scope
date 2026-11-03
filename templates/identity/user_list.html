@@ -141,10 +141,7 @@
                                     </div>
                                 </td>
                                 <td data-label="Peran" class="px-4 py-3 whitespace-nowrap">
-                                    <span class="rounded-md bg-muted px-1.5 py-0.5 text-xs font-normal text-muted-foreground">{{ account.pcc_profile.get_role_display|default:"Project Member" }}</span>
-                                    {% if account.is_staff %}
-                                        <span class="mt-1 block w-max rounded-md border border-border px-1.5 py-0.5 text-xs text-muted-foreground">Administrator</span>
-                                    {% endif %}
+                                    <div class="flex flex-wrap gap-1">{% for label in account.pcc_profile.role_labels %}<span class="rounded-md bg-muted px-1.5 py-0.5 text-xs font-normal text-muted-foreground">{{ label }}</span>{% endfor %}</div>
                                 </td>
                                 <td data-label="Status" class="px-4 py-3 whitespace-nowrap">
                                     {% if account.is_active %}

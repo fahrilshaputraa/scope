@@ -14,6 +14,7 @@ from django.contrib.auth.models import User
 from django.urls import reverse
 
 from apps.identity.models import Role
+from apps.identity.roles import assign_roles
 from apps.projects.models import Project
 from apps.work.models import Task
 
@@ -96,8 +97,7 @@ def parse(response):
 @pytest.fixture
 def workspace(db):
     pm = User.objects.create_user("owner", password="valid-password", is_staff=True)
-    pm.pcc_profile.role = Role.PROJECT_MANAGER
-    pm.pcc_profile.save()
+    assign_roles(pm, [Role.PROJECT_MANAGER])
     member = User.objects.create_user("member", password="valid-password")
     project = Project.objects.create(
         name="Accessibility project",
@@ -271,7 +271,7 @@ def test_form_controls_are_labelled_and_required_state_is_exposed(
 def test_field_errors_are_announced_and_associated(client, workspace):
     client.force_login(workspace["pm"])
     url = reverse("identity:user_edit", args=[workspace["member"].pk])
-    response = client.post(url, {"username": "", "role": Role.MEMBER})
+    response = client.post(url, {"username": "", "roles": [Role.MEMBER]})
     assert response.status_code == 200
     page = parse(response)
 

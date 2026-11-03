@@ -7,6 +7,7 @@ from django.core.exceptions import ValidationError
 from django.urls import reverse
 
 from apps.identity.models import Role
+from apps.identity.roles import assign_roles
 from apps.projects.models import Phase, Project
 from apps.projects.services import actual_progress, timeline_data
 from apps.work.forms import TaskForm
@@ -18,8 +19,7 @@ pytestmark = pytest.mark.django_db
 @pytest.fixture
 def activity():
     pm = User.objects.create_user("activity-pm", password="test-password")
-    pm.pcc_profile.role = Role.PROJECT_MANAGER
-    pm.pcc_profile.save()
+    assign_roles(pm, [Role.PROJECT_MANAGER])
     project = Project.objects.create(
         name="Activity project",
         code="ACT",

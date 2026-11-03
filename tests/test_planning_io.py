@@ -9,6 +9,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 
 from apps.identity.models import Role
+from apps.identity.roles import assign_roles
 from apps.projects.models import PlanningImport, Project
 from apps.projects.planning_io import export_plan, import_plan, planning_template, read_plan
 from apps.work.models import Task
@@ -19,8 +20,7 @@ pytestmark = pytest.mark.django_db
 @pytest.fixture
 def plan_case():
     pm = User.objects.create_user("planner")
-    pm.pcc_profile.role = Role.PROJECT_MANAGER
-    pm.pcc_profile.save()
+    assign_roles(pm, [Role.PROJECT_MANAGER])
     member = User.objects.create_user("worker")
     project = Project.objects.create(
         name="Launch",
@@ -202,11 +202,22 @@ def test_wrong_project_code_and_failed_baseline_are_atomic(plan_case):
 def test_minimal_project_and_task_forms_keep_defaults(plan_case, client):
     pm, member, project, payload = plan_case
     client.force_login(pm)
+    owner = User.objects.create_user("sponsor")
+    assign_roles(owner, [Role.OWNER])
+    # Owner wajib untuk project baru (PRD §7.1, BR-PROJ-001).
     response = client.post(reverse("projects:project_create"), {"name": "Quick project"})
+    assert response.status_code == 200
+    assert not Project.objects.filter(name="Quick project").exists()
+    response = client.post(
+        reverse("projects:project_create"), {"name": "Quick project", "owner": owner.pk}
+    )
     assert response.status_code == 302
     new = Project.objects.get(name="Quick project")
     assert (
-        new.manager == pm and new.code.startswith("PRJ-") and new.target_end_date > new.start_date
+        new.manager == pm
+        and new.owner == owner
+        and new.code.startswith("PRJ-")
+        and new.target_end_date > new.start_date
     )
     response = client.post(
         reverse("work:task_create") + f"?project={new.pk}", {"title": "Quick task"}

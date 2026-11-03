@@ -5,6 +5,7 @@ from django.contrib.auth.models import User
 from django.urls import reverse
 
 from apps.identity.models import Role
+from apps.identity.roles import assign_roles
 from apps.projects.models import ActivityEvent, Decision, Milestone, Note, Phase, Project
 from apps.work.models import Issue, Task, TaskComment
 
@@ -14,8 +15,7 @@ pytestmark = pytest.mark.django_db
 @pytest.fixture
 def workspace(db):
     pm = User.objects.create_user("owner", password="valid-password")
-    pm.pcc_profile.role = Role.PROJECT_MANAGER
-    pm.pcc_profile.save()
+    assign_roles(pm, [Role.PROJECT_MANAGER])
     member = User.objects.create_user("member", password="valid-password")
     stranger = User.objects.create_user("stranger", password="valid-password")
     project = Project.objects.create(
@@ -311,8 +311,7 @@ def test_search_covers_all_entities(client, workspace):
 
 def test_search_respects_project_visibility(client, workspace):
     other_pm = User.objects.create_user("other", password="valid-password")
-    other_pm.pcc_profile.role = Role.PROJECT_MANAGER
-    other_pm.pcc_profile.save()
+    assign_roles(other_pm, [Role.PROJECT_MANAGER])
     other = Project.objects.create(
         name="Private zebra",
         code="PRIVATE-Z",

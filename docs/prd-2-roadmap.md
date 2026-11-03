@@ -32,6 +32,14 @@ Urutan fase adalah urutan ketergantungan, bukan tanggal. Estimasi waktu dibuat s
 
 ## Fase 1 — Identitas, role, permission
 
+Status (3 November 2026): R1.1–R1.5 selesai, kecuali pemilih role di UI (Fase 2). Rincian:
+- R1.1: `Workspace`, `RoleDefinition`, `Membership`; 6 akun lama dimigrasi (role lama jadi membership, `is_staff` jadi Admin). Kolom `UserProfile.role` dihapus.
+- R1.2: matriks permission default ada di `apps/identity/permission_catalog.py` dan disimpan di `RoleDefinition.permissions`.
+- R1.3: `Project.owner` (wajib di form untuk project baru) dan `ProjectMembership` (menggantikan tabel anggota lama, `project.members` tetap bisa dipakai).
+- R1.4: `permissions.py` membaca permission role aktif; nama fungsi lama dipertahankan.
+- R1.5: `ActivityEvent.active_role` dan `Revision.active_role`.
+Perilaku yang sengaja belum berubah: PM masih boleh mengubah progress task (R3.4), dan role aktif bawaan adalah role paling berwenang sampai switcher ada. Owner project yang dipilih di form berasal dari user ber-role Owner atau staff.
+
 Tujuan: satu akun, banyak role, permission berbasis aksi. Semua fase lain bergantung pada ini.
 
 | ID | Item | Cakupan | Selesai bila |

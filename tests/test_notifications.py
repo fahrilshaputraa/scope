@@ -7,6 +7,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from apps.identity.models import Role
+from apps.identity.roles import assign_roles
 from apps.notifications.models import Notification, NotificationPreference
 from apps.notifications.services import notify
 from apps.projects.models import ActivityAction, Milestone, Project
@@ -19,13 +20,11 @@ pytestmark = pytest.mark.django_db
 @pytest.fixture
 def setup_notifications(db):
     pm = User.objects.create_user("owner", password="valid-password")
-    pm.pcc_profile.role = Role.PROJECT_MANAGER
-    pm.pcc_profile.save()
+    assign_roles(pm, [Role.PROJECT_MANAGER])
     member = User.objects.create_user("member", password="valid-password")
     stranger = User.objects.create_user("stranger", password="valid-password")
     management = User.objects.create_user("management", password="valid-password")
-    management.pcc_profile.role = Role.MANAGEMENT
-    management.pcc_profile.save()
+    assign_roles(management, [Role.MANAGEMENT])
     project = Project.objects.create(
         name="Private project",
         code="PRIVATE",

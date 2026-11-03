@@ -182,7 +182,7 @@ def user_list(request: HttpRequest) -> HttpResponse:
             | Q(pcc_profile__display_name__icontains=query)
         )
     if filters["role"] in Role.values:
-        users = users.filter(pcc_profile__role=filters["role"])
+        users = users.filter(memberships__role__code=filters["role"]).distinct()
     if filters["status"] == "active":
         users = users.filter(is_active=True)
     elif filters["status"] == "inactive":
@@ -218,7 +218,7 @@ def user_create(request: HttpRequest) -> HttpResponse:
             "first_name",
             "last_name",
             "email",
-            "role",
+            "roles",
             "password1",
             "password2",
         ],

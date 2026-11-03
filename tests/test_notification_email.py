@@ -9,6 +9,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from apps.identity.models import Role
+from apps.identity.roles import assign_roles
 from apps.notifications.models import (
     DigestFrequency,
     Notification,
@@ -26,8 +27,7 @@ def setup_email(db):
     pm = User.objects.create_user(
         "owner", password="valid-password", email="owner@example.com"
     )
-    pm.pcc_profile.role = Role.PROJECT_MANAGER
-    pm.pcc_profile.save()
+    assign_roles(pm, [Role.PROJECT_MANAGER])
     member = User.objects.create_user(
         "member", password="valid-password", email="member@example.com"
     )

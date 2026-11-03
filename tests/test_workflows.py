@@ -12,6 +12,7 @@ from openpyxl import load_workbook
 
 from apps.identity.models import Role
 from apps.identity.permissions import visible_projects
+from apps.identity.roles import assign_roles, membership_codes
 from apps.projects.models import ProgressSnapshot, Project, Risk
 from apps.projects.services import capture_baseline, project_health
 from apps.work.models import Task, TaskAttachment
@@ -22,13 +23,11 @@ pytestmark = pytest.mark.django_db
 @pytest.fixture
 def setup_project(db):
     pm = User.objects.create_user("owner", password="valid-password")
-    pm.pcc_profile.role = Role.PROJECT_MANAGER
-    pm.pcc_profile.save()
+    assign_roles(pm, [Role.PROJECT_MANAGER])
     member = User.objects.create_user("member", password="valid-password")
     stranger = User.objects.create_user("stranger", password="valid-password")
     management = User.objects.create_user("management", password="valid-password")
-    management.pcc_profile.role = Role.MANAGEMENT
-    management.pcc_profile.save()
+    assign_roles(management, [Role.MANAGEMENT])
     p = Project.objects.create(
         name="Private project",
         code="PRIVATE",
@@ -268,7 +267,7 @@ def test_local_auth_requires_password_and_does_not_change_role(client, setup_pro
         == "/"
     )
     member.pcc_profile.refresh_from_db()
-    assert member.pcc_profile.role == "member"
+    assert membership_codes(member) == ["member"]
 
 
 def test_management_readonly(client, setup_project):
@@ -408,12 +407,12 @@ def test_staff_provisions_local_account_and_password_change(client, setup_projec
             "username": "new-pm",
             "password1": "safe-password",
             "password2": "safe-password",
-            "role": "pm",
+            "roles": ["pm"],
         },
     )
     assert response.status_code == 302
     user = User.objects.get(username="new-pm")
-    assert user.check_password("safe-password") and user.pcc_profile.role == "pm"
+    assert user.check_password("safe-password") and membership_codes(user) == ["pm"]
     client.force_login(user)
     response = client.post(
         reverse("identity:settings"),

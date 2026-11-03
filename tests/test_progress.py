@@ -6,6 +6,7 @@ from django.contrib.auth.models import User
 from django.urls import reverse
 
 from apps.identity.models import Role
+from apps.identity.roles import assign_roles
 from apps.projects.models import Phase, Project
 from apps.projects.services import actual_progress
 from apps.work.models import Task
@@ -14,8 +15,7 @@ from apps.work.models import Task
 @pytest.fixture
 def project(db):
     user = User.objects.create_user("pm", password="test-password")
-    user.pcc_profile.role = Role.PROJECT_MANAGER
-    user.pcc_profile.save()
+    assign_roles(user, [Role.PROJECT_MANAGER])
     return Project.objects.create(
         name="Project",
         code="P1",

@@ -3,6 +3,7 @@ from django.contrib.auth.models import User
 from django.urls import reverse
 
 from apps.identity.models import Role
+from apps.identity.roles import assign_roles, membership_codes
 
 pytestmark = pytest.mark.django_db
 
@@ -10,7 +11,7 @@ pytestmark = pytest.mark.django_db
 @pytest.fixture
 def accounts(db):
     staff = User.objects.create_user("admin", password="valid-password", is_staff=True)
-    staff.pcc_profile.role = Role.MANAGEMENT
+    assign_roles(staff, [Role.MANAGEMENT])
     staff.pcc_profile.display_name = "Admin Scope"
     staff.pcc_profile.save()
     member = User.objects.create_user(
@@ -83,7 +84,7 @@ def test_edit_updates_identity_role_and_status(client, accounts):
             "first_name": "Dimas",
             "last_name": "Pratama",
             "email": "dimas.pratama@example.com",
-            "role": Role.PROJECT_MANAGER,
+            "roles": [Role.PROJECT_MANAGER],
             "display_name": "Dimas P.",
             "job_title": "Lead Analyst",
             "is_active": "on",
@@ -92,7 +93,7 @@ def test_edit_updates_identity_role_and_status(client, accounts):
     assert response.status_code == 302
     member.refresh_from_db()
     assert member.email == "dimas.pratama@example.com"
-    assert member.pcc_profile.role == Role.PROJECT_MANAGER
+    assert membership_codes(member) == [Role.PROJECT_MANAGER]
     assert member.pcc_profile.display_name == "Dimas P."
     assert member.pcc_profile.job_title == "Lead Analyst"
     assert member.is_active
@@ -109,7 +110,7 @@ def test_edit_can_deactivate_another_account(client, accounts):
             "first_name": "Dimas",
             "last_name": "Pratama",
             "email": "dimas@example.com",
-            "role": Role.MEMBER,
+            "roles": [Role.MEMBER],
             "display_name": "",
             "job_title": "",
         },
@@ -129,7 +130,7 @@ def test_staff_cannot_deactivate_self(client, accounts):
             "first_name": "",
             "last_name": "",
             "email": "",
-            "role": Role.MANAGEMENT,
+            "roles": [Role.MANAGEMENT],
             "display_name": "Admin Scope",
             "job_title": "",
         },
@@ -202,7 +203,7 @@ def test_short_passwords_are_rejected(client, accounts):
         reverse("identity:user_create"),
         {
             "username": "pendek",
-            "role": Role.MEMBER,
+            "roles": [Role.MEMBER],
             "password1": "pendek",
             "password2": "pendek",
         },
@@ -232,7 +233,7 @@ def test_create_user_assigns_role_and_profile(client, accounts):
             "first_name": "Sari",
             "last_name": "Wulandari",
             "email": "sari@example.com",
-            "role": Role.PROJECT_MANAGER,
+            "roles": [Role.PROJECT_MANAGER],
             "display_name": "Sari W.",
             "job_title": "PM",
             "password1": "kata-sandi-baru-123",
@@ -241,7 +242,7 @@ def test_create_user_assigns_role_and_profile(client, accounts):
     )
     assert response.status_code == 302
     created = User.objects.get(username="sari")
-    assert created.pcc_profile.role == Role.PROJECT_MANAGER
+    assert membership_codes(created) == [Role.PROJECT_MANAGER]
     assert created.pcc_profile.display_name == "Sari W."
     assert created.check_password("kata-sandi-baru-123")
     assert not created.is_staff

@@ -4,6 +4,7 @@ from django.contrib.auth.models import User
 from django.core.management.base import BaseCommand, CommandError
 
 from apps.identity.models import Role
+from apps.identity.roles import assign_roles
 
 
 class Command(BaseCommand):
@@ -23,6 +24,5 @@ class Command(BaseCommand):
         user = User.objects.create_user(
             options["username"], password=password, is_staff=options["staff"]
         )
-        user.pcc_profile.role = options["role"]
-        user.pcc_profile.save()
+        assign_roles(user, [options["role"]])
         self.stdout.write(self.style.SUCCESS(f"Akun lokal {user.username} dibuat."))

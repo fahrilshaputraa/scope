@@ -199,9 +199,12 @@ def record_activity(
     """
     if action not in ActivityAction.values:
         raise ValueError(f"Unknown activity action: {action}")
+    from apps.identity.roles import active_role
+
     event = ActivityEvent.objects.create(
         project=project,
         actor=actor,
+        active_role=active_role(actor) if actor is not None else "",
         action=action,
         message=message[:300],
         object_repr=object_repr[:200],

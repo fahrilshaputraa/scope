@@ -5,6 +5,7 @@ from django.contrib.auth.models import User
 from django.urls import reverse
 
 from apps.identity.models import Role
+from apps.identity.roles import assign_roles
 from apps.notifications.models import Notification
 from apps.projects.models import Project
 from apps.work.models import Mention, Task, TaskComment
@@ -15,8 +16,7 @@ pytestmark = pytest.mark.django_db
 @pytest.fixture
 def setup_mentions(db):
     pm = User.objects.create_user("owner", password="valid-password")
-    pm.pcc_profile.role = Role.PROJECT_MANAGER
-    pm.pcc_profile.save()
+    assign_roles(pm, [Role.PROJECT_MANAGER])
     author = User.objects.create_user("author", password="valid-password")
     bob = User.objects.create_user("bob", password="valid-password")
     inactive = User.objects.create_user("sleepy", password="valid-password", is_active=False)
@@ -175,8 +175,7 @@ def test_mentions_render_safely_without_html_injection(client, setup_mentions):
 def test_management_read_only_cannot_comment(client, setup_mentions):
     data = setup_mentions
     management = User.objects.create_user("management", password="valid-password")
-    management.pcc_profile.role = Role.MANAGEMENT
-    management.pcc_profile.save()
+    assign_roles(management, [Role.MANAGEMENT])
     client.force_login(management)
     response = _comment(client, data, "Halo @bob")
     assert response.status_code == 403

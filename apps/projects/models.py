@@ -79,8 +79,26 @@ class Project(ArchivableModel):
         on_delete=models.SET_NULL,
         related_name="managed_projects",
     )
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="owned_projects",
+        help_text="Penanggung jawab outcome project (Project Owner).",
+    )
+    workspace = models.ForeignKey(
+        "identity.Workspace",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="projects",
+    )
     members = models.ManyToManyField(
-        settings.AUTH_USER_MODEL, blank=True, related_name="member_projects"
+        settings.AUTH_USER_MODEL,
+        blank=True,
+        related_name="member_projects",
+        through="ProjectMembership",
     )
     team = models.CharField(max_length=100, blank=True)
     start_date = models.DateField()
@@ -178,6 +196,34 @@ class Project(ArchivableModel):
         from .services import project_health
 
         return project_health(self)
+
+
+class ProjectRole(models.TextChoices):
+    MEMBER = "member", "Anggota"
+    CLIENT = "client", "Client / Stakeholder"
+
+
+class ProjectMembership(models.Model):
+    """Keanggotaan user pada project beserta perannya (PRD §26.6)."""
+
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="memberships")
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="project_memberships"
+    )
+    project_role = models.CharField(
+        max_length=20, choices=ProjectRole.choices, default=ProjectRole.MEMBER
+    )
+    status = models.CharField(max_length=20, default="active")
+    joined_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["joined_at", "pk"]
+        constraints = [
+            models.UniqueConstraint(fields=["project", "user"], name="unique_project_member")
+        ]
+
+    def __str__(self):
+        return f"{self.user_id} in {self.project_id} ({self.project_role})"
 
 
 class Phase(ArchivableModel):
@@ -372,6 +418,7 @@ class ActivityEvent(models.Model):
         related_name="+",
     )
     action = models.CharField(max_length=40, choices=ActivityAction.choices)
+    active_role = models.CharField(max_length=20, blank=True, default="")
     message = models.CharField(max_length=300)
     object_repr = models.CharField(max_length=200, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -414,6 +461,7 @@ class Revision(models.Model):
     action = models.CharField(
         max_length=20, choices=RevisionAction.choices, default=RevisionAction.UPDATED
     )
+    active_role = models.CharField(max_length=20, blank=True, default="")
     changes = models.JSONField(default=dict, blank=True)
     summary = models.CharField(max_length=300, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)

@@ -49,7 +49,8 @@ def project_audience(project, query: str = ""):
         User.objects.filter(is_active=True)
         .filter(
             Q(is_staff=True)
-            | Q(pcc_profile__role=Role.MANAGEMENT)
+            | Q(memberships__role__code__in=[Role.MANAGEMENT, Role.ADMIN])
+            | Q(owned_projects=project)
             | Q(managed_projects=project)
             | Q(member_projects=project)
             | Q(assigned_tasks__project=project, assigned_tasks__archived_at__isnull=True)

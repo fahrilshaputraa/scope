@@ -1,17 +1,23 @@
-"""Authorization sederhana berdasarkan role (PRD §30)."""
+"""Authorization berbasis permission dan role aktif (PRD §25).
+
+Fungsi ``can_*`` dan ``visible_projects`` mempertahankan nama lama supaya view
+tidak perlu berubah; semuanya sekarang membaca ``RoleDefinition.permissions``
+lewat role aktif user.
+"""
 
 from django.db.models import Q
 
 from .models import Role
+from .roles import active_role, has_perm
 
 
 def role_of(user) -> str:
-    if not user.is_authenticated:
-        return ""
-    profile = getattr(user, "pcc_profile", None)
-    if profile is None:
-        return Role.MEMBER
-    return profile.role
+    """Kode role aktif user, atau string kosong bila belum login."""
+    return active_role(user)
+
+
+def is_admin(user) -> bool:
+    return role_of(user) == Role.ADMIN
 
 
 def is_management(user) -> bool:
@@ -23,37 +29,35 @@ def is_pm(user) -> bool:
 
 
 def can_create_project(user) -> bool:
-    """PM boleh membuat project; management & member tidak (PRD §30)."""
-    return user.is_authenticated and (is_pm(user) or user.is_staff)
+    return user.is_authenticated and has_perm(user, "project.create")
 
 
 def can_manage_project(user, project) -> bool:
-    """Edit project/timeline/task/milestone/issue/notes: PM atau manager project."""
-    if not user.is_authenticated:
+    """Edit project/timeline/task/milestone/issue/notes: admin, atau PM project."""
+    if not user.is_authenticated or not has_perm(user, "project.update"):
         return False
-    if user.is_staff:
+    if is_admin(user):
         return True
-    if not is_pm(user):
-        return False
     return project.manager_id == user.id or project.manager is None
 
 
 def can_edit_task(user, task) -> bool:
-    """Member boleh update task-nya sendiri; PM bebas (PRD §30)."""
+    """Admin dan PM project bebas; pelaksana hanya task miliknya (PRD §10.3)."""
     if not user.is_authenticated:
         return False
-    if user.is_staff:
-        return True
     if can_manage_project(user, task.project):
         return True
-    return not is_management(user) and (
+    return has_perm(user, "task.update_progress") and (
         task.assignee_id == user.id or task.collaborators.filter(pk=user.pk).exists()
     )
 
 
 def can_report_issue(user) -> bool:
-    """Member boleh melaporkan issue (PRD §30)."""
-    return user.is_authenticated and (user.is_staff or not is_management(user))
+    return user.is_authenticated and has_perm(user, "issue.report")
+
+
+def can_comment(user) -> bool:
+    return user.is_authenticated and has_perm(user, "comment.create")
 
 
 def visible_projects(user, include_archived=False):
@@ -63,10 +67,11 @@ def visible_projects(user, include_archived=False):
     qs = Project.all_objects.all() if include_archived else Project.objects.all()
     if not user.is_authenticated:
         return qs.none()
-    if user.is_staff or is_management(user):
+    if has_perm(user, "project.view_all"):
         return qs
     return qs.filter(
         Q(manager=user)
+        | Q(owner=user)
         | Q(members=user)
         | Q(tasks__assignee=user, tasks__archived_at__isnull=True)
         | Q(tasks__collaborators=user, tasks__archived_at__isnull=True)

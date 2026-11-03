@@ -9,8 +9,14 @@ from .models import (
     ProgressBaselinePoint,
     ProgressSnapshot,
     Project,
+    ProjectMembership,
     Risk,
 )
+
+
+class ProjectMembershipInline(admin.TabularInline):
+    model = ProjectMembership
+    extra = 0
 
 
 @admin.register(Project)
@@ -19,6 +25,7 @@ class ProjectAdmin(admin.ModelAdmin):
         "code",
         "name",
         "manager",
+        "owner",
         "status",
         "start_date",
         "target_end_date",
@@ -26,8 +33,8 @@ class ProjectAdmin(admin.ModelAdmin):
     ]
     list_filter = ["status", "team"]
     search_fields = ["code", "name"]
-    autocomplete_fields = ["manager", "current_phase"]
-    filter_horizontal = ["members"]
+    autocomplete_fields = ["manager", "owner", "current_phase"]
+    inlines = [ProjectMembershipInline]
 
 
 @admin.register(Phase)

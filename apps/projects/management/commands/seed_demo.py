@@ -12,6 +12,7 @@ from django.core.management.base import BaseCommand
 from django.utils import timezone
 
 from apps.identity.models import Role, UserProfile
+from apps.identity.roles import assign_roles, stored_role_codes
 from apps.projects.demo import DEMO_PROJECT_CODES
 from apps.projects.models import (
     ActivityAction,
@@ -53,15 +54,18 @@ class Command(BaseCommand):
         )
         profile, _ = UserProfile.objects.get_or_create(user=user)
         changed = []
-        if profile.role != role:
-            profile.role = role
-            changed.append("role")
+        codes = [role] if isinstance(role, str) else list(role)
+        if set(stored_role_codes(user)) != set(codes):
+            assign_roles(user, codes)
         if title and profile.job_title != title:
             profile.job_title = title
             changed.append("job_title")
         if changed:
             profile.save(update_fields=changed + ["updated_at"])
         return user
+
+    def project_owner(self):
+        return User.objects.get(username="direksi")
 
     def baseline(self, project, rows):
         for date_str, percent, label in rows:
@@ -120,7 +124,7 @@ class Command(BaseCommand):
         andi = self.user("andi", Role.PROJECT_MANAGER, "Andi", "Project Manager")
         budi = self.user("budi", Role.MEMBER, "Budi", "Technical Lead")
         sari = self.user("sari", Role.MEMBER, "Sari", "Frontend Engineer")
-        self.user("direksi", Role.MANAGEMENT, "Direksi", "Management")
+        self.user("direksi", [Role.MANAGEMENT, Role.OWNER], "Direksi", "Management")
 
         self._hrms(fahril, andi, budi, sari)
         self._lbr(andi, budi, sari)
@@ -141,7 +145,7 @@ class Command(BaseCommand):
                 "Implementasi HRMS: employee master, scheduling, notification, "
                 "dan vendor management system."
             ),
-            manager=fahril,
+            manager=fahril, owner=self.project_owner(),
             team="Platform",
             start_date=D("2026-08-03"),
             target_end_date=D("2026-10-30"),
@@ -366,7 +370,7 @@ class Command(BaseCommand):
         p = Project.objects.create(
             code="LBR-02", name="Ledger Bridge Reconciliation",
             description="Rekonsiliasi invoice WHMCS ↔ Duitku + monitoring mutasi bank.",
-            manager=andi, team="Finance",
+            manager=andi, owner=self.project_owner(), team="Finance",
             start_date=D("2026-09-15"), target_end_date=D("2026-12-15"),
             status=ProjectStatus.ON_TRACK,
         )
@@ -434,7 +438,7 @@ class Command(BaseCommand):
         p = Project.objects.create(
             code="CP-03", name="Customer Portal Revamp",
             description="Redesign portal customer: login, order history, pembayaran.",
-            manager=budi, team="Frontend",
+            manager=budi, owner=self.project_owner(), team="Frontend",
             start_date=D("2026-08-01"), target_end_date=D("2026-10-05"),
             status=ProjectStatus.DELAYED,
         )
@@ -497,7 +501,7 @@ class Command(BaseCommand):
         p = Project.objects.create(
             code="DWM-04", name="Data Warehouse Migration",
             description="Migrasi warehouse lama ke setup baru + validasi data.",
-            manager=fahril, team="Data",
+            manager=fahril, owner=self.project_owner(), team="Data",
             start_date=D("2026-06-01"), target_end_date=D("2026-09-15"),
             actual_end_date=D("2026-09-15"), status=ProjectStatus.COMPLETED,
         )
@@ -542,7 +546,7 @@ class Command(BaseCommand):
         Project.objects.create(
             code="SOC-05", name="SOC Monitoring Dashboard",
             description="Dashboard monitoring SOC — masih tahap planning.",
-            manager=andi, team="Infrastructure",
+            manager=andi, owner=self.project_owner(), team="Infrastructure",
             start_date=D("2026-11-02"), target_end_date=D("2026-12-20"),
             status=ProjectStatus.PLANNING,
         )
@@ -551,7 +555,7 @@ class Command(BaseCommand):
         p = Project.objects.create(
             code="APG-06", name="API Gateway Migration",
             description="Migrasi service lama ke API gateway terpusat.",
-            manager=budi, team="Platform",
+            manager=budi, owner=self.project_owner(), team="Platform",
             start_date=D("2026-09-01"), target_end_date=D("2026-11-30"),
             status=ProjectStatus.ON_TRACK,
         )

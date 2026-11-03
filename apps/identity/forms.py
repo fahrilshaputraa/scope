@@ -3,10 +3,17 @@ from django.contrib.auth.forms import SetPasswordForm, UserCreationForm
 from django.contrib.auth.models import User
 
 from .models import Role, UserProfile
+from .roles import assign_roles, stored_role_codes
 
 
 class LocalUserCreateForm(UserCreationForm):
-    role = forms.ChoiceField(choices=Role.choices, initial=Role.MEMBER, label="Peran")
+    roles = forms.MultipleChoiceField(
+        choices=Role.choices,
+        initial=[Role.MEMBER],
+        label="Peran",
+        widget=forms.CheckboxSelectMultiple,
+        help_text="Satu akun dapat memiliki beberapa peran.",
+    )
     display_name = forms.CharField(
         required=False,
         max_length=200,
@@ -33,7 +40,7 @@ class LocalUserCreateForm(UserCreationForm):
                 "first_name",
                 "last_name",
                 "email",
-                "role",
+                "roles",
                 "password1",
                 "password2",
                 "display_name",
@@ -51,7 +58,7 @@ class LocalUserCreateForm(UserCreationForm):
         user = super().save(commit=commit)
         if commit:
             profile = user.pcc_profile
-            profile.role = self.cleaned_data["role"]
+            assign_roles(user, self.cleaned_data["roles"])
             profile.display_name = self.cleaned_data["display_name"]
             profile.job_title = self.cleaned_data["job_title"]
             profile.save()
@@ -59,7 +66,12 @@ class LocalUserCreateForm(UserCreationForm):
 
 
 class UserEditForm(forms.ModelForm):
-    role = forms.ChoiceField(choices=Role.choices, label="Peran")
+    roles = forms.MultipleChoiceField(
+        choices=Role.choices,
+        label="Peran",
+        widget=forms.CheckboxSelectMultiple,
+        help_text="Satu akun dapat memiliki beberapa peran.",
+    )
     display_name = forms.CharField(
         required=False,
         max_length=200,
@@ -84,7 +96,7 @@ class UserEditForm(forms.ModelForm):
             return
         profile, _ = UserProfile.objects.get_or_create(user=self.instance)
         if not self.is_bound:
-            self.initial["role"] = profile.role
+            self.initial["roles"] = stored_role_codes(self.instance)
             self.initial["display_name"] = profile.display_name
             self.initial["job_title"] = profile.job_title
         self.order_fields(
@@ -93,7 +105,7 @@ class UserEditForm(forms.ModelForm):
                 "last_name",
                 "email",
                 "username",
-                "role",
+                "roles",
                 "is_active",
                 "display_name",
                 "job_title",
@@ -104,7 +116,7 @@ class UserEditForm(forms.ModelForm):
         user = super().save(commit=commit)
         if commit:
             profile = user.pcc_profile
-            profile.role = self.cleaned_data["role"]
+            assign_roles(user, self.cleaned_data["roles"])
             profile.display_name = self.cleaned_data["display_name"]
             profile.job_title = self.cleaned_data["job_title"]
             profile.save()

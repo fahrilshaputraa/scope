@@ -7,6 +7,7 @@ from django.test import Client
 from django.urls import reverse
 
 from apps.identity.models import Role
+from apps.identity.roles import assign_roles
 from apps.notifications.models import Notification, SubscriptionTarget
 from apps.notifications.subscriptions import watch
 from apps.projects.models import Milestone, Note, Project
@@ -18,13 +19,11 @@ pytestmark = pytest.mark.django_db
 @pytest.fixture
 def data(db):
     pm = User.objects.create_user("owner", password="valid-password")
-    pm.pcc_profile.role = Role.PROJECT_MANAGER
-    pm.pcc_profile.save()
+    assign_roles(pm, [Role.PROJECT_MANAGER])
     member = User.objects.create_user("member", password="valid-password")
     watcher = User.objects.create_user("watcher", password="valid-password")
     management = User.objects.create_user("management", password="valid-password")
-    management.pcc_profile.role = Role.MANAGEMENT
-    management.pcc_profile.save()
+    assign_roles(management, [Role.MANAGEMENT])
     stranger = User.objects.create_user("stranger", password="valid-password")
     staff = User.objects.create_user("staff", password="valid-password", is_staff=True)
 

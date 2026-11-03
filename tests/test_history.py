@@ -6,6 +6,7 @@ from django.contrib.auth.models import User
 from django.urls import reverse
 
 from apps.identity.models import Role
+from apps.identity.roles import assign_roles
 from apps.projects.models import ActivityEvent, Project, Revision
 from apps.work.models import Task
 
@@ -15,8 +16,7 @@ pytestmark = pytest.mark.django_db
 def _user(username, role=None):
     user = User.objects.create_user(username, password="test-password")
     if role is not None:
-        user.pcc_profile.role = role
-        user.pcc_profile.save()
+        assign_roles(user, [role])
     return user
 
 
