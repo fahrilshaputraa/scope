@@ -1,4 +1,4 @@
-/* Scope workspace tokens: neutral actions, teal actual, orange plan. */
+/* Scope workspace tokens (DESIGN.md): ink actions, pill shapes, teal actual, orange plan. */
 @font-face {
     font-family: "Inter";
     src: url("../fonts/inter-latin.woff2") format("woff2");
@@ -7,28 +7,36 @@
     font-display: swap;
 }
 
+@font-face {
+    font-family: "Plus Jakarta Sans";
+    src: url("../fonts/plus-jakarta-sans-latin.woff2") format("woff2");
+    font-weight: 200 800;
+    font-style: normal;
+    font-display: swap;
+}
+
 :root {
     /* Neutral workspace — light */
-    --canvas: #f6f7f8;
+    --canvas: #ffffff;
     --surface: #ffffff;
-    --sunken: #eef0f1;
-    --ink: #171b1a;
-    --muted: #5d6763;
-    --faint: #66716c;
-    --line: #e0e5e2;
-    --line-strong: #858e89;
-    --brand: #171b1a;
-    --brand-hover: #303a35;
-    --brand-soft: #e9edeb;
+    --sunken: #f3f4f7;
+    --ink: #202020;
+    --muted: #646464;
+    --faint: #6f6f6f;
+    --line: #e8e8e8;
+    --line-strong: #8a8a8a;
+    --brand: #202020;
+    --brand-hover: #3a3a3a;
+    --brand-soft: #f3f4f7;
     --ok: #285e50;
     --warn: #885019;
     --danger: #a62e3b;
-    --info: #514980;
+    --info: #5238d8;
 
     --ok-soft: #e6f2ed;
     --warn-soft: #fff0db;
     --danger-soft: #fcebef;
-    --info-soft: #eeebfa;
+    --info-soft: #efecfd;
     --overlay: rgba(20, 27, 23, 0.46);
     --focus-surface: #ffffff;
     --demo-light: #f8f9fa;
@@ -77,8 +85,8 @@
     --destructive-foreground: var(--surface);
     --border: var(--line);
     --input: var(--line-strong);
-    --ring: var(--ok);
-    --sidebar: var(--surface);
+    --ring: #0091ff;
+    --sidebar: #f8f9fa;
     --sidebar-foreground: var(--ink);
     --sidebar-primary: var(--brand);
     --sidebar-primary-foreground: var(--surface);
@@ -88,6 +96,7 @@
     --sidebar-ring: var(--brand);
 
     /* Type */
+    --font-display: "Plus Jakarta Sans", "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     --font-ui: "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
     --text-caption: 12px;
@@ -95,8 +104,8 @@
     --text-body: 16px;
     --text-subheading: 16px;
     --text-heading-sm: 20px;
-    --text-heading: 26px;
-    --text-heading-lg: 28px;
+    --text-heading: 28px;
+    --text-heading-lg: 32px;
     --text-display: 36px;
 
     /* Layout & shape */
@@ -104,20 +113,22 @@
     --content-max: 1400px;
     --rail-w: 64px;
     --project-sidebar-w: 0px;
-    --radius-chips: 6px;
-    --radius-nav: 8px;
+    --radius-chips: 9999px;
+    --radius-nav: 9999px;
     --radius-cards: 12px;
-    --radius-inputs: 8px;
-    --radius-buttons: 8px;
+    --radius-inputs: 9px;
+    --radius-buttons: 9999px;
 
     /* Depth & motion */
     --shadow-subtle: none;
     --shadow-pop: 0 8px 24px rgba(0, 0, 0, 0.08);
+    --accent-violet: #6647f0;
+    --accent-blue: #0091ff;
     --dur: 140ms;
     --ease: cubic-bezier(0.2, 0.6, 0.2, 1);
 
     /* Data colors */
-    --timeline-future: #ecefed;
+    --timeline-future: #eceef2;
     --timeline-plan: #b45816;
     --timeline-actual: #477c6b;
     --severity-critical: var(--danger);
@@ -127,37 +138,39 @@
 }
 
 html[data-theme="dark"] {
-    --canvas: #141918;
-    --surface: #1c2320;
-    --sunken: #27322c;
-    --ink: #f1f5f2;
-    --muted: #b4c0b9;
-    --faint: #a5b3aa;
-    --line: #39463e;
-    --line-strong: #84988b;
-    --brand: #eff4f0;
-    --brand-hover: #d4e2d8;
-    --brand-soft: #303e35;
+    --canvas: #121212;
+    --surface: #1a1a1a;
+    --sunken: #262626;
+    --ink: #f5f5f5;
+    --muted: #b3b3b3;
+    --faint: #a3a3a3;
+    --line: #333333;
+    --line-strong: #8a8a8a;
+    --brand: #f5f5f5;
+    --brand-hover: #dcdcdc;
+    --brand-soft: #2a2a2a;
     --ok: #a3d7c0;
     --warn: #f0c28b;
     --danger: #ffb5c0;
-    --info: #c5bdf1;
+    --info: #cfc6ff;
     --color-lavender-banner: var(--info-soft);
-    --timeline-future: #2d3b32;
+    --timeline-future: #2c2c2c;
     --timeline-plan: #efb176;
     --timeline-actual: #8fc8b1;
     --severity-critical: var(--danger);
     --severity-high: var(--warn);
     --severity-medium: var(--info);
     --severity-low: var(--ok);
-    --primary-foreground: #17211b;
-    --sidebar-primary-foreground: #17211b;
+    --primary-foreground: #1a1a1a;
+    --sidebar-primary-foreground: #1a1a1a;
     --destructive-foreground: #30141c;
     --ok-soft: #203f32;
     --warn-soft: #49371f;
     --danger-soft: #472630;
     --info-soft: #35304c;
-    --focus-surface: #1c2320;
+    --focus-surface: #1a1a1a;
+    --ring: #4db3ff;
+    --sidebar: #161616;
     color-scheme: dark;
 }
 

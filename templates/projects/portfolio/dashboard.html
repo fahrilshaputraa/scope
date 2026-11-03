@@ -2,43 +2,37 @@
 {% load pcc_tags %}
 {% block title %}Dashboard — Scope{% endblock %}
 {% block content %}
-{% if can_create %}
-<aside class="workspace-announcement" aria-label="Import rencana project">
-  <p>Sudah punya rencana project? Import dari file JSON.</p>
-  <a data-project-action class="inline-flex items-center gap-1.5" href="{% url 'projects:plan_import_new' %}"><svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 2 6 6 3-6 2-2 7-2-7-6-2 6-3zM21 2v4m-2-2h4"/></svg>Import rencana</a>
-</aside>
-{% endif %}
 <div class="flex flex-wrap items-center justify-between gap-4">
   <div><h1 class="dashboard-page-title">Ringkasan project</h1><p class="dashboard-page-subtitle">Lihat yang perlu ditindaklanjuti, lalu lanjutkan pekerjaan Anda.</p></div>
-  <div class="flex flex-wrap gap-2"><a class="pcc-button pcc-button-secondary" href="{% url 'work:my_tasks' %}">Pekerjaan saya</a>{% if can_create %}<a data-project-action class="pcc-button" href="{% url 'projects:project_create' %}"><svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Buat project</a>{% endif %}</div>
+  <div class="flex flex-wrap items-center gap-2"><a class="pcc-button pcc-button-secondary" href="{% url 'work:my_tasks' %}">Pekerjaan saya</a>{% if can_create %}<details class="project-add-menu"><summary class="pcc-button"><svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Buat project</summary><div class="project-add-options"><a data-project-action href="{% url 'projects:project_create' %}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h7l2 3h9v10H3zM3 7V4h7l2 3h9v3"/></svg>Project baru</a><a data-project-action href="{% url 'projects:plan_import_new' %}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2 6 6 3-6 2-2 7-2-7-6-2 6-3zM21 2v4m-2-2h4"/></svg>Import rencana dari file</a></div></details>{% endif %}</div>
 </div>
-<dl class="pcc-metrics">
-  <a href="{% url 'projects:project_list' %}"><dt><span>Total project<small>Dalam workspace Anda</small></span></dt><dd>{{ counts.total }}</dd><span class="metric-note">Seluruh status project</span></a>
-  <a href="{% url 'projects:project_list' %}?status=on_track"><dt><span>Sesuai rencana<small>Project sesuai rencana</small></span></dt><dd>{{ counts.on_track }}</dd><span class="metric-note">Status project dari PM</span></a>
-  <a href="{% url 'projects:project_list' %}?status=at_risk"><dt><span>Perlu perhatian<small>Perlu tindak lanjut</small></span></dt><dd>{{ counts.at_risk }}</dd><span class="metric-note">Pantau risiko dan hambatan</span></a>
-  <a href="{% url 'projects:project_list' %}?status=delayed"><dt><span>Terlambat<small>Target perlu ditinjau</small></span></dt><dd>{{ counts.delayed }}</dd><span class="metric-note">Tinjau jadwal bersama tim</span></a>
-</dl>
+<nav class="dashboard-summary" aria-label="Ringkasan status project">
+  <a href="{% url 'projects:project_list' %}"><strong>{{ counts.total }}</strong> project</a>
+  <a href="{% url 'projects:project_list' %}?status=on_track"><strong>{{ counts.on_track }}</strong> sesuai rencana</a>
+  <a href="{% url 'projects:project_list' %}?status=at_risk"><strong>{{ counts.at_risk }}</strong> perlu perhatian</a>
+  <a href="{% url 'projects:project_list' %}?status=delayed"><strong>{{ counts.delayed }}</strong> terlambat</a>
+</nav>
 <div class="dashboard-workspace">
+<section class="pcc-panel pcc-section dashboard-priorities" aria-labelledby="focus-title">
+  <div class="panel-heading"><h2 id="focus-title">Perlu perhatian</h2><span class="text-xs text-muted-foreground">{{ attention|length }} project</span></div>
+  <div class="focus-list">{% for row in attention %}<a class="focus-item" href="{% url 'projects:project_detail' row.project.pk %}"><span><strong>{{ row.project.name }}</strong><p>{{ row.reasons|join:", " }}</p><p>Aktual {{ row.actual|pct }} / Target {{ row.project.target_end_date|date:"d M" }}</p></span></a>{% empty %}<div class="focus-item"><span><strong>Tidak ada perhatian mendesak</strong><p>Issue kritis, blocker, progress tertinggal, dan milestone terdekat akan muncul di sini.</p></span></div>{% endfor %}</div>
+</section>
 <section class="pcc-panel pcc-section dashboard-progress" aria-labelledby="portfolio-chart-title" data-fullscreen-panel="Progress portfolio">
   <div class="panel-heading"><h2 id="portfolio-chart-title">Progress portfolio</h2><div class="panel-actions" data-visualization-actions><a class="subtle-action" href="{% url 'projects:reports' %}">Lihat laporan</a></div></div>
-  {% if rows %}<p class="portfolio-value">{{ portfolio_actual|floatformat:1 }}%</p><p class="mt-1 text-xs text-muted-foreground">Rata-rata actual per project / {{ counts.total }} project</p>
-  <div class="portfolio-legend"><span><i class="legend-swatch" aria-hidden="true"></i>Saat ini</span><span><i class="legend-swatch planned" aria-hidden="true"></i>Rencana</span><span>Bingkai putus-putus: progress tertinggal</span></div>
+  {% if rows %}<p class="portfolio-value">{{ portfolio_actual|floatformat:1 }}%</p><p class="mt-1 text-xs text-muted-foreground">Rata-rata aktual per project / {{ counts.total }} project</p>
+  <div class="portfolio-legend"><span><i class="legend-swatch" aria-hidden="true"></i>Aktual</span><span><i class="legend-swatch planned" aria-hidden="true"></i>Rencana</span><span>Bingkai putus-putus: progress tertinggal</span></div>
   <div class="portfolio-chart" role="group" aria-label="Perbandingan progress enam project pertama">
     <div class="portfolio-gridlines" aria-hidden="true"><span><small>100%</small></span><span><small>75%</small></span><span><small>50%</small></span><span><small>25%</small></span><span><small>0%</small></span></div>
-    {% for row in chart_rows %}<a class="portfolio-bar-item" href="{% url 'projects:project_detail' row.project.pk %}" style="--actual:{{ row.actual|floatformat:'2u' }}%;--planned:{{ row.planned|default:0|floatformat:'2u' }}%" aria-label="{{ row.project.name }}: actual {{ row.actual|pct }}, planned {{ row.planned|pct }}">
+    {% for row in chart_rows %}<a class="portfolio-bar-item" href="{% url 'projects:project_detail' row.project.pk %}" style="--actual:{{ row.actual|floatformat:'2u' }}%;--planned:{{ row.planned|default:0|floatformat:'2u' }}%" aria-label="{{ row.project.name }}: aktual {{ row.actual|pct }}, rencana {{ row.planned|pct }}">
       <div class="portfolio-bar {% if row.level == 'delayed' or row.level == 'at_risk' %}is-priority{% endif %}"><span class="portfolio-bar-value">{{ row.actual|floatformat:0 }}%</span></div>{% if row.planned is not None %}<span class="portfolio-plan-marker" aria-hidden="true"></span>{% endif %}
     </a>{% endfor %}
   </div><div class="portfolio-chart-labels" aria-hidden="true">{% for row in chart_rows %}<a href="{% url 'projects:project_detail' row.project.pk %}" tabindex="-1">{{ row.project.code }}</a>{% endfor %}</div>
   {% if counts.total > 6 %}<p class="mt-3 text-xs text-muted-foreground">Menampilkan 6 project pertama. Semua project tersedia pada tabel di bawah.</p>{% endif %}
   {% else %}<div class="py-12"><h3 class="font-normal">Belum ada progress untuk ditampilkan.</h3><p class="mt-2 text-sm text-muted-foreground">{% if can_create %}Buat project pertama dan susun pekerjaan tim Anda.{% else %}Minta PM menambahkan Anda sebagai anggota project.{% endif %}</p></div>{% endif %}
 </section>
-<section class="pcc-panel pcc-section dashboard-priorities mt-4" aria-labelledby="focus-title">
-  <div class="panel-heading"><h2 id="focus-title">Perlu perhatian</h2><span class="text-xs text-muted-foreground">{{ attention|length }} project</span></div>
-  <div class="focus-list">{% for row in attention %}<a class="focus-item" href="{% url 'projects:project_detail' row.project.pk %}"><span><strong>{{ row.project.name }}</strong><p>{{ row.reasons|join:", " }}</p><p>Actual {{ row.actual|pct }} / Target {{ row.project.target_end_date|date:"d M" }}</p></span></a>{% empty %}<div class="focus-item"><span><strong>Tidak ada perhatian mendesak</strong><p>Issue kritis, blocker, progress tertinggal, dan milestone terdekat akan muncul di sini.</p></span></div>{% endfor %}</div>
-</section>
 </div>
 <section id="all-projects" class="pcc-panel project-register">
   <div class="panel-heading"><h2>Seluruh project</h2><a class="subtle-action" href="{% url 'projects:project_list' %}">Cari dan filter</a></div>
-  <div class="overflow-x-auto" tabindex="0" role="region" aria-label="Daftar seluruh project"><table class="pcc-table responsive-table"><thead><tr><th>Project / PM</th><th>Phase</th><th>Rencana</th><th>Saat ini</th><th>Selisih</th><th>Status project</th><th>Target</th></tr></thead><tbody>{% for row in rows %}<tr><td data-label="Project / PM"><a class="font-normal hover:underline" href="{% url 'projects:project_detail' row.project.pk %}">{{ row.project.name }}</a><p class="mt-1 text-xs text-muted-foreground">{{ row.project.code }} / {{ row.project.manager|person_name|default:"Belum ada PM" }}</p></td><td data-label="Phase">{{ row.project.effective_current_phase.name|default:"Belum ditentukan" }}</td><td data-label="Rencana" class="tabular-nums">{{ row.planned|pct }}</td><td data-label="Saat ini" class="font-normal tabular-nums">{{ row.actual|pct }}</td><td data-label="Selisih" class="tabular-nums {{ row.variance|comp }}">{{ row.variance|fmt2:" pp" }}</td><td data-label="Status project"><span class="{{ row.project.status|status_style }}">{{ row.project.status|status_label }}</span></td><td data-label="Target" class="whitespace-nowrap">{{ row.project.target_end_date|date:"d M Y" }}</td></tr>{% empty %}<tr><td colspan="7" class="text-muted-foreground">Belum ada project yang bisa ditampilkan.</td></tr>{% endfor %}</tbody></table></div>
+  <div class="overflow-x-auto" tabindex="0" role="region" aria-label="Daftar seluruh project"><table class="pcc-table responsive-table"><thead><tr><th>Project / PM</th><th>Phase</th><th>Rencana</th><th>Aktual</th><th>Selisih</th><th>Status project</th><th>Target</th></tr></thead><tbody>{% for row in rows %}<tr><td data-label="Project / PM"><a class="font-normal hover:underline" href="{% url 'projects:project_detail' row.project.pk %}">{{ row.project.name }}</a><p class="mt-1 text-xs text-muted-foreground">{{ row.project.code }} / {{ row.project.manager|person_name|default:"Belum ada PM" }}</p></td><td data-label="Phase">{{ row.project.effective_current_phase.name|default:"Belum ditentukan" }}</td><td data-label="Rencana" class="tabular-nums">{{ row.planned|pct }}</td><td data-label="Aktual" class="font-normal tabular-nums">{{ row.actual|pct }}</td><td data-label="Selisih" class="tabular-nums {{ row.variance|comp }}">{{ row.variance|fmt2:" pp" }}</td><td data-label="Status project"><span class="{{ row.project.status|status_style }}">{{ row.project.status|status_label }}</span></td><td data-label="Target" class="whitespace-nowrap">{{ row.project.target_end_date|date:"d M Y" }}</td></tr>{% empty %}<tr><td colspan="7" class="text-muted-foreground">Belum ada project yang bisa ditampilkan.</td></tr>{% endfor %}</tbody></table></div>
 </section>
 {% endblock %}

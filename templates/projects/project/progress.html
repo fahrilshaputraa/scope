@@ -9,7 +9,7 @@
             <p class="mt-1 text-xs text-muted-foreground">hari ini · {{ "now"|date:"d M Y" }}</p>
         </div>
         <div class="rounded-xl border bg-card p-4">
-            <p class="text-xs font-normal text-muted-foreground">Actual progress</p>
+            <p class="text-xs font-normal text-muted-foreground">Aktual progress</p>
             <p class="mt-2 text-2xl font-normal tabular-nums">{{ actual|pct }}</p>
             <p class="mt-1 text-xs text-muted-foreground">derivasi dari weighted task</p>
         </div>
@@ -18,7 +18,7 @@
             <p class="mt-2 text-2xl font-normal tabular-nums {{ variance|comp }}">
                 {% if variance > 0 %}+{% endif %}{{ variance|fmt2:"%" }}
             </p>
-            <p class="mt-1 text-xs text-muted-foreground">Actual − rencana; selisih poin persentase</p>
+            <p class="mt-1 text-xs text-muted-foreground">Aktual − rencana; selisih poin persentase</p>
         </div>
         <div class="rounded-xl border bg-card p-4">
             <p class="text-xs font-normal text-muted-foreground">Kondisi progress</p>
@@ -33,7 +33,7 @@
         <div class="flex flex-wrap items-center justify-between gap-3 border-b px-6 py-4">
             <div>
                 <h2 class="text-base font-normal">Rencana vs progress</h2>
-                <p class="text-sm text-muted-foreground">Planned progress curve (baseline) vs actual progress snapshot.</p>
+                <p class="text-sm text-muted-foreground">Kurva rencana progress (baseline) dibanding snapshot progress aktual.</p>
             </div>
             <div class="flex items-center gap-2" data-visualization-actions><div class="flex items-center gap-1 rounded-md border bg-background p-0.5 text-xs">
                 <button type="button"
@@ -54,7 +54,7 @@
             {% if chart_has_plan %}
                 <div class="flex items-center justify-end gap-4 pb-2 text-xs text-muted-foreground">
                     <span class="inline-flex items-center gap-1.5"><span class="legend-swatch planned"></span> Rencana</span>
-                    <span class="inline-flex items-center gap-1.5"><span class="legend-swatch"></span> Actual</span>
+                    <span class="inline-flex items-center gap-1.5"><span class="legend-swatch"></span> Aktual</span>
                 </div>
                 <div class="relative h-80" data-chart-frame>
                     <canvas id="progress-chart"
@@ -73,9 +73,9 @@
     </div>
     <div class="mt-4 grid gap-4 lg:grid-cols-5">
         {# ------------------------------------------------ baseline editor #}
-        <div class="lg:col-span-2 rounded-xl border bg-card text-card-foreground" data-fullscreen-panel="Planned Baseline">
+        <div class="lg:col-span-2 rounded-xl border bg-card text-card-foreground" data-fullscreen-panel="Rencana Baseline">
             <div class="border-b px-6 py-4 flex flex-wrap items-center justify-between gap-3"><div>
-                <h2 class="text-base font-normal">Planned Baseline</h2>
+                <h2 class="text-base font-normal">Rencana Baseline</h2>
                 <p class="text-sm text-muted-foreground">Titik rencana progress (PRD §11).</p></div>
             </div>
             <div class="p-6">
@@ -98,7 +98,7 @@
                             </div>
                             <div>
                                 <label for="baseline-planned"
-                                       class="text-xs font-normal text-muted-foreground">Planned %</label>
+                                       class="text-xs font-normal text-muted-foreground">Rencana %</label>
                                 <input id="baseline-planned"
                                        type="number"
                                        name="planned_percent"
@@ -187,8 +187,8 @@
                     <thead>
                         <tr class="border-b bg-muted/40">
                             <th class="h-10 px-6 text-left font-normal text-muted-foreground">Date</th>
-                            <th class="h-10 px-4 text-right font-normal text-muted-foreground">Planned</th>
-                            <th class="h-10 px-4 text-right font-normal text-muted-foreground">Actual</th>
+                            <th class="h-10 px-4 text-right font-normal text-muted-foreground">Rencana</th>
+                            <th class="h-10 px-4 text-right font-normal text-muted-foreground">Aktual</th>
                             <th class="h-10 px-6 text-right font-normal text-muted-foreground">Deviasi (%)</th>
                         </tr>
                     </thead>

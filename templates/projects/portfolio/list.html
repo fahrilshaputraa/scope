@@ -1,10 +1,10 @@
 {% extends "base.html" %}
 {% load pcc_tags %}
-{% block title %}Projects — Scope{% endblock %}
+{% block title %}Project — Scope{% endblock %}
 {% block content %}
     <div class="flex flex-wrap items-end justify-between gap-4">
         <div>
-            <h1 class="text-2xl font-normal tracking-tight">Projects</h1>
+            <h1 class="text-2xl font-normal tracking-tight">Project</h1>
             <p class="mt-1 text-sm text-muted-foreground">Seluruh project di workspace.</p>
         </div>
         {% if can_create %}<div class="flex flex-wrap gap-2">{% if can_view_archived %}<a class="pcc-button pcc-button-secondary" href="{% if show_archived %}{% url 'projects:project_list' %}{% else %}?archived=1{% endif %}"><svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M5 6v14h14V6M8 6V4h8v2M10 11v5M14 11v5"/></svg>{% if show_archived %}Kembali ke project aktif{% else %}Arsip ({{ archived_count }}){% endif %}</a>{% endif %}<a data-project-action class="pcc-button pcc-button-secondary" href="{% url 'projects:plan_import_new' %}"><svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 2 6 6 3-6 2-2 7-2-7-6-2 6-3zM21 2v4m-2-2h4"/></svg>Import dari AI</a>
@@ -118,8 +118,8 @@
                             <th class="h-10 px-6 text-left font-normal text-muted-foreground">Project</th>
                             <th class="h-10 px-4 text-left font-normal text-muted-foreground">PM</th>
                             <th class="h-10 px-4 text-left font-normal text-muted-foreground">Phase</th>
-                            <th class="h-10 px-4 text-right font-normal text-muted-foreground">Planned</th>
-                            <th class="h-10 px-4 text-right font-normal text-muted-foreground">Actual</th>
+                            <th class="h-10 px-4 text-right font-normal text-muted-foreground">Rencana</th>
+                            <th class="h-10 px-4 text-right font-normal text-muted-foreground">Aktual</th>
                             <th class="h-10 px-4 text-right font-normal text-muted-foreground">Variance</th>
                             <th class="h-10 px-6 text-left font-normal text-muted-foreground">Status</th>
                             {% if show_archived %}<th class="h-10 px-6 text-right font-normal text-muted-foreground">Aksi</th>{% endif %}
@@ -141,7 +141,7 @@
                                 <td data-label="PM" class="px-4 py-3 text-muted-foreground">{{ row.project.manager|person_name|default:"—" }}</td>
                                 <td data-label="Phase" class="px-4 py-3">{{ row.project.effective_current_phase.name|default:"—" }}</td>
                                 <td data-label="Rencana" class="px-4 py-3 text-right tabular-nums">{{ row.planned|pct }}</td>
-                                <td data-label="Actual" class="px-4 py-3 text-right font-normal tabular-nums">{{ row.actual|pct }}</td>
+                                <td data-label="Aktual" class="px-4 py-3 text-right font-normal tabular-nums">{{ row.actual|pct }}</td>
                                 <td data-label="Selisih" class="px-4 py-3 text-right font-normal tabular-nums {{ row.variance|comp }}">
                                     {% if row.variance > 0 %}+{% endif %}{{ row.variance|fmt2:" pp" }}
                                 </td>
@@ -193,8 +193,8 @@
                     {% endif %}
                     <div class="mt-3 space-y-1.5 text-sm">
                         <div class="flex justify-between text-xs">
-                            <span class="text-muted-foreground">Planned <span class="tabular-nums">{{ row.planned|pct }}</span></span>
-                            <span class="text-muted-foreground">Actual <span class="font-normal tabular-nums">{{ row.actual|pct }}</span></span>
+                            <span class="text-muted-foreground">Rencana <span class="tabular-nums">{{ row.planned|pct }}</span></span>
+                            <span class="text-muted-foreground">Aktual <span class="font-normal tabular-nums">{{ row.actual|pct }}</span></span>
                         </div>
                         <progress class="pcc-progress h-1.5"
                                   max="100"

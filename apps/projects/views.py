@@ -338,6 +338,12 @@ def project_detail(request: HttpRequest, pk: int) -> HttpResponse:
             "owner", "task"
         )[:6]
     )
+    overdue_work = (
+        project.tasks.filter(due_date__lt=timezone.localdate())
+        .exclude(status__in=[TaskStatus.DONE, TaskStatus.BLOCKED])
+        .select_related("assignee")
+        .order_by("due_date")
+    )
     activities = project.activities.select_related("actor")[:8]
     milestones = list(project.milestones.all()) if project.next_milestone else []
     baseline = list(project.baseline_points.all())
@@ -356,6 +362,8 @@ def project_detail(request: HttpRequest, pk: int) -> HttpResponse:
             "blocked_timeline_rows": [
                 row for row in data["timeline_rows"] if row["task"].is_blocked
             ],
+            "overdue_work": overdue_work[:3],
+            "overdue_more": max(overdue_work.count() - 3, 0),
             "current_work": current_work,
             "next_up": next_up,
             "completed_work": project.tasks.filter(status=TaskStatus.DONE).select_related(

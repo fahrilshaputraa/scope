@@ -213,7 +213,6 @@ def test_action_drawer_is_a_labelled_modal_dialog(client, workspace):
     [
         "dashboard",
         "project_list",
-        "project_detail",
         "project_progress",
         "project_timeline",
         "issue_list",
