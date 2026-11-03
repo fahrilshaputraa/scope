@@ -130,7 +130,7 @@ def test_allowed_roles_can_comment(client, data, user_attr):
 def test_comment_does_not_change_status_or_progress(client, data):
     issue_status = data.issue.status
     milestone_status = data.milestone.status
-    project_status = data.project.status
+    project_status = data.project.lifecycle_status
     progress = data.task.progress
     client.force_login(data.member)
     assert _post(client, data, "issue", data.issue.pk).status_code == 302
@@ -143,7 +143,7 @@ def test_comment_does_not_change_status_or_progress(client, data):
     data.task.refresh_from_db()
     assert data.issue.status == issue_status
     assert data.milestone.status == milestone_status
-    assert data.project.status == project_status
+    assert data.project.lifecycle_status == project_status
     assert data.task.progress == progress
 
 

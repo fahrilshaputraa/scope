@@ -28,8 +28,12 @@ def project(db):
 @pytest.mark.django_db
 def test_done_updates_all_progress_consumers(client, project):
     phase = Phase.objects.create(project=project, name="Build")
-    task = Task.objects.create(project=project, phase=phase, title="Work", progress=40)
-    client.force_login(project.manager)
+    worker = User.objects.create_user("worker", password="test-password")
+    assign_roles(worker, [Role.MEMBER])
+    task = Task.objects.create(
+        project=project, phase=phase, title="Work", progress=40, assignee=worker
+    )
+    client.force_login(worker)
     response = client.patch(
         reverse("work:task_status", args=[task.pk]),
         "status=done",

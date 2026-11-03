@@ -17,7 +17,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
 from apps.form_widgets import style_form
-from apps.identity.permissions import can_edit_task, can_manage_project
+from apps.identity.permissions import can_execute_task, can_manage_project
 from apps.richtext import SanitizeRichTextMixin
 from apps.work.models import OPEN_ISSUE_STATUSES, TASK_STATUS_LABELS, Task
 
@@ -436,7 +436,8 @@ def board_move(request, pk, task_id):
 
     project = _project_or_404(request, pk)
     task = get_object_or_404(Task, project=project, pk=task_id)
-    if not can_edit_task(request.user, task):
+    # Menata papan boleh dilakukan PM (merencanakan) maupun pelaksana task.
+    if not (can_manage_project(request.user, project) or can_execute_task(request.user, task)):
         raise PermissionDenied
     try:
         column_id = int(_params(request).get("column", ""))

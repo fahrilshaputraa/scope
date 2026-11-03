@@ -1,6 +1,6 @@
 from django.core.management.base import BaseCommand
 
-from apps.projects.models import Project, ProjectStatus
+from apps.projects.models import CLOSED_LIFECYCLE, Project
 from apps.projects.services import record_snapshot, snapshot_due_projects
 
 
@@ -23,9 +23,7 @@ class Command(BaseCommand):
             self.stdout.write(self.style.SUCCESS(f"Captured {count} due project snapshots."))
             return
         count = 0
-        for project in Project.objects.exclude(
-            status__in=[ProjectStatus.COMPLETED, ProjectStatus.CANCELLED]
-        ):
+        for project in Project.objects.exclude(lifecycle_status__in=CLOSED_LIFECYCLE):
             record_snapshot(project)
             count += 1
         self.stdout.write(self.style.SUCCESS(f"Captured {count} project snapshots."))

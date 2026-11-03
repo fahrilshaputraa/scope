@@ -443,7 +443,7 @@ def test_member_cannot_manipulate_foreign_notes_issues_or_baseline(client, setup
     assert b"Private note" not in client.get(reverse("projects:note_list")).content
 
 
-@pytest.mark.parametrize("actor_index", [2, 3])
+@pytest.mark.parametrize("actor_index", [3])
 def test_daily_update_keeps_planning_fields_and_validates_blockers(
     client, setup_project, actor_index
 ):

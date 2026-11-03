@@ -133,15 +133,59 @@ def get_item(value, key):
 
 @register.filter
 def group_count(rows, key):
-    """Hitung jumlah project rows berdasarkan status project."""
-    from apps.projects.models import ProjectStatus
+    """Hitung jumlah project rows berdasarkan health project."""
+    from apps.projects.models import HealthStatus
 
     def active(r):
-        return r["project"].status
+        return r["project"].health_status
 
     if key == "risk":
-        return sum(1 for r in rows if active(r) in (ProjectStatus.AT_RISK, ProjectStatus.DELAYED))
+        return sum(
+            1
+            for r in rows
+            if active(r) in (HealthStatus.AT_RISK, HealthStatus.DELAYED, HealthStatus.CRITICAL)
+        )
     return sum(1 for r in rows if active(r) == key)
+
+
+_LIFECYCLE_STYLES = {
+    "draft": "pcc-status pcc-status-neutral",
+    "planning": "pcc-status pcc-status-info",
+    "in_progress": "pcc-status pcc-status-info",
+    "on_hold": "pcc-status pcc-status-warning",
+    "completed": "pcc-status pcc-status-success",
+    "cancelled": "pcc-status pcc-status-neutral",
+}
+_HEALTH_STYLES = {
+    "on_track": "pcc-status pcc-status-success",
+    "at_risk": "pcc-status pcc-status-warning",
+    "delayed": "pcc-status pcc-status-danger",
+    "critical": "pcc-status pcc-status-danger",
+}
+
+
+@register.filter
+def lifecycle_label(value):
+    from apps.projects.models import LifecycleStatus
+
+    return LifecycleStatus(value).label if value in LifecycleStatus.values else "—"
+
+
+@register.filter
+def lifecycle_style(value):
+    return _LIFECYCLE_STYLES.get(value, "pcc-status pcc-status-neutral")
+
+
+@register.filter
+def health_label(value):
+    from apps.projects.models import HealthStatus
+
+    return HealthStatus(value).label if value in HealthStatus.values else "—"
+
+
+@register.filter
+def health_style(value):
+    return _HEALTH_STYLES.get(value, "pcc-status pcc-status-neutral")
 
 
 @register.filter

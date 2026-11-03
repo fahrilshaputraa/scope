@@ -19,13 +19,15 @@ from django.views.decorators.http import require_http_methods, require_POST
 
 from apps.identity.permissions import (
     can_comment,
-    can_edit_task,
+    can_execute_task,
     can_manage_project,
     can_report_issue,
+    is_admin,
     is_management,
     require_internal,
     visible_projects,
 )
+from apps.identity.roles import has_perm
 from apps.notifications.models import SubscriptionTarget
 from apps.notifications.services import notify, user_display
 from apps.notifications.subscriptions import watch_state
@@ -231,7 +233,7 @@ def my_tasks(request: HttpRequest) -> HttpResponse:
         )
     )
     for task in tasks:
-        task.can_edit = can_edit_task(request.user, task)
+        task.can_edit = can_execute_task(request.user, task)
 
     # Existing status sections stay intact for callers that read these keys.
     current = [task for task in tasks if task.status == TaskStatus.IN_PROGRESS]
@@ -515,7 +517,12 @@ def task_create(request: HttpRequest) -> HttpResponse:
         parent = get_object_or_404(
             project.tasks.select_related("phase"), pk=parent_id, parent_task__isnull=True
         )
-    form = TaskForm(request.POST or None, project=project, parent=parent)
+    form = TaskForm(
+        request.POST or None,
+        project=project,
+        parent=parent,
+        can_execute=is_admin(request.user),
+    )
     if request.method == "POST" and form.is_valid():
         task = form.save(commit=False)
         task.project = project
@@ -600,7 +607,7 @@ def task_detail(request: HttpRequest, pk: int) -> HttpResponse:
         {
             "task": task,
             "details": details,
-            "can_edit": can_edit_task(request.user, task),
+            "can_edit": can_execute_task(request.user, task),
             "can_manage": can_manage_project(request.user, task.project),
             "comment_form": comment_form,
             "comments": comments_page,
@@ -616,18 +623,23 @@ def task_detail(request: HttpRequest, pk: int) -> HttpResponse:
 @transaction.atomic
 def task_update(request: HttpRequest, pk: int) -> HttpResponse:
     task = _task_or_404(request, pk)
-    if not can_edit_task(request.user, task):
+    can_plan = can_manage_project(request.user, task.project)
+    can_execute = can_execute_task(request.user, task)
+    work_update = request.GET.get("mode") == "update"
+    # Merencanakan: PM project. Mengerjakan: pelaksana task (BR-TASK-005, BR-TASK-008).
+    if not (can_execute if work_update else (can_plan or can_execute)):
         messages.error(request, "Anda tidak berhak mengubah task ini.")
         return redirect("work:task_detail", pk=task.pk)
     old_status = task.status
     old_assignee_id = task.assignee_id
-    work_update = request.GET.get("mode") == "update"
     board_status = request.GET.get("board_status") if work_update else None
     form = TaskForm(
         request.POST or None,
         instance=task,
         project=task.project,
-        can_plan=can_manage_project(request.user, task.project) and not work_update,
+        can_plan=can_plan and not work_update,
+        can_execute=can_execute,
+        can_reassign=has_perm(request.user, "task.reassign"),
         initial={"status": board_status} if board_status in TaskStatus.values else None,
     )
     if request.method == "POST" and form.is_valid():
@@ -737,7 +749,7 @@ def _params(request):
 @transaction.atomic
 def task_status(request, pk):
     task = _task_or_404(request, pk)
-    if not can_edit_task(request.user, task):
+    if not can_execute_task(request.user, task):
         return JsonResponse(
             {"ok": False, "error": "Anda tidak dapat mengubah task ini."}, status=403
         )
@@ -782,7 +794,7 @@ def task_status(request, pk):
 @transaction.atomic
 def task_progress(request, pk):
     task = _task_or_404(request, pk)
-    if not can_edit_task(request.user, task):
+    if not can_execute_task(request.user, task):
         return JsonResponse(
             {"ok": False, "error": "Anda tidak dapat mengubah progress task ini."}, status=403
         )
@@ -854,7 +866,7 @@ def task_dates(request, pk):
 @require_http_methods(["POST"])
 def attachment_upload(request, pk):
     task = _task_or_404(request, pk)
-    if not can_edit_task(request.user, task):
+    if not can_execute_task(request.user, task):
         raise PermissionDenied
     form = AttachmentForm(request.POST, request.FILES)
     if form.is_valid():
@@ -888,7 +900,7 @@ def attachment_delete(request, pk):
     attachment = get_object_or_404(
         TaskAttachment, pk=pk, task__project__in=visible_projects(request.user)
     )
-    if not can_edit_task(request.user, attachment.task):
+    if not can_execute_task(request.user, attachment.task):
         raise PermissionDenied
     task_id = attachment.task_id
     attachment.file.delete(save=False)

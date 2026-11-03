@@ -18,6 +18,7 @@ from apps.projects.models import (
     ActivityAction,
     ActivityEvent,
     Decision,
+    LifecycleStatus,
     Milestone,
     MilestoneStatus,
     Note,
@@ -26,7 +27,6 @@ from apps.projects.models import (
     ProgressBaselinePoint,
     ProgressSnapshot,
     Project,
-    ProjectStatus,
 )
 from apps.projects.services import actual_progress
 from apps.work.models import (
@@ -63,6 +63,16 @@ class Command(BaseCommand):
         if changed:
             profile.save(update_fields=changed + ["updated_at"])
         return user
+
+    def separate_managers_from_assignees(self):
+        """PM tidak menjadi assignee task di project yang dikelolanya (BR-TASK-004)."""
+        spare = {u.pk: u for u in User.objects.filter(username__in=["budi", "sari"])}
+        for task in Task.objects.select_related("project").filter(assignee__isnull=False):
+            if task.assignee_id != task.project.manager_id:
+                continue
+            replacement = next((u for pk, u in spare.items() if pk != task.assignee_id), None)
+            task.assignee = replacement
+            task.save(update_fields=["assignee"])
 
     def project_owner(self):
         return User.objects.get(username="direksi")
@@ -120,8 +130,9 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         Project.objects.filter(code__in=DEMO_PROJECT_CODES).delete()
 
-        fahril = self.user("fahril", Role.PROJECT_MANAGER, "Fahril", "Project Manager")
-        andi = self.user("andi", Role.PROJECT_MANAGER, "Andi", "Project Manager")
+        both = [Role.PROJECT_MANAGER, Role.MEMBER]
+        fahril = self.user("fahril", both, "Fahril", "Project Manager")
+        andi = self.user("andi", both, "Andi", "Project Manager")
         budi = self.user("budi", Role.MEMBER, "Budi", "Technical Lead")
         sari = self.user("sari", Role.MEMBER, "Sari", "Frontend Engineer")
         self.user("direksi", [Role.MANAGEMENT, Role.OWNER], "Direksi", "Management")
@@ -132,6 +143,7 @@ class Command(BaseCommand):
         self._dwm(fahril, budi, sari)
         self._soc(andi)
         self._apg(budi, sari, andi)
+        self.separate_managers_from_assignees()
 
         self.stdout.write(self.style.SUCCESS("Seed demo selesai: 6 project."))
 
@@ -149,7 +161,7 @@ class Command(BaseCommand):
             team="Platform",
             start_date=D("2026-08-03"),
             target_end_date=D("2026-10-30"),
-            status=ProjectStatus.AT_RISK,
+            lifecycle_status=LifecycleStatus.IN_PROGRESS,
         )
 
         ph1 = Phase.objects.create(
@@ -372,7 +384,7 @@ class Command(BaseCommand):
             description="Rekonsiliasi invoice WHMCS ↔ Duitku + monitoring mutasi bank.",
             manager=andi, owner=self.project_owner(), team="Finance",
             start_date=D("2026-09-15"), target_end_date=D("2026-12-15"),
-            status=ProjectStatus.ON_TRACK,
+            lifecycle_status=LifecycleStatus.IN_PROGRESS,
         )
         ph1 = Phase.objects.create(project=p, sequence=1, name="Discovery",
                                    start_date=D("2026-09-15"), end_date=D("2026-09-30"),
@@ -440,7 +452,7 @@ class Command(BaseCommand):
             description="Redesign portal customer: login, order history, pembayaran.",
             manager=budi, owner=self.project_owner(), team="Frontend",
             start_date=D("2026-08-01"), target_end_date=D("2026-10-05"),
-            status=ProjectStatus.DELAYED,
+            lifecycle_status=LifecycleStatus.IN_PROGRESS,
         )
         ph1 = Phase.objects.create(project=p, sequence=1, name="Design",
                                    start_date=D("2026-08-01"), end_date=D("2026-08-29"),
@@ -503,7 +515,7 @@ class Command(BaseCommand):
             description="Migrasi warehouse lama ke setup baru + validasi data.",
             manager=fahril, owner=self.project_owner(), team="Data",
             start_date=D("2026-06-01"), target_end_date=D("2026-09-15"),
-            actual_end_date=D("2026-09-15"), status=ProjectStatus.COMPLETED,
+            actual_end_date=D("2026-09-15"), lifecycle_status=LifecycleStatus.COMPLETED,
         )
         ph1 = Phase.objects.create(project=p, sequence=1, name="Migration",
                                    start_date=D("2026-06-01"), end_date=D("2026-09-12"),
@@ -548,7 +560,7 @@ class Command(BaseCommand):
             description="Dashboard monitoring SOC — masih tahap planning.",
             manager=andi, owner=self.project_owner(), team="Infrastructure",
             start_date=D("2026-11-02"), target_end_date=D("2026-12-20"),
-            status=ProjectStatus.PLANNING,
+            lifecycle_status=LifecycleStatus.PLANNING,
         )
 
     def _apg(self, budi, sari, andi):
@@ -557,7 +569,7 @@ class Command(BaseCommand):
             description="Migrasi service lama ke API gateway terpusat.",
             manager=budi, owner=self.project_owner(), team="Platform",
             start_date=D("2026-09-01"), target_end_date=D("2026-11-30"),
-            status=ProjectStatus.ON_TRACK,
+            lifecycle_status=LifecycleStatus.IN_PROGRESS,
         )
         ph1 = Phase.objects.create(project=p, sequence=1, name="Foundation",
                                    start_date=D("2026-09-01"), end_date=D("2026-10-16"),

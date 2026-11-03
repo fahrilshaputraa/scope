@@ -7,7 +7,7 @@ from django.conf import settings
 from django.core.management import call_command
 from django.utils import timezone
 
-from apps.projects.models import ProgressSnapshot, Project, ProjectStatus
+from apps.projects.models import LifecycleStatus, ProgressSnapshot, Project
 from apps.projects.scheduler import THREAD_NAME, start_scheduler, tick
 
 pytestmark = pytest.mark.django_db
@@ -56,7 +56,7 @@ def test_due_command_excludes_archived_and_cancelled_projects():
     archived = make_project("ARCH")
     archived.archive()
     cancelled = make_project("CANC")
-    cancelled.status = ProjectStatus.CANCELLED
+    cancelled.lifecycle_status = LifecycleStatus.CANCELLED
     cancelled.save()
     for project in (active, archived, cancelled):
         clear_today(project)

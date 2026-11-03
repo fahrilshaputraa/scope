@@ -13,8 +13,8 @@ class TaskStatus(models.TextChoices):
     BACKLOG = "backlog", "Backlog"
     TODO = "todo", "To Do"
     IN_PROGRESS = "in_progress", "In Progress"
+    REVIEW = "review", "In Review"
     BLOCKED = "blocked", "Blocked"
-    REVIEW = "review", "Review"
     DONE = "done", "Done"
 
 
@@ -23,8 +23,8 @@ KANBAN_COLUMNS = [
     TaskStatus.BACKLOG,
     TaskStatus.TODO,
     TaskStatus.IN_PROGRESS,
-    TaskStatus.BLOCKED,
     TaskStatus.REVIEW,
+    TaskStatus.BLOCKED,
     TaskStatus.DONE,
 ]
 
@@ -32,8 +32,8 @@ TASK_STATUS_LABELS = {
     TaskStatus.BACKLOG: "Belum dijadwalkan",
     TaskStatus.TODO: "Siap dikerjakan",
     TaskStatus.IN_PROGRESS: "Sedang dikerjakan",
-    TaskStatus.BLOCKED: "Terhambat",
     TaskStatus.REVIEW: "Menunggu pemeriksaan",
+    TaskStatus.BLOCKED: "Terhambat",
     TaskStatus.DONE: "Selesai",
 }
 
@@ -143,12 +143,30 @@ class Task(ArchivableModel):
             errors["blocked_reason"] = "Jelaskan hambatan sebelum memblokir task."
         self._validate_hierarchy()
         self._validate_completion()
+        self._validate_assignee(errors)
         for name in ("phase", "milestone"):
             obj = getattr(self, name) if getattr(self, name + "_id") else None
             if obj and obj.project_id != self.project_id:
                 errors[name] = "Pilih data dari project yang sama."
         if errors:
             raise ValidationError(errors)
+
+    def _validate_assignee(self, errors):
+        """Assignee baru harus pelaksana dan bukan PM project (BR-TASK-003, BR-TASK-004)."""
+        if not self.assignee_id:
+            return
+        previous = None
+        if self.pk:
+            previous = (
+                Task.all_objects.filter(pk=self.pk).values_list("assignee_id", flat=True).first()
+            )
+        if previous == self.assignee_id:
+            return
+        from apps.identity.roles import assignment_problem
+
+        problem = assignment_problem(self.assignee, self.project)
+        if problem:
+            errors["assignee"] = problem
 
     def _validate_hierarchy(self):
         if not self.parent_task_id:

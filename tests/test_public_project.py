@@ -41,7 +41,7 @@ def public_case():
         team="Team Secret",
         start_date=date(2026, 1, 1),
         target_end_date=date(2026, 6, 30),
-        status="on_track",
+        lifecycle_status="in_progress",
     )
     project.members.add(pm, member)
     discovery = Phase.objects.create(

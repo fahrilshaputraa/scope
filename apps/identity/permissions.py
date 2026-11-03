@@ -41,11 +41,15 @@ def can_manage_project(user, project) -> bool:
     return project.manager_id == user.id or project.manager is None
 
 
-def can_edit_task(user, task) -> bool:
-    """Admin dan PM project bebas; pelaksana hanya task miliknya (PRD §10.3)."""
+def can_execute_task(user, task) -> bool:
+    """Memperbarui status dan progress: pelaksana task, atau Admin (PRD §10.3, BR-TASK-008).
+
+    PM mengontrol dan merencanakan (``can_manage_project``) tetapi tidak memperbarui
+    actual progress sebagai pelaksana.
+    """
     if not user.is_authenticated:
         return False
-    if can_manage_project(user, task.project):
+    if is_admin(user):
         return True
     return has_perm(user, "task.update_progress") and (
         task.assignee_id == user.id or task.collaborators.filter(pk=user.pk).exists()

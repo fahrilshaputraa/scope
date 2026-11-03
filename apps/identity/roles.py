@@ -152,3 +152,28 @@ def stored_role_codes(user) -> list[str]:
         )
     )
     return [code for code in ROLE_PRIORITY if code in codes]
+
+
+def executor_role_codes() -> list[str]:
+    """Kode role yang boleh mengerjakan task (punya permission ``task.execute``)."""
+    return [r.code for r in RoleDefinition.objects.all() if "task.execute" in r.permissions]
+
+
+def can_execute_tasks(user) -> bool:
+    """True bila user punya role pelaksana (Member) di salah satu membership."""
+    if not getattr(user, "is_authenticated", False):
+        return False
+    if user.is_staff:
+        return True
+    return Membership.objects.filter(
+        user=user, status=Membership.Status.ACTIVE, role__code__in=executor_role_codes()
+    ).exists()
+
+
+def assignment_problem(user, project=None) -> str:
+    """Alasan user tidak boleh menjadi assignee (BR-TASK-004), atau string kosong."""
+    if project is not None and project.manager_id == user.pk:
+        return "Project Manager tidak dapat menjadi assignee task di project yang dikelolanya."
+    if not can_execute_tasks(user):
+        return "Akun ini tidak punya peran pelaksana (Project Member)."
+    return ""

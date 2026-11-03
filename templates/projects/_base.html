@@ -82,7 +82,7 @@
             </div>
         </div>
         <div class="flex flex-wrap items-center gap-3">
-            <span class="px-3 py-1 text-sm {{ project.status|status_style }}">{{ project.status|status_label }}</span>
+            <span class="px-3 py-1 text-sm {{ project.lifecycle_status|lifecycle_style }}">{{ project.get_lifecycle_status_display }}</span>{% if project.health_status %}<span class="px-3 py-1 text-sm {{ project.health_status|health_style }}">{{ project.get_health_status_display }}</span>{% endif %}
             {% if can_manage %}
                 <a data-project-action class="pcc-button" href="{% url 'work:task_create' %}?project={{ project.pk }}"><svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Tambah task</a>
             {% endif %}

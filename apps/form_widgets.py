@@ -32,6 +32,8 @@ def style_form(form, primary=None):
         "code": "Kode project",
         "description": "Deskripsi",
         "manager": "Project Manager",
+        "lifecycle_status": "Siklus hidup project",
+        "cancellation_reason": "Alasan pembatalan",
         "members": "Anggota project",
         "team": "Tim",
         "current_phase": "Tahap saat ini",

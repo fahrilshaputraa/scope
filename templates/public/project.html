@@ -9,7 +9,7 @@
                 <span class="public-code">{{ project.code }}</span>
             </div>
             <div class="public-project-meta">
-                <span class="{{ project.status|status_style }}">{{ project.status|status_label }}</span>
+                <span class="{{ project.lifecycle_status|lifecycle_style }}">{{ project.get_lifecycle_status_display }}</span>
                 <span>{{ project.start_date|date:"d M Y" }} → {{ project.target_end_date|date:"d M Y" }}</span>
             </div>
         </header>

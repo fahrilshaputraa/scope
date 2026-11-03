@@ -35,7 +35,21 @@ class TaskForm(SanitizeRichTextMixin, forms.ModelForm):
             "blocked_dependency",
         ]
 
-    def __init__(self, *args, project=None, can_plan=True, parent=None, **kwargs):
+    #: Field pelaksanaan: hanya pelaksana (atau Admin) yang boleh mengubahnya.
+    EXECUTION_FIELDS = ("progress", "blocked_reason", "blocked_dependency")
+    #: Status yang boleh dipilih PM saat merencanakan (belum dikerjakan).
+    PLANNING_STATUSES = ("backlog", "todo")
+
+    def __init__(
+        self,
+        *args,
+        project=None,
+        can_plan=True,
+        can_execute=True,
+        can_reassign=True,
+        parent=None,
+        **kwargs,
+    ):
         self.project = project
         super().__init__(*args, **kwargs)
         if project:
@@ -49,7 +63,21 @@ class TaskForm(SanitizeRichTextMixin, forms.ModelForm):
             for name in list(self.fields):
                 if name not in allowed:
                     self.fields.pop(name)
-        self.fields["status"].choices = list(TASK_STATUS_LABELS.items())
+        if can_plan and not can_execute:
+            # PM merencanakan, tidak memperbarui progress (PRD §10.2, BR-TASK-008).
+            for name in self.EXECUTION_FIELDS:
+                self.fields.pop(name, None)
+        if "status" in self.fields:
+            choices = list(TASK_STATUS_LABELS.items())
+            if can_plan and not can_execute:
+                choices = [(k, v) for k, v in choices if k in self.PLANNING_STATUSES]
+                if self.instance.pk and self.instance.status not in self.PLANNING_STATUSES:
+                    self.fields["status"].disabled = True
+                    choices = list(TASK_STATUS_LABELS.items())
+                    self.fields["status"].help_text = (
+                        "Status diperbarui oleh pelaksana task, bukan PM."
+                    )
+            self.fields["status"].choices = choices
         fill_missing_defaults(self, ["status", "priority", "progress", "weight", "order"])
         primary = (
             ["title", "assignee", "collaborators", "due_date"]
@@ -71,16 +99,20 @@ class TaskForm(SanitizeRichTextMixin, forms.ModelForm):
             self.fields["dependencies"].queryset = self.project.tasks.exclude(pk=self.instance.pk)
             from django.contrib.auth.models import User
 
-            self.fields["assignee"].queryset = (
-                User.objects.filter(is_active=True)
-                .filter(
-                    Q(member_projects=self.project)
-                    | Q(pk=self.project.manager_id)
-                    | Q(assigned_tasks__project=self.project)
-                    | Q(collaborating_tasks__project=self.project)
-                )
-                .distinct()
+            from apps.identity.roles import executor_role_codes
+
+            candidates = User.objects.filter(is_active=True).filter(
+                Q(member_projects=self.project)
+                | Q(assigned_tasks__project=self.project)
+                | Q(collaborating_tasks__project=self.project)
             )
+            # Hanya pelaksana yang bisa ditugaskan; PM project tidak (BR-TASK-004).
+            executors = Q(memberships__role__code__in=executor_role_codes()) | Q(is_staff=True)
+            current = Q(pk=self.instance.assignee_id) if self.instance.assignee_id else Q(pk__in=[])
+            self.fields["assignee"].queryset = (
+                candidates.filter(executors).exclude(pk=self.project.manager_id)
+                | candidates.filter(current)
+            ).distinct()
 
             self.fields["collaborators"].queryset = self.fields["assignee"].queryset
         if "parent_task" in self.fields:
@@ -98,6 +130,10 @@ class TaskForm(SanitizeRichTextMixin, forms.ModelForm):
             self.fields["progress"].disabled = True
             self.initial["progress"] = self.instance.display_progress
             self.fields["progress"].help_text = "Otomatis dihitung dari bobot detail activity."
+        if self.instance.pk and not can_reassign:
+            for name in ("assignee", "collaborators"):
+                if name in self.fields:
+                    self.fields[name].disabled = True
         style_form(self, primary=primary)
         if "collaborators" in self.fields:
             self.fields[
@@ -135,6 +171,13 @@ class TaskForm(SanitizeRichTextMixin, forms.ModelForm):
                 self.add_error("assignee", "Pilih orang pertama sebelum menambahkan rekan.")
             if data.get("assignee") and collaborators.filter(pk=data["assignee"].pk).exists():
                 self.add_error("collaborators", "Rekan harus berbeda dari orang pertama.")
+        if self.project is not None and "collaborators" in self.fields:
+            from apps.identity.roles import assignment_problem
+
+            for person in collaborators if collaborators is not None else []:
+                problem = assignment_problem(person, self.project)
+                if problem and person not in self.instance.collaborators.all():
+                    self.add_error("collaborators", f"{person.get_username()}: {problem}")
         dependencies = data.get("dependencies")
         if dependencies is None and self.instance.pk:
             dependencies = self.instance.dependencies.all()

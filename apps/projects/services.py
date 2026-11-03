@@ -8,7 +8,15 @@ from django.utils import timezone
 
 from apps.work.progress import weighted_progress
 
-from .models import ActivityAction, ActivityEvent, ProgressSnapshot, Project, ProjectStatus
+from .models import (
+    ASSESSED_LIFECYCLE,
+    CLOSED_LIFECYCLE,
+    ActivityAction,
+    ActivityEvent,
+    HealthStatus,
+    ProgressSnapshot,
+    Project,
+)
 
 _DP = Decimal("0.01")
 
@@ -97,36 +105,83 @@ def variance_level(project) -> str:
     return VarianceLevel.DELAYED
 
 
+def health_status(project) -> str | None:
+    """Kondisi pelaksanaan project (PRD §7.2); None bila lifecycle belum dinilai.
+
+    - Terlambat: lewat target, atau selisih progress di bawah ambang terlambat.
+    - Kritis: terlambat dan ada issue kritis terbuka, atau lewat target dengan selisih terlambat.
+    - Perlu perhatian: selisih di bawah ambang, atau ada issue kritis terbuka.
+    """
+    from apps.work.models import OPEN_ISSUE_STATUSES, Issue
+
+    if project.lifecycle_status not in ASSESSED_LIFECYCLE:
+        return None
+    level = variance_level(project)
+    overdue = project.is_overdue
+    critical_issues = Issue.objects.filter(
+        project=project, status__in=OPEN_ISSUE_STATUSES, severity="critical"
+    ).exists()
+    delayed = overdue or level == VarianceLevel.DELAYED
+    if delayed and ((overdue and level == VarianceLevel.DELAYED) or critical_issues):
+        return HealthStatus.CRITICAL
+    if delayed:
+        return HealthStatus.DELAYED
+    if level == VarianceLevel.AT_RISK or critical_issues:
+        return HealthStatus.AT_RISK
+    return HealthStatus.ON_TRACK
+
+
+def planning_requirements(project) -> list[str]:
+    """Syarat agar project boleh berjalan (PRD §7.3). Daftar kosong berarti terpenuhi."""
+    unmet = []
+    if not project.owner_id:
+        unmet.append("Project Owner belum ditentukan")
+    if not project.manager_id:
+        unmet.append("Project Manager belum ditentukan")
+    if project.pk:
+        if not project.tasks.exists():
+            unmet.append("belum ada task")
+        if not project.baseline_points.exists():
+            unmet.append("baseline progress belum dibuat")
+    else:
+        unmet.append("rencana project belum dibuat")
+    return unmet
+
+
+def closure_requirements(project) -> list[str]:
+    """Syarat agar project boleh diselesaikan (PRD §7.3)."""
+    from apps.work.models import OPEN_ISSUE_STATUSES, Issue, TaskStatus
+
+    unmet = []
+    if project.pk:
+        open_tasks = project.tasks.exclude(status=TaskStatus.DONE).count()
+        if open_tasks:
+            unmet.append(f"{open_tasks} task belum selesai")
+        open_issues = Issue.objects.filter(project=project, status__in=OPEN_ISSUE_STATUSES).count()
+        if open_issues:
+            unmet.append(f"{open_issues} issue masih terbuka")
+    return unmet
+
+
 def project_health(project) -> dict:
     """Project health summary untuk Overview (PRD §9.1)."""
     from apps.work.models import Issue, IssueStatus
 
     level = variance_level(project)
-    if project.is_overdue:
-        schedule = "delayed"
-    elif level in (VarianceLevel.AHEAD, VarianceLevel.ON_TRACK, VarianceLevel.UNKNOWN):
-        schedule = "on_track"
-    elif level == VarianceLevel.AT_RISK:
-        schedule = "at_risk"
-    else:
-        schedule = "delayed"
+    schedule = health_status(project) or HealthStatus.ON_TRACK
 
     open_issues = Issue.objects.filter(
         project=project,
         status__in=[IssueStatus.OPEN, IssueStatus.IN_PROGRESS, IssueStatus.BLOCKED],
     )
     severity_rank = ["critical", "high", "medium", "low"]
-    top_severity = None
-    for severity in severity_rank:
-        if open_issues.filter(severity=severity).exists():
-            top_severity = severity
-            break
     risks = project.risks.filter(status="open")
     risky_count = risks.count()
     top_severity = next((s for s in severity_rank if risks.filter(severity=s).exists()), None)
 
     return {
         "schedule": schedule,
+        "health_status": health_status(project),
         "progress": actual_progress(project),
         "planned": planned_progress_on(project),
         "variance": variance(project),
@@ -165,7 +220,7 @@ def projects_due_for_snapshot(on_date: date | None = None):
     on_date = on_date or timezone.localdate()
     existing = ProgressSnapshot.objects.filter(date=on_date).values("project_id")
     return Project.objects.exclude(
-        status__in=[ProjectStatus.COMPLETED, ProjectStatus.CANCELLED]
+        lifecycle_status__in=CLOSED_LIFECYCLE
     ).exclude(pk__in=existing)
 
 

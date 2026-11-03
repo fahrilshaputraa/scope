@@ -153,7 +153,11 @@ def test_parent_progress_is_calculated_in_form_and_api(client, activity):
     assert form.is_valid(), form.errors
     form.save()
     assert activity.display_progress == 25
-    client.force_login(activity.project.manager)
+    worker = User.objects.create_user("activity-worker", password="test-password")
+    assign_roles(worker, [Role.MEMBER])
+    activity.assignee = worker
+    activity.save()
+    client.force_login(worker)
     response = client.post(reverse("work:task_progress", args=[activity.pk]), {"progress": "99"})
     assert response.status_code == 400
     response = client.post(reverse("work:task_status", args=[activity.pk]), {"status": "done"})

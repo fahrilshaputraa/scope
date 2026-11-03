@@ -70,6 +70,14 @@ Belum dikerjakan: dashboard berbeda per role (R8.1), Templates dan Audit Logs di
 
 ## Fase 3 — Lifecycle, health, aturan task
 
+Status (3 November 2026): R3.1–R3.5 selesai.
+- R3.1: `Project.status` menjadi `lifecycle_status` (Draf, Perencanaan, Berjalan, Ditahan, Selesai, Dibatalkan). Health (Sesuai rencana, Perlu perhatian, Terlambat, Kritis) dihitung dari selisih progress, tenggat, dan issue kritis, hanya untuk project Berjalan atau Ditahan. Tampil terpisah di list, header, dashboard, dan export. Migrasi memetakan `on_track`, `at_risk`, `delayed` menjadi Berjalan.
+- R3.2: aturan transisi di `Project.clean()`: project baru hanya Draf atau Perencanaan; Berjalan butuh Owner, PM, task, dan baseline; Selesai butuh semua task selesai dan tidak ada issue terbuka; Dibatalkan butuh alasan (`cancellation_reason`). Aturan tidak diulang bila status tidak berubah.
+- R3.3: urutan kolom dan status task: In Progress, In Review, Blocked, Done. Nilai internal `review` tetap.
+- R3.4: PM tidak menjadi assignee (di project yang dikelolanya), dan assignee harus berperan pelaksana (permission `task.execute`). Aturan hanya diperiksa saat assignee berubah, jadi data lama tidak rusak. Form PM tidak memuat progress dan alasan hambatan; status PM terbatas Backlog dan To Do; API status dan progress menolak PM (403). Admin tetap boleh keduanya.
+- R3.5: mengganti assignee butuh permission `task.reassign` (form dikunci bila tidak ada); perubahan tercatat di activity log.
+Catatan: health belum disimpan di snapshot (R5.3). Role Owner belum punya aksi persetujuan sampai Fase 5.
+
 | ID | Item | Cakupan | Selesai bila |
 |---|---|---|---|
 | R3.1 | Pisahkan lifecycle dan health | `lifecycle_status`: Draft, Planning, In Progress, On Hold, Completed, Cancelled. `health_status`: On Track, At Risk, Delayed, Critical (terhitung, bukan diisi manual). Migrasi memetakan `ProjectStatus` lama. | Keduanya tampil terpisah di list, detail, dan export. |

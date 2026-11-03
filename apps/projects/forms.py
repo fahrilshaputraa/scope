@@ -21,7 +21,8 @@ class ProjectForm(SanitizeRichTextMixin, forms.ModelForm):
             "team",
             "start_date",
             "target_end_date",
-            "status",
+            "lifecycle_status",
+            "cancellation_reason",
             "progress_override",
         ]
 
@@ -64,7 +65,9 @@ class ProjectForm(SanitizeRichTextMixin, forms.ModelForm):
             self.initial["target_end_date"] = self.initial.get("target_end_date") or (
                 timezone.localdate() + timezone.timedelta(days=30)
             )
-        fill_missing_defaults(self, ["manager", "start_date", "target_end_date", "status"])
+        fill_missing_defaults(
+            self, ["manager", "start_date", "target_end_date", "lifecycle_status"]
+        )
         style_form(self, primary=["name", "owner", "target_end_date", "members"])
         self.fields["owner"].label = "Project Owner"
         self.fields["owner"].help_text = "Penanggung jawab outcome project."

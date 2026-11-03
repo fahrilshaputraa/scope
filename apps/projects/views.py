@@ -13,7 +13,7 @@ from django.views.decorators.http import require_POST
 from apps.identity.permissions import (
     can_comment,
     can_create_project,
-    can_edit_task,
+    can_execute_task,
     can_manage_project,
     can_report_issue,
     can_view_internal,
@@ -34,14 +34,16 @@ from apps.work.models import (
 
 from .forms import BaselinePointForm, DecisionForm, MilestoneForm, NoteForm, PhaseForm, ProjectForm
 from .models import (
+    CLOSED_LIFECYCLE,
     ActivityAction,
     Decision,
+    HealthStatus,
+    LifecycleStatus,
     Milestone,
     MilestoneStatus,
     Note,
     Phase,
     ProgressBaselinePoint,
-    ProjectStatus,
     Revision,
 )
 from .pagination import paginate
@@ -69,7 +71,8 @@ PROJECT_TABS = [
     ("history", "Riwayat"),
 ]
 
-STATUS_CHOICES = ProjectStatus.choices
+STATUS_CHOICES = LifecycleStatus.choices
+HEALTH_CHOICES = HealthStatus.choices
 
 
 def _project_qs(user, *, include_archived=False):
@@ -107,7 +110,7 @@ def _project_or_404(request, pk, *, rich=False):
 @login_required
 def dashboard(request: HttpRequest) -> HttpResponse:
     projects = list(_project_qs(request.user))
-    by_status = Counter(p.status for p in projects)
+    by_health = Counter(p.health_status for p in projects)
     rows = [
         {
             "project": p,
@@ -128,14 +131,17 @@ def dashboard(request: HttpRequest) -> HttpResponse:
         blocked = project.tasks.filter(status=TaskStatus.BLOCKED).count()
         milestone = row["next_milestone"]
         reasons = []
-        if project.status in (ProjectStatus.COMPLETED, ProjectStatus.CANCELLED):
+        if project.lifecycle_status in CLOSED_LIFECYCLE:
             continue
-        if health["schedule"] in ("delayed", "at_risk"):
+        if health["health_status"] in (
+            HealthStatus.AT_RISK,
+            HealthStatus.DELAYED,
+            HealthStatus.CRITICAL,
+        ):
             reasons.append(
                 "Progress tertinggal" if not project.is_overdue else "Target project terlewat"
             )
-        if project.status in (ProjectStatus.DELAYED, ProjectStatus.AT_RISK):
-            reasons.append(project.get_status_display())
+            reasons.append(project.get_health_status_display())
         if health["critical_issues"]:
             reasons.append(f"{health['critical_issues']} issue kritis")
         if blocked:
@@ -150,7 +156,9 @@ def dashboard(request: HttpRequest) -> HttpResponse:
                     "blocked": blocked,
                     "priority": health["critical_issues"] * 10
                     + blocked * 2
-                    + int(health["schedule"] == "delayed") * 5,
+                    + {HealthStatus.DELAYED: 5, HealthStatus.CRITICAL: 8}.get(
+                        health["health_status"], 0
+                    ),
                 }
             )
     attention.sort(key=lambda row: (-row["priority"], row["project"].target_end_date))
@@ -166,9 +174,10 @@ def dashboard(request: HttpRequest) -> HttpResponse:
             "today": timezone.localdate(),
             "counts": {
                 "total": len(projects),
-                "on_track": by_status.get(ProjectStatus.ON_TRACK, 0),
-                "at_risk": by_status.get(ProjectStatus.AT_RISK, 0),
-                "delayed": by_status.get(ProjectStatus.DELAYED, 0),
+                "on_track": by_health.get(HealthStatus.ON_TRACK, 0),
+                "at_risk": by_health.get(HealthStatus.AT_RISK, 0),
+                "delayed": by_health.get(HealthStatus.DELAYED, 0)
+                + by_health.get(HealthStatus.CRITICAL, 0),
             },
         },
     )
@@ -186,13 +195,14 @@ def project_list(request: HttpRequest) -> HttpResponse:
         qs = qs.filter(archived_at__isnull=False)
     search = (request.GET.get("q") or "").strip()
     status = request.GET.get("status") or ""
+    health = request.GET.get("health") or ""
     pm = request.GET.get("pm") or ""
     team = request.GET.get("team") or ""
 
     if search:
         qs = qs.filter(Q(name__icontains=search) | Q(code__icontains=search))
-    if status in ProjectStatus.values:
-        qs = qs.filter(status=status)
+    if status in LifecycleStatus.values:
+        qs = qs.filter(lifecycle_status=status)
     if pm:
         qs = qs.filter(manager__username=pm)
     if team:
@@ -218,6 +228,8 @@ def project_list(request: HttpRequest) -> HttpResponse:
     if last:
         qs = qs.filter(start_date__lte=last)
     projects = list(qs)
+    if health in HealthStatus.values:
+        projects = [p for p in projects if p.health_status == health]
     if phase:
         projects = [
             p
@@ -294,6 +306,7 @@ def project_list(request: HttpRequest) -> HttpResponse:
             "filters": {
                 "q": search,
                 "status": status,
+                "health": health,
                 "pm": pm,
                 "team": team,
                 "from": date_from,
@@ -303,6 +316,7 @@ def project_list(request: HttpRequest) -> HttpResponse:
                 "progress_max": progress_max,
             },
             "status_choices": STATUS_CHOICES,
+            "health_choices": HEALTH_CHOICES,
             "teams": teams,
             "phases": sorted(
                 set(
@@ -522,7 +536,7 @@ def project_timeline(request: HttpRequest, pk: int) -> HttpResponse:
     project = _project_or_404(request, pk)
     data = timeline_data(project)
     for row in data["timeline_rows"]:
-        row["can_edit"] = can_edit_task(request.user, row["task"])
+        row["can_edit"] = can_execute_task(request.user, row["task"])
     archived_phases = []
     if can_manage_project(request.user, project):
         archived_phases = list(
@@ -558,7 +572,7 @@ def project_tasks(request: HttpRequest, pk: int) -> HttpResponse:
         .order_by("order", "due_date")
     )
     for task in tasks:
-        task.can_edit = can_edit_task(request.user, task)
+        task.can_edit = can_execute_task(request.user, task)
         if task.board_column_id in by_column:
             by_column[task.board_column_id].append(task)
         else:
@@ -791,9 +805,12 @@ def reports(request: HttpRequest) -> HttpResponse:
         row["task_count"] = p.tasks.count()
     totals = {
         "projects": len(rows),
-        "completed": sum(row["project"].status == ProjectStatus.COMPLETED for row in rows),
+        "completed": sum(
+            row["project"].lifecycle_status == LifecycleStatus.COMPLETED for row in rows
+        ),
         "attention": sum(
-            row["project"].status in [ProjectStatus.AT_RISK, ProjectStatus.DELAYED]
+            row["project"].health_status
+            in (HealthStatus.AT_RISK, HealthStatus.DELAYED, HealthStatus.CRITICAL)
             or row["level"] in ["at_risk", "delayed"]
             for row in rows
         ),

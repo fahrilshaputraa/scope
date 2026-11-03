@@ -26,12 +26,12 @@ class ProjectAdmin(admin.ModelAdmin):
         "name",
         "manager",
         "owner",
-        "status",
+        "lifecycle_status",
         "start_date",
         "target_end_date",
         "team",
     ]
-    list_filter = ["status", "team"]
+    list_filter = ["lifecycle_status", "team"]
     search_fields = ["code", "name"]
     autocomplete_fields = ["manager", "owner", "current_phase"]
     inlines = [ProjectMembershipInline]

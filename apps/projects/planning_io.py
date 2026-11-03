@@ -245,7 +245,7 @@ def import_plan(payload, actor, project=None, baseline=False):
             target_end_date=date_value(info.get("target_end_date"), "Project target selesai", True),
             description=string(info.get("description", ""), "Deskripsi project"),
             team=string(info.get("team", ""), "Tim", maximum=100),
-            status=info.get("status", "planning"),
+            lifecycle_status=info.get("status", "planning"),
         )
         project.full_clean()
         project.save()
@@ -417,7 +417,7 @@ def planning_template(actor, project=None):
                 "key": "task-1",
                 "title": "Susun kebutuhan",
                 "phase": "persiapan",
-                "assignee": actor.username,
+                "assignee": None,
                 "collaborators": [],
                 "start_date": first.isoformat(),
                 "due_date": first.isoformat(),
@@ -460,7 +460,7 @@ def export_plan(project):
             "team": project.team,
             "start_date": iso(project.start_date),
             "target_end_date": iso(project.target_end_date),
-            "status": project.status,
+            "status": project.lifecycle_status,
         },
         "members": list(project.members.values_list("username", flat=True)),
         "phases": [

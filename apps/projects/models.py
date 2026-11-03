@@ -9,14 +9,30 @@ from django.utils import timezone
 from .managers import ArchivableModel
 
 
-class ProjectStatus(models.TextChoices):
-    PLANNING = "planning", "Planning"
-    ON_TRACK = "on_track", "On Track"
-    AT_RISK = "at_risk", "At Risk"
-    DELAYED = "delayed", "Delayed"
-    COMPLETED = "completed", "Completed"
-    ON_HOLD = "on_hold", "On Hold"
-    CANCELLED = "cancelled", "Cancelled"
+class LifecycleStatus(models.TextChoices):
+    """Status keberadaan project (PRD §7.2). Kondisi pelaksanaan ada di ``HealthStatus``."""
+
+    DRAFT = "draft", "Draf"
+    PLANNING = "planning", "Perencanaan"
+    IN_PROGRESS = "in_progress", "Berjalan"
+    ON_HOLD = "on_hold", "Ditahan"
+    COMPLETED = "completed", "Selesai"
+    CANCELLED = "cancelled", "Dibatalkan"
+
+
+#: Lifecycle yang sudah tidak berjalan: tidak dihitung overdue, snapshot, atau health.
+CLOSED_LIFECYCLE = (LifecycleStatus.COMPLETED, LifecycleStatus.CANCELLED)
+#: Lifecycle yang kondisi pelaksanaannya dinilai (health).
+ASSESSED_LIFECYCLE = (LifecycleStatus.IN_PROGRESS, LifecycleStatus.ON_HOLD)
+
+
+class HealthStatus(models.TextChoices):
+    """Kondisi pelaksanaan project, dihitung dari data (PRD §7.2, §11.7)."""
+
+    ON_TRACK = "on_track", "Sesuai rencana"
+    AT_RISK = "at_risk", "Perlu perhatian"
+    DELAYED = "delayed", "Terlambat"
+    CRITICAL = "critical", "Kritis"
 
 
 class PhaseStatus(models.TextChoices):
@@ -104,8 +120,11 @@ class Project(ArchivableModel):
     start_date = models.DateField()
     target_end_date = models.DateField()
     actual_end_date = models.DateField(null=True, blank=True)
-    status = models.CharField(
-        max_length=20, choices=ProjectStatus.choices, default=ProjectStatus.PLANNING
+    lifecycle_status = models.CharField(
+        max_length=20, choices=LifecycleStatus.choices, default=LifecycleStatus.PLANNING
+    )
+    cancellation_reason = models.TextField(
+        blank=True, help_text="Wajib diisi saat project dibatalkan."
     )
     current_phase = models.ForeignKey(
         "Phase",
@@ -140,6 +159,40 @@ class Project(ArchivableModel):
             raise ValidationError({"target_end_date": "Tanggal akhir harus setelah tanggal mulai."})
         if self.current_phase_id and self.current_phase.project_id != self.pk:
             raise ValidationError({"current_phase": "Phase harus berasal dari project yang sama."})
+        self._validate_lifecycle()
+
+    def _validate_lifecycle(self):
+        """Aturan status project (PRD §7.3, BR-PROJ-003 sampai 007)."""
+        from .services import closure_requirements, planning_requirements
+
+        previous = None
+        if self.pk:
+            previous = (
+                Project.all_objects.filter(pk=self.pk)
+                .values_list("lifecycle_status", flat=True)
+                .first()
+            )
+        status = self.lifecycle_status
+        if previous is None and status not in (LifecycleStatus.DRAFT, LifecycleStatus.PLANNING):
+            raise ValidationError(
+                {"lifecycle_status": "Project baru harus dimulai dari Draf atau Perencanaan."}
+            )
+        if status == previous:
+            return
+        if status == LifecycleStatus.IN_PROGRESS:
+            unmet = planning_requirements(self)
+            if unmet:
+                raise ValidationError(
+                    {"lifecycle_status": "Belum bisa berjalan: " + "; ".join(unmet) + "."}
+                )
+        elif status == LifecycleStatus.COMPLETED:
+            unmet = closure_requirements(self)
+            if unmet:
+                raise ValidationError(
+                    {"lifecycle_status": "Belum bisa diselesaikan: " + "; ".join(unmet) + "."}
+                )
+        elif status == LifecycleStatus.CANCELLED and not self.cancellation_reason.strip():
+            raise ValidationError({"cancellation_reason": "Alasan pembatalan wajib diisi."})
 
     # --- Progress (dihitung live, PRD §10/§11/§12/§32) ---
 
@@ -173,7 +226,7 @@ class Project(ArchivableModel):
     def is_overdue(self):
         from django.utils import timezone
 
-        if self.status in (ProjectStatus.COMPLETED, ProjectStatus.CANCELLED):
+        if self.lifecycle_status in CLOSED_LIFECYCLE:
             return False
         return self.target_end_date < timezone.localdate()
 
@@ -190,6 +243,17 @@ class Project(ArchivableModel):
             self.phases.exclude(status=PhaseStatus.COMPLETED).order_by("sequence").first()
             or self.phases.order_by("-sequence").first()
         )
+
+    @property
+    def health_status(self):
+        """Kondisi pelaksanaan (HealthStatus) atau None bila belum dinilai."""
+        from .services import health_status
+
+        return health_status(self)
+
+    def get_health_status_display(self):
+        value = self.health_status
+        return HealthStatus(value).label if value else "—"
 
     def health(self):
         """Ringkasan project health untuk Overview (PRD §9.1)."""

@@ -24,11 +24,11 @@ from apps.work.models import (
 )
 
 from .models import (
+    LifecycleStatus,
     Milestone,
     MilestoneStatus,
     Phase,
     Project,
-    ProjectStatus,
     Revision,
     RevisionAction,
     RevisionEntity,
@@ -51,7 +51,8 @@ REVISION_FIELDS: dict[str, dict[str, FieldSpec]] = {
         "start_date": FieldSpec("Tanggal mulai", "date"),
         "target_end_date": FieldSpec("Target selesai", "date"),
         "actual_end_date": FieldSpec("Selesai aktual", "date"),
-        "status": FieldSpec("Status", "choice"),
+        "lifecycle_status": FieldSpec("Siklus hidup", "choice"),
+        "cancellation_reason": FieldSpec("Alasan pembatalan"),
         "current_phase": FieldSpec("Phase aktif", "phase", "current_phase_id"),
         "progress_override": FieldSpec("Progress manual", "percent"),
         "manager": FieldSpec("Manager", "user", "manager_id"),
@@ -128,15 +129,7 @@ _PRIORITY_LABELS = {
 }
 
 CHOICE_LABELS = {
-    (RevisionEntity.PROJECT, "status"): {
-        ProjectStatus.PLANNING: "Perencanaan",
-        ProjectStatus.ON_TRACK: "Sesuai jalur",
-        ProjectStatus.AT_RISK: "Berisiko",
-        ProjectStatus.DELAYED: "Terlambat",
-        ProjectStatus.COMPLETED: "Selesai",
-        ProjectStatus.ON_HOLD: "Ditahan",
-        ProjectStatus.CANCELLED: "Dibatalkan",
-    },
+    (RevisionEntity.PROJECT, "lifecycle_status"): dict(LifecycleStatus.choices),
     (RevisionEntity.TASK, "status"): TASK_STATUS_LABELS,
     (RevisionEntity.TASK, "priority"): _PRIORITY_LABELS,
     (RevisionEntity.MILESTONE, "status"): {

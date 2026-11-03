@@ -54,7 +54,7 @@
                                     <span class="font-normal">{{ row.actual|pct }}</span>
                                 </td>
                                 <td class="px-6 py-3">
-                                    <span class="{{ p.status|status_style }}">{{ p.get_status_display }}</span>
+                                    <span class="{{ p.lifecycle_status|lifecycle_style }}">{{ p.get_lifecycle_status_display }}</span>
                                 </td>
                             </tr>
                         {% endwith %}
