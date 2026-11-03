@@ -1,0 +1,9 @@
+{% if available_roles|length > 1 %}
+<details class="project-add-menu role-switcher">
+  <summary title="Ganti peran aktif" aria-label="Peran aktif: {{ active_role_label }}. Ganti peran"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M7 4 3 8l4 4M3 8h14M17 20l4-4-4-4M21 16H7"/></svg><span class="nav-label"><small>Peran aktif</small><strong>{{ active_role_label }}</strong></span></summary>
+  <form method="post" action="{% url 'identity:switch_role' %}" class="project-add-options" aria-label="Pilih peran">{% csrf_token %}
+    {% for role in available_roles %}<button type="submit" name="role" value="{{ role.code }}" class="project-menu-item"{% if role.active %} aria-current="true"{% endif %}><svg aria-hidden="true" viewBox="0 0 24 24">{% if role.active %}<path d="m5 12 4.5 4.5L19 7"/>{% endif %}</svg>{{ role.label }}</button>
+    {% endfor %}
+  </form>
+</details>
+{% endif %}

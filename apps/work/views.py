@@ -23,6 +23,7 @@ from apps.identity.permissions import (
     can_manage_project,
     can_report_issue,
     is_management,
+    require_internal,
     visible_projects,
 )
 from apps.notifications.models import SubscriptionTarget
@@ -319,6 +320,7 @@ def my_tasks(request: HttpRequest) -> HttpResponse:
 
 @login_required
 def issue_list(request: HttpRequest) -> HttpResponse:
+    require_internal(request.user)
     qs = Issue.objects.select_related("project", "owner", "task").filter(
         project__in=visible_projects(request.user)
     )
@@ -345,6 +347,7 @@ def issue_list(request: HttpRequest) -> HttpResponse:
 
 @login_required
 def issue_create(request: HttpRequest) -> HttpResponse:
+    require_internal(request.user)
     project = _project_from_request(request)
     if is_management(request.user) and not request.user.is_staff:
         raise PermissionDenied
@@ -376,6 +379,7 @@ def issue_create(request: HttpRequest) -> HttpResponse:
 
 @login_required
 def issue_update(request: HttpRequest, pk: int) -> HttpResponse:
+    require_internal(request.user)
     issue = get_object_or_404(
         Issue.objects.select_related("project", "task").filter(
             project__in=visible_projects(request.user)

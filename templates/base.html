@@ -25,22 +25,10 @@
                    title="Scope"
                    aria-label="Scope Dashboard"><span class="workspace-brand-mark"><img src="{% static 'brand/scope-symbol.svg' %}" width="28" height="28" alt=""></span><span class="nav-label"><strong>Scope</strong><small>Project workspace</small></span></a>
                 <nav class="workspace-nav" aria-label="Navigasi utama">
-                    <p class="nav-group-label">Menu utama</p>
-                    <a href="{% url 'projects:dashboard' %}" class="{% nav_active '/' %}" title="Dashboard" aria-label="Dashboard"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></svg><span class="nav-label">Dashboard</span></a>
-                    <a href="{% url 'projects:project_list' %}"
-                       class="{% nav_active '/projects' %}" title="Project" aria-label="Project"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M3 7h7l2 3h9v10H3zM3 7V4h7l2 3h9v3" /></svg><span class="nav-label">Project</span></a>
-                    <a href="{% url 'projects:reports' %}"
-                       class="{% nav_active '/reports' %}" title="Laporan" aria-label="Laporan"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M4 3v18h17M9 17v-5M14 17V8M19 17V4" /></svg><span class="nav-label">Laporan</span></a>
-                    <p class="nav-group-label">Pekerjaan tim</p>
-                    <a href="{% url 'work:my_tasks' %}"
-                       class="{% nav_active '/my-tasks' '/tasks' %}" title="Pekerjaan saya" aria-label="Pekerjaan saya"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="m3 6 2 2 4-4M13 6h8m-18 9 2 2 4-4M13 15h8M13 21h8" /></svg><span class="nav-label">Pekerjaan saya</span></a>
-                    <a href="{% url 'work:issue_list' %}"
-                       class="{% nav_active '/issues' %}" title="Masalah" aria-label="Masalah"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="m12 3 10 18H2zM12 9v5M12 17v1" /></svg><span class="nav-label">Masalah</span></a>
-                    <a href="{% url 'projects:timeline_global' %}"
-                       class="{% nav_active '/timeline' %}" title="Jadwal" aria-label="Jadwal"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M3 5h12M8 12h13M3 19h10M3 3v4M8 10v4M3 17v4" /></svg><span class="nav-label">Jadwal</span></a>
-                    <a href="{% url 'projects:note_list' %}"
-                       class="{% nav_active '/notes' %}" title="Catatan" aria-label="Catatan"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M6 3h14v18H6zM3 7h5M3 12h5M3 17h5M11 8h5M11 12h5" /></svg><span class="nav-label">Catatan</span></a></nav>
-                <div class="workspace-account"><a class="workspace-settings {% nav_active '/auth/settings' %}"
+                    {% for group in nav_groups %}<p class="nav-group-label">{{ group.title }}</p>
+                    {% for item in group.items %}<a href="{{ item.url }}" class="{% if item.active %}is-active{% endif %}" title="{{ item.label }}" aria-label="{{ item.label }}"{% if item.active %} aria-current="page"{% endif %}><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24">{{ item.icon|safe }}</svg><span class="nav-label">{{ item.label }}</span></a>
+                    {% endfor %}{% endfor %}</nav>
+                <div class="workspace-account">{% include "partials/_role_switcher.html" %}<a class="workspace-settings {% nav_active '/auth/settings' %}"
    href="{% url 'identity:settings' %}"
    title="Pengaturan"
    aria-label="Pengaturan"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M12 3v3m0 12v3M3 12h3m12 0h3M6 6l2 2m8 8 2 2M6 18l2-2M16 8l2-2" /><circle cx="12" cy="12" r="5" /></svg><span class="nav-label">Pengaturan</span></a><div class="account-profile"><a class="account-avatar" href="{% url 'identity:profile' %}" title="Profil" aria-label="Profil akun">{{ request.user.first_name|default:request.user.username|slice:':1'|upper }}</a><a class="account-name" href="{% url 'identity:profile' %}"><strong>{{ request.user|person_name }}</strong><small>{{ request.user.pcc_profile.get_role_display|default:'Project Member' }}</small></a></div></div></aside>

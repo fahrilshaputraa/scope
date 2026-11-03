@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Role &amp; permission — Scope{% endblock %}
+{% block content %}
+{% include "identity/_settings_nav.html" with active_settings="roles" %}
+<div class="mx-auto max-w-6xl">
+  <h1 class="dashboard-page-title">Role &amp; permission</h1>
+  <p class="dashboard-page-subtitle">Atur aksi yang boleh dilakukan tiap role. Workspace Admin selalu memiliki seluruh permission. Perubahan berlaku pada permintaan berikutnya.</p>
+  <form method="post" class="mt-6">{% csrf_token %}
+    <div class="pcc-panel">
+      <div class="overflow-x-auto" tabindex="0" role="region" aria-label="Matriks role dan permission">
+        <table class="pcc-table role-matrix">
+          <thead><tr><th scope="col">Permission</th>{% for item in roles %}<th scope="col" class="text-center">{{ item.label }}</th>{% endfor %}</tr></thead>
+          <tbody>
+          {% for group, perms in groups %}
+            <tr class="role-matrix-group"><th scope="rowgroup" colspan="{{ roles|length|add:1 }}">{{ group }}</th></tr>
+            {% for code, label in perms %}
+            <tr>
+              <th scope="row"><span>{{ label }}</span><code>{{ code }}</code></th>
+              {% for item in roles %}<td class="text-center"><input type="checkbox" class="role-check" name="perm_{{ item.role.code }}" value="{{ code }}" aria-label="{{ item.label }}: {{ label }}"{% if code in item.granted %} checked{% endif %}{% if item.role.code == locked %} disabled{% endif %}></td>{% endfor %}
+            </tr>
+            {% endfor %}
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="form-actions user-form-actions"><button type="submit" class="pcc-button">Simpan perubahan</button></div>
+    </div>
+  </form>
+</div>
+{% endblock %}

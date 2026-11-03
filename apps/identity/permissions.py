@@ -56,6 +56,18 @@ def can_report_issue(user) -> bool:
     return user.is_authenticated and has_perm(user, "issue.report")
 
 
+def can_view_internal(user) -> bool:
+    """Catatan, issue, dan aktivitas internal tidak untuk Client (PRD §3.5)."""
+    return user.is_authenticated and has_perm(user, "project.view_internal")
+
+
+def require_internal(user) -> None:
+    from django.core.exceptions import PermissionDenied
+
+    if not can_view_internal(user):
+        raise PermissionDenied
+
+
 def can_comment(user) -> bool:
     return user.is_authenticated and has_perm(user, "comment.create")
 

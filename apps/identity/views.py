@@ -23,6 +23,8 @@ from apps.projects.pagination import paginate
 from .forms import LocalUserCreateForm, StaffPasswordResetForm, UserEditForm
 from .models import Role
 from .oidc import get_entra_client
+from .permission_catalog import ALL_PERMISSIONS, PERMISSIONS, ROLE_LABELS, ROLE_PRIORITY
+from .roles import SESSION_KEY, get_role, has_perm, set_active_role
 from .services import upsert_user_from_claims
 
 
@@ -149,7 +151,8 @@ def settings_view(request):
 
 
 def _require_staff(request) -> None:
-    if not request.user.is_staff:
+    """Kelola user dan role butuh permission ``user.manage`` pada role aktif."""
+    if not has_perm(request.user, "user.manage"):
         raise PermissionDenied
 
 
@@ -311,3 +314,56 @@ def user_toggle_active(request: HttpRequest, pk: int) -> HttpResponse:
     state = "diaktifkan" if target.is_active else "dinonaktifkan"
     messages.success(request, f"Akun {target.username} {state}.")
     return redirect(_safe_next(request, "identity:user_list"))
+
+
+@login_required
+@require_POST
+def switch_role(request: HttpRequest) -> HttpResponse:
+    """Ganti role aktif tanpa login ulang (PRD §4.3). Hanya role milik user."""
+    code = request.POST.get("role", "")
+    if set_active_role(request.user, code):
+        request.session[SESSION_KEY] = code
+        messages.success(request, f"Peran aktif: {ROLE_LABELS[code]}.")
+    else:
+        messages.error(request, "Peran itu tidak tersedia untuk akun Anda.")
+    # Selalu ke dashboard: halaman saat ini bisa tidak berlaku untuk role baru.
+    return redirect("projects:dashboard")
+
+
+def _permission_groups():
+    groups = {}
+    for code in sorted(PERMISSIONS):
+        groups.setdefault(code.split(".")[0], []).append(code)
+    return [
+        (name.replace("_", " "), [(code, PERMISSIONS[code]) for code in codes])
+        for name, codes in groups.items()
+    ]
+
+
+@login_required
+def role_list(request: HttpRequest) -> HttpResponse:
+    """Matriks role x permission (PRD §25.1). Admin selalu memiliki semua permission."""
+    _require_staff(request)
+    roles = [get_role(code) for code in ROLE_PRIORITY]
+    if request.method == "POST":
+        for role in roles:
+            if role.code == Role.ADMIN:
+                role.permissions = list(ALL_PERMISSIONS)
+            else:
+                granted = set(request.POST.getlist(f"perm_{role.code}"))
+                role.permissions = sorted(granted & set(ALL_PERMISSIONS))
+            role.save(update_fields=["permissions"])
+        messages.success(request, "Permission role diperbarui. Berlaku pada permintaan berikutnya.")
+        return redirect("identity:role_list")
+    return render(
+        request,
+        "identity/role_list.html",
+        {
+            "roles": [
+                {"role": role, "label": ROLE_LABELS[role.code], "granted": set(role.permissions)}
+                for role in roles
+            ],
+            "groups": _permission_groups(),
+            "locked": Role.ADMIN,
+        },
+    )

@@ -54,6 +54,13 @@ Risiko: `visible_projects` dipakai di halaman, export, komentar, dan download. U
 
 ## Fase 2 — Role switcher dan navigasi per role
 
+Status (3 November 2026): R2.1–R2.4 selesai.
+- R2.1: role aktif disimpan di sesi dan divalidasi terhadap `Membership`; role yang tidak dimiliki ditolak.
+- R2.2: pemilih role di sidebar (hanya muncul bila user punya lebih dari satu role), tanpa login ulang; setelah ganti role user diarahkan ke Dashboard.
+- R2.3: sidebar per role dari `apps/identity/navigation.py`. Hanya halaman yang sudah ada yang tampil; Progress Task, Project Control, Approvals, Deliverables, dan Templates menyusul di fase terkait. Penyimpangan dari PRD 6.1: PM, Member, Owner, dan Admin tetap punya menu Project agar halaman yang sudah ada tetap terjangkau, dan PM masih punya "Pekerjaan saya" sampai R3.4.
+- R2.4: role Client hanya melihat project yang dibagikan dan tidak dapat membuka catatan, issue, aktivitas, atau riwayat (permission `project.view_internal`). Halaman baru Role & permission (khusus Admin) mengatur matriks permission; Admin selalu memiliki semuanya. Halaman Pengguna dan Role & permission mengikuti permission `user.manage` pada role aktif, bukan `is_staff` semata.
+Belum dikerjakan: dashboard berbeda per role (R8.1), Templates dan Audit Logs di sidebar Admin (R7.5, R8.4).
+
 | ID | Item | Cakupan | Selesai bila |
 |---|---|---|---|
 | R2.1 | Role aktif di sesi | Middleware menyimpan role aktif, memvalidasi terhadap `Membership`. Role yang tidak dimiliki ditolak. | BR-ROLE-007 dan BR-ROLE-010 punya tes. |

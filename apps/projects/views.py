@@ -16,7 +16,9 @@ from apps.identity.permissions import (
     can_edit_task,
     can_manage_project,
     can_report_issue,
+    can_view_internal,
     is_pm,
+    require_internal,
     visible_projects,
 )
 from apps.notifications.models import SubscriptionTarget
@@ -78,10 +80,15 @@ def _project_qs(user, *, include_archived=False):
     )
 
 
+INTERNAL_TABS = {"issues", "notes", "activity", "history"}
+
+
 def project_context(request, project, active_tab):
+    internal = can_view_internal(request.user)
     return {
         "project": project,
-        "tabs": PROJECT_TABS,
+        "tabs": [tab for tab in PROJECT_TABS if internal or tab[0] not in INTERNAL_TABS],
+        "can_view_internal": internal,
         "active_tab": active_tab,
         "can_manage": can_manage_project(request.user, project),
         "can_report": can_report_issue(request.user),
@@ -583,6 +590,7 @@ def project_tasks(request: HttpRequest, pk: int) -> HttpResponse:
 
 @login_required
 def project_issues(request: HttpRequest, pk: int) -> HttpResponse:
+    require_internal(request.user)
     project = _project_or_404(request, pk)
     open_issues = list(_open_issues(project))
     severity_order = {"critical": 0, "high": 1, "medium": 2, "low": 3}
@@ -639,6 +647,7 @@ def project_milestones(request: HttpRequest, pk: int) -> HttpResponse:
 
 @login_required
 def project_notes(request: HttpRequest, pk: int) -> HttpResponse:
+    require_internal(request.user)
     project = _project_or_404(request, pk)
     notes = attach_threads(
         list(project.notes.select_related("author").all()), CommentTarget.NOTE
@@ -668,6 +677,7 @@ def project_notes(request: HttpRequest, pk: int) -> HttpResponse:
 
 @login_required
 def project_activity(request: HttpRequest, pk: int) -> HttpResponse:
+    require_internal(request.user)
     project = _project_or_404(request, pk)
     activities = project.activities.select_related("actor").all()
     page_obj = paginate(request, activities, 30)
@@ -684,6 +694,7 @@ def project_activity(request: HttpRequest, pk: int) -> HttpResponse:
 
 @login_required
 def project_history(request: HttpRequest, pk: int) -> HttpResponse:
+    require_internal(request.user)
     project = _project_or_404(request, pk)
     revisions = project.revisions.select_related("actor").all()
     page_obj = paginate(request, revisions, 25)
@@ -701,6 +712,7 @@ def project_history(request: HttpRequest, pk: int) -> HttpResponse:
 @login_required
 @require_POST
 def project_history_restore(request: HttpRequest, pk: int, revision_id: int) -> HttpResponse:
+    require_internal(request.user)
     project = _project_or_404(request, pk)
     if not can_manage_project(request.user, project):
         raise PermissionDenied
@@ -725,6 +737,7 @@ def project_history_restore(request: HttpRequest, pk: int, revision_id: int) -> 
 
 @login_required
 def note_list(request: HttpRequest) -> HttpResponse:
+    require_internal(request.user)
     notes = Note.objects.select_related("project", "author").filter(
         project__in=visible_projects(request.user)
     )
@@ -1008,6 +1021,7 @@ def snapshot_now(request: HttpRequest, pk: int) -> HttpResponse:
 
 @login_required
 def note_create(request: HttpRequest, pk: int) -> HttpResponse:
+    require_internal(request.user)
     project = _project_or_404(request, pk)
     if not _pm_check(request, project):
         return _tab_redirect(pk, "notes")
@@ -1031,6 +1045,7 @@ def note_create(request: HttpRequest, pk: int) -> HttpResponse:
 
 @login_required
 def note_edit(request: HttpRequest, pk: int, nid: int) -> HttpResponse:
+    require_internal(request.user)
     project = _project_or_404(request, pk)
     if not _pm_check(request, project):
         return _tab_redirect(pk, "notes")
@@ -1062,6 +1077,7 @@ def note_delete(request: HttpRequest, pk: int, nid: int) -> HttpResponse:
 
 @login_required
 def decision_create(request: HttpRequest, pk: int) -> HttpResponse:
+    require_internal(request.user)
     project = _project_or_404(request, pk)
     if not _pm_check(request, project):
         return _tab_redirect(pk, "notes")

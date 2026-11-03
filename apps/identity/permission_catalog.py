@@ -10,6 +10,7 @@ secara default; permission itu diberikan lewat konfigurasi.
 PERMISSIONS = {
     "project.view": "Melihat project yang berwenang",
     "project.view_all": "Melihat seluruh project di workspace",
+    "project.view_internal": "Melihat catatan, issue, dan aktivitas internal project",
     "project.create": "Membuat project",
     "project.update": "Mengubah informasi project",
     "project.archive": "Mengarsipkan project",
@@ -66,12 +67,14 @@ ROLE_DESCRIPTIONS = {
 }
 
 _READ = ["project.view", "structure.view", "task.view", "timeline.view", "baseline.view"]
+_INTERNAL = ["project.view_internal"]
 
 DEFAULT_ROLE_PERMISSIONS = {
     "admin": ALL_PERMISSIONS,
     "pm": sorted(
         set(
             _READ
+            + _INTERNAL
             + [
                 "project.create",
                 "project.update",
@@ -97,6 +100,7 @@ DEFAULT_ROLE_PERMISSIONS = {
     "member": sorted(
         set(
             _READ
+            + _INTERNAL
             + [
                 "task.execute",
                 "task.update_progress",
@@ -110,6 +114,7 @@ DEFAULT_ROLE_PERMISSIONS = {
     "owner": sorted(
         set(
             _READ
+            + _INTERNAL
             + [
                 "baseline.approve",
                 "issue.report",
@@ -123,7 +128,7 @@ DEFAULT_ROLE_PERMISSIONS = {
     ),
     "client": sorted(set(_READ + ["comment.create", "report.view"])),
     "management": sorted(
-        set(_READ + ["project.view_all", "report.view", "report.export"])
+        set(_READ + _INTERNAL + ["project.view_all", "report.view", "report.export"])
     ),
 }
 # Admin dan management melihat seluruh project di workspace.
