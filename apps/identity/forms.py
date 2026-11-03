@@ -1,17 +1,63 @@
 from django import forms
 from django.contrib.auth.forms import SetPasswordForm, UserCreationForm
 from django.contrib.auth.models import User
+from django.template.loader import render_to_string
 
 from .models import Role, UserProfile
+from .permission_catalog import ROLE_DESCRIPTIONS
 from .roles import assign_roles, stored_role_codes
 
 
-class LocalUserCreateForm(UserCreationForm):
+class RolePickerWidget(forms.CheckboxSelectMultiple):
+    """Kartu pilihan role dengan penjelasan singkat (template khusus)."""
+
+    def render(self, name, value, attrs=None, renderer=None):
+        context = self.get_context(name, value, attrs)
+        context["widget"]["describedby"] = self.attrs.get("aria-describedby", "")
+        return render_to_string("widgets/role_picker.html", context)
+
+    def create_option(self, name, value, label, selected, index, subindex=None, attrs=None):
+        option = super().create_option(name, value, label, selected, index, subindex, attrs)
+        option["description"] = ROLE_DESCRIPTIONS.get(str(value), "")
+        return option
+
+
+class UserFormSections:
+    """Kelompokkan field form user menjadi bagian-bagian yang mudah dipindai."""
+
+    section_layout = [
+        ("Identitas", "Nama dan kontak yang tampil di aplikasi.", [
+            ("first_name", "last_name"), "email", ("display_name", "job_title"),
+        ]),
+        ("Akun", "Dipakai untuk masuk ke Scope.", [
+            "username", ("password1", "password2"), "is_active",
+        ]),
+        ("Peran", "Menentukan menu dan aksi yang tersedia. Pilih lebih dari satu bila perlu.", [
+            "roles",
+        ]),
+    ]
+
+    @property
+    def sections(self):
+        result = []
+        for title, hint, rows in self.section_layout:
+            built = []
+            for row in rows:
+                names = [row] if isinstance(row, str) else list(row)
+                fields = [self[name] for name in names if name in self.fields]
+                if fields:
+                    built.append(fields)
+            if built:
+                result.append({"title": title, "hint": hint, "rows": built})
+        return result
+
+
+class LocalUserCreateForm(UserFormSections, UserCreationForm):
     roles = forms.MultipleChoiceField(
         choices=Role.choices,
         initial=[Role.MEMBER],
         label="Peran",
-        widget=forms.CheckboxSelectMultiple,
+        widget=RolePickerWidget,
         help_text="Satu akun dapat memiliki beberapa peran.",
     )
     display_name = forms.CharField(
@@ -65,11 +111,11 @@ class LocalUserCreateForm(UserCreationForm):
         return user
 
 
-class UserEditForm(forms.ModelForm):
+class UserEditForm(UserFormSections, forms.ModelForm):
     roles = forms.MultipleChoiceField(
         choices=Role.choices,
         label="Peran",
-        widget=forms.CheckboxSelectMultiple,
+        widget=RolePickerWidget,
         help_text="Satu akun dapat memiliki beberapa peran.",
     )
     display_name = forms.CharField(

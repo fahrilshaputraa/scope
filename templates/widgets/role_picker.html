@@ -1,0 +1,6 @@
+<fieldset id="{{ widget.attrs.id }}" class="role-grid" aria-label="Peran akun"{% if widget.describedby %} aria-describedby="{{ widget.describedby }}"{% endif %}>
+  {% for group_name, options, index in widget.optgroups %}{% for option in options %}<label class="role-card" for="{{ option.attrs.id }}">
+    <input type="checkbox" name="{{ widget.name }}" value="{{ option.value|stringformat:'s' }}" id="{{ option.attrs.id }}" aria-label="{{ option.label }}"{% if option.selected %} checked{% endif %}>
+    <span class="role-card-text"><strong>{{ option.label }}</strong><small>{{ option.description }}</small></span>
+  </label>{% endfor %}{% endfor %}
+</fieldset>

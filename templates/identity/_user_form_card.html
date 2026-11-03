@@ -1,0 +1,36 @@
+<div class="pcc-form-surface user-form mx-auto">
+  <a class="pcc-form-back text-sm text-muted-foreground hover:underline" href="{{ back_url }}">← Kembali</a>
+  <div class="pcc-panel mt-4">
+    <div class="pcc-section user-form-head">
+      <span class="user-form-avatar" aria-hidden="true">{% if target %}{{ target.first_name|default:target.username|slice:':1'|upper }}{% else %}+{% endif %}</span>
+      <div><h1>{{ title }}</h1>{% if subtitle %}<p class="mt-1 text-sm text-muted-foreground">{{ subtitle }}</p>{% endif %}</div>
+    </div>
+    <form method="post" class="user-form-body" data-simple-form>{% csrf_token %}
+      {% for field in form.hidden_fields %}{{ field }}{% endfor %}
+      {% if form.non_field_errors %}<div role="alert" class="mx-6 mt-5 rounded-md border border-border bg-muted px-3 py-2 text-sm">{% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}</div>{% endif %}
+      {% for section in form.sections %}
+      <section class="user-form-section" aria-labelledby="sec-{{ forloop.counter }}">
+        <div class="user-form-section-head"><h2 id="sec-{{ forloop.counter }}">{{ section.title }}</h2><p>{{ section.hint }}</p></div>
+        <div class="user-form-rows">
+          {% for row in section.rows %}<div class="user-form-row{% if row|length > 1 %} is-pair{% endif %}">
+            {% for field in row %}{% if field.name == 'is_active' %}
+            <div class="switch-row" data-form-field="{{ field.name }}">
+              <div><label for="{{ field.id_for_label }}">{{ field.label }}</label>{% if field.help_text %}<p id="help-{{ field.name }}">{{ field.help_text }}</p>{% endif %}{% for error in field.errors %}<p role="alert"{% if forloop.first %} id="error-{{ field.name }}"{% endif %} class="field-error">{{ error }}</p>{% endfor %}</div>
+              <span class="switch">{{ field }}<i aria-hidden="true"></i></span>
+            </div>
+            {% else %}
+            <div class="grid content-start gap-2" data-form-field="{{ field.name }}">
+              <label for="{{ field.id_for_label }}" class="text-sm font-normal leading-none">{{ field.label }}{% if field.field.required %}<span aria-hidden="true"> *</span><span class="sr-only"> (wajib)</span>{% endif %}</label>
+              {{ field }}
+              {% if field.help_text %}<p id="help-{{ field.name }}" class="text-xs text-muted-foreground">{{ field.help_text }}</p>{% endif %}
+              {% for error in field.errors %}<p role="alert"{% if forloop.first %} id="error-{{ field.name }}"{% endif %} class="field-error">{{ error }}</p>{% endfor %}
+            </div>
+            {% endif %}{% endfor %}
+          </div>{% endfor %}
+        </div>
+      </section>
+      {% endfor %}
+      <div class="form-actions user-form-actions"><a href="{{ back_url }}" class="pcc-button pcc-button-secondary" data-panel-cancel>Batal</a><button type="submit" class="pcc-button">{{ submit_label|default:'Simpan' }}</button></div>
+    </form>
+  </div>
+</div>
