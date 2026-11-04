@@ -72,6 +72,22 @@ def require_internal(user) -> None:
         raise PermissionDenied
 
 
+def can_monitor_tasks(user) -> bool:
+    return user.is_authenticated and has_perm(user, "task.monitor")
+
+
+def can_control_projects(user) -> bool:
+    return user.is_authenticated and has_perm(user, "project.control")
+
+
+def controlled_projects(user):
+    """Project yang dikontrol user: semuanya untuk Admin, selain itu yang dikelolanya."""
+    projects = visible_projects(user)
+    if is_admin(user):
+        return projects
+    return projects.filter(manager=user)
+
+
 def can_comment(user) -> bool:
     return user.is_authenticated and has_perm(user, "comment.create")
 

@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import planning_views, presentation_views, share_views, views
+from . import control_views, planning_views, presentation_views, share_views, views
 from .exports import export_report
 
 app_name = "projects"
@@ -82,6 +82,11 @@ urlpatterns = [
         views.phase_restore,
         name="phase_restore",
     ),
+    path("progress-task/", control_views.progress_task, name="progress_task"),
+    path("control/", control_views.control_index, name="control_index"),
+    path("projects/<int:pk>/control/", control_views.project_control, name="project_control"),
+    path("tasks/<int:pk>/reassign/", control_views.task_reassign, name="task_reassign"),
+    path("tasks/<int:pk>/follow-up/", control_views.task_follow_up, name="task_follow_up"),
     path("projects/<int:pk>/", views.project_detail, name="project_detail"),
     path("projects/<int:pk>/edit/", views.project_edit, name="project_edit"),
     # Project tabs

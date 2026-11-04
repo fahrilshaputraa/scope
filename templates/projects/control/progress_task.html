@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% load pcc_tags %}
+{% block title %}Progress Task — Scope{% endblock %}
+{% block content %}
+<div class="flex flex-wrap items-end justify-between gap-4">
+  <div><h1 class="dashboard-page-title">Progress Task</h1><p class="dashboard-page-subtitle">Pantau pekerjaan seluruh project yang Anda kelola. Progress diperbarui oleh pelaksana.</p></div>
+  <a class="pcc-button pcc-button-secondary" href="{% url 'projects:control_index' %}">Project Control</a>
+</div>
+
+<nav class="chip-filters mt-6" aria-label="Filter cepat">
+  <a href="?{{ query }}"{% if not active_flag %} aria-current="page"{% endif %}>Semua <b>{{ total }}</b></a>
+  {% for flag in flags %}<a href="?{{ query }}{% if query %}&{% endif %}flag={{ flag }}"{% if active_flag == flag %} aria-current="page"{% endif %}>{{ flag_labels|dict_get:flag }} <b>{{ counts|dict_get:flag }}</b></a>{% endfor %}
+</nav>
+
+<form method="get" class="pcc-panel pcc-section mt-4 control-filters">
+  {% if active_flag %}<input type="hidden" name="flag" value="{{ active_flag }}">{% endif %}
+  <div><label for="f-project">Project</label><select id="f-project" name="project" class="pcc-field"><option value="">Semua project</option>{% for p in projects %}<option value="{{ p.pk }}"{% if filters.project == p.pk %} selected{% endif %}>{{ p.code }} — {{ p.name }}</option>{% endfor %}</select></div>
+  <div><label for="f-phase">Phase</label><select id="f-phase" name="phase" class="pcc-field"><option value="">Semua phase</option>{% for ph in phases %}<option value="{{ ph.pk }}"{% if filters.phase == ph.pk %} selected{% endif %}>{{ ph.project.code }} · {{ ph.name }}</option>{% endfor %}</select></div>
+  <div><label for="f-assignee">Pelaksana</label><select id="f-assignee" name="assignee" class="pcc-field"><option value="">Semua</option><option value="none"{% if filters.assignee == 'none' %} selected{% endif %}>Belum ditugaskan</option>{% for u in people %}<option value="{{ u.pk }}"{% if filters.assignee == u.pk|stringformat:'s' %} selected{% endif %}>{{ u|person_name }}</option>{% endfor %}</select></div>
+  <div><label for="f-status">Status</label><select id="f-status" name="status" class="pcc-field"><option value="">Semua status</option>{% for value, label in status_choices %}<option value="{{ value }}"{% if filters.status == value %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+  <div><label for="f-from">Target dari</label><input id="f-from" type="date" name="from" value="{{ filters.from }}" class="pcc-field"></div>
+  <div><label for="f-to">Target sampai</label><input id="f-to" type="date" name="to" value="{{ filters.to }}" class="pcc-field"></div>
+  <div class="control-filter-actions"><button type="submit" class="pcc-button">Terapkan</button><a class="pcc-button pcc-button-secondary" href="{% url 'projects:progress_task' %}">Reset</a></div>
+</form>
+
+<section class="pcc-panel mt-4" aria-label="Daftar task">
+  <div class="overflow-x-auto" tabindex="0" role="region" aria-label="Tabel progress task">
+    <table class="pcc-table responsive-table control-table">
+      <thead><tr><th>Task</th><th>Project</th><th>Pelaksana</th><th>Status</th><th>Progress</th><th>Rencana</th><th>Jadwal</th><th>Aktual</th><th>Deviasi</th></tr></thead>
+      <tbody>
+      {% for row in rows %}{% with task=row.task %}
+        <tr>
+          {% include "projects/control/_task_cells.html" %}
+          <td data-label="Project" class="whitespace-nowrap"><a href="{% url 'projects:project_detail' task.project_id %}">{{ task.project.code }}</a></td>
+          <td data-label="Pelaksana">{{ task.assignee_names }}</td>
+          <td data-label="Status"><span class="{{ task.status|status_style }}">{{ task.status|status_label }}</span>{% for flag in row.flags %}{% if flag == 'overdue' or flag == 'blocked' %}<span class="pcc-status pcc-status-danger">{{ flag_labels|dict_get:flag }}</span>{% elif flag == 'late_start' %}<span class="pcc-status pcc-status-warning">{{ flag_labels|dict_get:flag }}</span>{% endif %}{% endfor %}</td>
+          <td data-label="Progress" class="control-progress"><progress class="pcc-progress" max="100" value="{{ task.display_progress|floatformat:0 }}" aria-label="Progress {{ task.title }}"></progress><span class="tabular-nums">{{ task.display_progress|floatformat:0 }}%</span></td>
+          <td data-label="Rencana" class="tabular-nums whitespace-nowrap">{% if task.baseline_start_date %}{{ task.baseline_start_date|date:"d M" }} → {{ task.baseline_end_date|date:"d M" }}{% else %}—{% endif %}</td>
+          <td data-label="Jadwal" class="tabular-nums whitespace-nowrap">{% if task.start_date or task.due_date %}{{ task.start_date|date:"d M"|default:"?" }} → {{ task.due_date|date:"d M"|default:"?" }}{% else %}—{% endif %}</td>
+          <td data-label="Aktual" class="tabular-nums whitespace-nowrap">{% if task.actual_start %}{{ task.actual_start|date:"d M" }} → {{ task.actual_end|date:"d M"|default:"…" }}{% else %}—{% endif %}</td>
+          <td data-label="Deviasi" class="tabular-nums {% if row.deviation and row.deviation > 0 %}text-destructive{% endif %}">{% if row.deviation is None %}—{% elif row.deviation > 0 %}+{{ row.deviation }} hari{% elif row.deviation < 0 %}{{ row.deviation }} hari{% else %}0{% endif %}</td>
+        </tr>
+      {% endwith %}{% empty %}
+        <tr><td colspan="9" class="control-empty">Tidak ada task yang cocok. Ubah filter atau pilih project lain.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include "partials/_pagination.html" %}
+</section>
+{% endblock %}

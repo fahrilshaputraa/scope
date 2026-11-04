@@ -50,12 +50,12 @@ def test_switch_role_changes_sidebar_and_session(client):
     user = make_user("andi", Role.PROJECT_MANAGER, Role.MANAGEMENT)
     client.force_login(user)
     pm_body = page(client, "projects:dashboard").content
-    assert b'aria-label="Pekerjaan saya"' in pm_body and b"Portfolio" not in pm_body
+    assert b'aria-label="Project Control"' in pm_body and b"Portfolio" not in pm_body
     response = client.post(reverse("identity:switch_role"), {"role": Role.MANAGEMENT})
     assert response.status_code == 302 and response.url == reverse("projects:dashboard")
     assert client.session[SESSION_KEY] == Role.MANAGEMENT
     mgmt_body = page(client, "projects:dashboard").content
-    assert b"Portfolio" in mgmt_body and b'aria-label="Pekerjaan saya"' not in mgmt_body
+    assert b"Portfolio" in mgmt_body and b'aria-label="Project Control"' not in mgmt_body
 
 
 def test_switching_to_an_unowned_role_is_refused(client):

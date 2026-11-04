@@ -54,6 +54,20 @@ ITEMS = {
         ("/notes",),
         '<path d="M6 3h14v18H6zM3 7h5M3 12h5M3 17h5M11 8h5M11 12h5"/>',
     ),
+    "progress_task": (
+        "Progress Task",
+        "projects:progress_task",
+        ("/progress-task",),
+        '<path d="M4 6h16M4 12h10M4 18h6"/><path d="m16 15 2 2 3-4"/>',
+    ),
+    "control": (
+        "Project Control",
+        "projects:control_index",
+        ("/control",),
+        '<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12"/>'
+        '<circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/>'
+        '<circle cx="18" cy="18" r="2"/>',
+    ),
     "users": (
         "Pengguna",
         "identity:user_list",
@@ -76,12 +90,12 @@ ADMIN = "Administrasi"
 # role -> daftar (judul grup, [key atau (key, label khusus)])
 ROLE_NAV = {
     "admin": [
-        (MAIN, ["dashboard", "projects", "reports"]),
+        (MAIN, ["dashboard", "projects", "progress_task", "control", "reports"]),
         (ADMIN, ["users", "roles"]),
     ],
     "pm": [
         (MAIN, ["dashboard", "projects", "reports"]),
-        (WORK, ["my_tasks", "issues", "timeline", "notes"]),
+        (WORK, ["progress_task", "control", "issues", "timeline", "notes"]),
     ],
     "member": [
         (MAIN, ["dashboard", "projects"]),

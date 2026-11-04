@@ -10,8 +10,10 @@ from django.shortcuts import get_object_or_404, redirect, render, reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
+from apps.identity.models import Role
 from apps.identity.permissions import (
     can_comment,
+    can_control_projects,
     can_create_project,
     can_execute_task,
     can_manage_project,
@@ -19,6 +21,7 @@ from apps.identity.permissions import (
     can_view_internal,
     is_pm,
     require_internal,
+    role_of,
     visible_projects,
 )
 from apps.notifications.models import SubscriptionTarget
@@ -69,6 +72,7 @@ PROJECT_TABS = [
     ("notes", "Catatan"),
     ("activity", "Aktivitas"),
     ("history", "Riwayat"),
+    ("control", "Kontrol"),
 ]
 
 STATUS_CHOICES = LifecycleStatus.choices
@@ -84,13 +88,19 @@ def _project_qs(user, *, include_archived=False):
 
 
 INTERNAL_TABS = {"issues", "notes", "activity", "history"}
+CONTROL_TABS = {"control"}
 
 
 def project_context(request, project, active_tab):
     internal = can_view_internal(request.user)
     return {
         "project": project,
-        "tabs": [tab for tab in PROJECT_TABS if internal or tab[0] not in INTERNAL_TABS],
+        "tabs": [
+            tab
+            for tab in PROJECT_TABS
+            if (internal or tab[0] not in INTERNAL_TABS)
+            and (tab[0] not in CONTROL_TABS or can_control_projects(request.user))
+        ],
         "can_view_internal": internal,
         "active_tab": active_tab,
         "can_manage": can_manage_project(request.user, project),
@@ -109,6 +119,10 @@ def _project_or_404(request, pk, *, rich=False):
 
 @login_required
 def dashboard(request: HttpRequest) -> HttpResponse:
+    if role_of(request.user) == Role.OWNER:
+        from .dashboards import owner_dashboard
+
+        return owner_dashboard(request)
     projects = list(_project_qs(request.user))
     by_health = Counter(p.health_status for p in projects)
     rows = [

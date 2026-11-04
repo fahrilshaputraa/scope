@@ -1,0 +1,39 @@
+{% extends "projects/_base.html" %}
+{% load pcc_tags %}
+{% block project_content %}
+<p class="mt-6 text-sm text-muted-foreground">Task yang perlu tindak lanjut. Anda memantau dan mengontrol; pelaksana yang memperbarui progress. Satu task hanya muncul di bagian pertama yang berlaku.</p>
+{% for section in sections %}
+<section class="pcc-panel mt-4" aria-labelledby="sec-{{ section.flag }}">
+  <div class="pcc-section border-b visualization-toolbar"><h2 id="sec-{{ section.flag }}">{{ section.label }}</h2><span class="text-sm text-muted-foreground tabular-nums">{{ section.count }} task</span></div>
+  {% if section.rows %}
+  <ul class="control-list">
+    {% for row in section.rows %}{% with task=row.task %}
+    <li>
+      <div class="control-item-main">
+        <a href="{% url 'work:task_detail' task.pk %}">{{ task.title }}</a>
+        <p>{{ task.assignee_names }} · {{ task.status|status_label }} · target {{ task.due_date|date:"d M Y"|default:"belum ada" }}{% if row.deviation and row.deviation > 0 %} · <span class="text-destructive">+{{ row.deviation }} hari dari baseline</span>{% endif %}</p>
+        {% if section.flag == 'blocked' %}<p class="control-reason">{{ task.blocked_reason|default:"Alasan belum dicatat." }}{% if task.blocked_dependency %} Menunggu {{ task.blocked_dependency }}.{% endif %}</p>{% endif %}
+      </div>
+      <div class="control-item-actions">
+        <details class="control-disclosure"><summary class="pcc-button pcc-button-secondary">Tindak lanjuti</summary>
+          <form method="post" action="{% url 'projects:task_follow_up' task.pk %}" class="control-form">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}">
+            <label for="fu-{{ task.pk }}" class="sr-only">Pesan untuk {{ task.assignee_names }}</label>
+            <textarea id="fu-{{ task.pk }}" name="message" rows="3" maxlength="{{ followup_max }}" class="pcc-field" placeholder="Apa yang perlu dilakukan pelaksana?" required></textarea>
+            <button type="submit" class="pcc-button">Kirim</button>
+          </form>
+        </details>
+        {% if can_reassign %}<details class="control-disclosure"><summary class="pcc-button pcc-button-secondary">Pindahkan</summary>
+          <form method="post" action="{% url 'projects:task_reassign' task.pk %}" class="control-form">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}">
+            <label for="ra-{{ task.pk }}" class="sr-only">Pelaksana baru untuk {{ task.title }}</label>
+            <select id="ra-{{ task.pk }}" name="assignee" class="pcc-field" required><option value="">Pilih pelaksana</option>{% for person in people %}<option value="{{ person.pk }}"{% if person.pk == task.assignee_id %} disabled{% endif %}>{{ person|person_name }}</option>{% endfor %}</select>
+            <button type="submit" class="pcc-button">Pindahkan</button>
+          </form>
+        </details>{% endif %}
+      </div>
+    </li>
+    {% endwith %}{% endfor %}
+  </ul>
+  {% else %}<p class="pcc-section text-sm text-muted-foreground">Tidak ada task di kategori ini.</p>{% endif %}
+</section>
+{% endfor %}
+{% endblock %}

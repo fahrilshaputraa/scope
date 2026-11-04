@@ -97,6 +97,11 @@ class Task(ArchivableModel):
     priority = models.CharField(max_length=20, choices=Priority.choices, default=Priority.MEDIUM)
     start_date = models.DateField(null=True, blank=True)
     due_date = models.DateField(null=True, blank=True)
+    actual_start = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Terisi otomatis saat pekerjaan pertama kali dimulai.",
+    )
     baseline_start_date = models.DateField(null=True, blank=True)
     baseline_end_date = models.DateField(null=True, blank=True)
     dependencies = models.ManyToManyField(
@@ -203,10 +208,17 @@ class Task(ArchivableModel):
             self.completed_at = self.completed_at or timezone.now()
         else:
             self.completed_at = None
+        started = self.status in (TaskStatus.IN_PROGRESS, TaskStatus.REVIEW, TaskStatus.DONE)
+        if not self.actual_start and (started or self.progress > 0):
+            began = timezone.localdate()
+            if self.completed_at:  # impor atau data historis: mulai tidak setelah selesai
+                began = min(began, timezone.localtime(self.completed_at).date())
+            self.actual_start = began
         if kwargs.get("update_fields") is not None:
             kwargs["update_fields"] = set(kwargs["update_fields"]) | {
                 "progress",
                 "completed_at",
+                "actual_start",
                 "phase",
             }
         super().save(*args, **kwargs)
@@ -225,6 +237,10 @@ class Task(ArchivableModel):
             " · ".join(user.get_full_name() or user.username for user in people)
             or "Belum ditugaskan"
         )
+
+    @property
+    def actual_end(self):
+        return timezone.localtime(self.completed_at).date() if self.completed_at else None
 
     @property
     def schedule_deviation(self):

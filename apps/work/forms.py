@@ -1,11 +1,11 @@
 from django import forms
 from django.core.exceptions import ValidationError
-from django.db.models import Q
 
 from apps.form_widgets import fill_missing_defaults, style_form
 from apps.projects.models import Project
 from apps.richtext import SanitizeRichTextMixin
 
+from .assignment import assignable_users
 from .models import TASK_STATUS_LABELS, Comment, Issue, IssueStatus, Task, TaskComment
 
 
@@ -97,22 +97,10 @@ class TaskForm(SanitizeRichTextMixin, forms.ModelForm):
             if self.instance.has_details:
                 self.fields["parent_task"].queryset = self.project.tasks.none()
             self.fields["dependencies"].queryset = self.project.tasks.exclude(pk=self.instance.pk)
-            from django.contrib.auth.models import User
-
-            from apps.identity.roles import executor_role_codes
-
-            candidates = User.objects.filter(is_active=True).filter(
-                Q(member_projects=self.project)
-                | Q(assigned_tasks__project=self.project)
-                | Q(collaborating_tasks__project=self.project)
-            )
             # Hanya pelaksana yang bisa ditugaskan; PM project tidak (BR-TASK-004).
-            executors = Q(memberships__role__code__in=executor_role_codes()) | Q(is_staff=True)
-            current = Q(pk=self.instance.assignee_id) if self.instance.assignee_id else Q(pk__in=[])
-            self.fields["assignee"].queryset = (
-                candidates.filter(executors).exclude(pk=self.project.manager_id)
-                | candidates.filter(current)
-            ).distinct()
+            self.fields["assignee"].queryset = assignable_users(
+                self.project, self.instance.assignee_id
+            )
 
             self.fields["collaborators"].queryset = self.fields["assignee"].queryset
         if "parent_task" in self.fields:

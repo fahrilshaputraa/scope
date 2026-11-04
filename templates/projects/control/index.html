@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% load pcc_tags %}
+{% block title %}Project Control — Scope{% endblock %}
+{% block content %}
+<div class="flex flex-wrap items-end justify-between gap-4">
+  <div><h1 class="dashboard-page-title">Project Control</h1><p class="dashboard-page-subtitle">Project yang butuh tindak lanjut Anda, diurutkan dari yang paling banyak pengecualian.</p></div>
+  <a class="pcc-button pcc-button-secondary" href="{% url 'projects:progress_task' %}">Progress Task</a>
+</div>
+<section class="pcc-panel mt-6" aria-label="Pengecualian per project">
+  <div class="overflow-x-auto" tabindex="0" role="region" aria-label="Tabel pengecualian per project">
+    <table class="pcc-table responsive-table control-table">
+      <thead><tr><th>Project</th><th>Siklus hidup</th><th>Health</th>{% for flag in flags %}<th class="text-right">{{ flag_labels|dict_get:flag }}</th>{% endfor %}<th></th></tr></thead>
+      <tbody>
+      {% for row in rows %}
+        <tr>
+          <td data-label="Project" class="control-task"><a href="{% url 'projects:project_control' row.project.pk %}">{{ row.project.name }}</a><small>{{ row.project.code }} · target {{ row.project.target_end_date|date:"d M Y" }}</small></td>
+          <td data-label="Siklus hidup"><span class="{{ row.project.lifecycle_status|lifecycle_style }}">{{ row.project.get_lifecycle_status_display }}</span></td>
+          <td data-label="Health">{% if row.project.health_status %}<span class="{{ row.project.health_status|health_style }}">{{ row.project.get_health_status_display }}</span>{% else %}<span class="text-muted-foreground">—</span>{% endif %}</td>
+          {% for flag in flags %}<td data-label="{{ flag_labels|dict_get:flag }}" class="text-right tabular-nums">{% with n=row.counts|dict_get:flag %}{% if n %}<b class="{% if flag == 'overdue' or flag == 'blocked' %}text-destructive{% endif %}">{{ n }}</b>{% else %}<span class="text-muted-foreground">0</span>{% endif %}{% endwith %}</td>{% endfor %}
+          <td class="text-right"><a class="subtle-action" href="{% url 'projects:project_control' row.project.pk %}">Buka</a></td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="9" class="control-empty">Belum ada project yang Anda kelola.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

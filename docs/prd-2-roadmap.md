@@ -88,6 +88,13 @@ Catatan: health belum disimpan di snapshot (R5.3). Role Owner belum punya aksi p
 
 ## Fase 4 — Progress Task, Project Control, Project Owner
 
+Status (4 November 2026): R4.1–R4.4 selesai. Kode baru dipisah dari `views.py` yang sudah besar: `control.py` (query dan tanda pengecualian), `control_views.py` (halaman dan aksi), `dashboards.py` (dashboard per role).
+- R4.1: halaman Progress Task (`/progress-task/`, permission `task.monitor`): semua task di project yang dikelola PM, tanpa kontrol update progress. Filter: project, phase, pelaksana, status, rentang target; chip cepat: terlambat, terhambat, menunggu review, terlambat mulai, melewati baseline, belum dimulai, selesai. Kolom rencana (baseline), jadwal, aktual, dan deviasi. Field baru `Task.actual_start` terisi otomatis saat pekerjaan pertama kali dimulai.
+- R4.2: Project Control (`/control/` dan tab "Kontrol" di project, permission `project.control`): ringkasan pengecualian per project dan daftar task per kategori (setiap task muncul sekali) dengan aksi reassign.
+- R4.3: tindak lanjut ke pelaksana: komentar pada task plus notifikasi; reassign memakai permission `task.reassign` dan tercatat di activity log. Kedua aksi hanya untuk PM project tersebut (atau Admin).
+- R4.4: dashboard Owner ("Ringkasan outcome") tampil saat role aktif Owner: project milik Owner, health, target vs aktual, pencapaian milestone, issue dan risiko besar, milestone mendatang.
+Belum: "keputusan tertunda" dan "penerimaan deliverable" di dashboard Owner menunggu Fase 5 dan 6; kolom "review status" menunggu Reviewer (R5.5). Menu "Pekerjaan saya" dihapus dari sidebar PM (PM bukan pelaksana).
+
 | ID | Item | Cakupan | Selesai bila |
 |---|---|---|---|
 | R4.1 | Progress Task | Halaman monitoring seluruh task di project untuk PM (read-only atas progress), update untuk assignee. Menggantikan sebagian `my_tasks` untuk PM. | PM melihat semua task tanpa tombol update progress. |

@@ -1,0 +1,6 @@
+{% load pcc_tags %}
+{# Sel-sel baris task untuk monitoring: dipakai Progress Task dan Project Control. #}
+<td data-label="Task" class="control-task">
+  <a href="{% url 'work:task_detail' row.task.pk %}">{{ row.task.title }}</a>
+  <small>{% if row.task.parent_task %}Detail dari {{ row.task.parent_task.title }}{% elif row.task.phase %}{{ row.task.phase.name }}{% else %}Tanpa phase{% endif %}</small>
+</td>

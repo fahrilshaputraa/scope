@@ -261,3 +261,12 @@ def severity_label(value):
     return {"critical": "Kritis", "high": "Tinggi", "medium": "Sedang", "low": "Rendah"}.get(
         value, value
     )
+
+
+@register.filter
+def dict_get(mapping, key):
+    """Ambil nilai dict dengan kunci dinamis di template."""
+    try:
+        return mapping.get(key, "")
+    except AttributeError:
+        return ""

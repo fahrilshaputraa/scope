@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% load pcc_tags %}
+{% block title %}Dashboard — Scope{% endblock %}
+{% block content %}
+<div><h1 class="dashboard-page-title">Ringkasan outcome</h1><p class="dashboard-page-subtitle">Kondisi project yang Anda miliki: pencapaian target, milestone, dan hal yang perlu keputusan.</p></div>
+
+<nav class="dashboard-summary" aria-label="Ringkasan project milik Anda">
+  <span><strong>{{ rows|length }}</strong> project</span>
+  <span><strong>{{ health.on_track|default:0 }}</strong> sesuai rencana</span>
+  <span><strong>{{ health.at_risk|default:0 }}</strong> perlu perhatian</span>
+  <span><strong>{{ late }}</strong> terlambat atau kritis</span>
+</nav>
+
+<section class="pcc-panel project-register mt-6" aria-labelledby="owned-title">
+  <div class="panel-heading"><h2 id="owned-title">Project milik saya</h2><a class="subtle-action" href="{% url 'projects:project_list' %}">Semua project</a></div>
+  <div class="overflow-x-auto" tabindex="0" role="region" aria-label="Daftar project milik Anda">
+    <table class="pcc-table responsive-table">
+      <thead><tr><th>Project</th><th>Siklus hidup</th><th>Health</th><th class="text-right">Target</th><th class="text-right">Aktual</th><th class="text-right">Selisih</th><th>Milestone</th><th>Berikutnya</th></tr></thead>
+      <tbody>
+      {% for row in rows %}
+        <tr>
+          <td data-label="Project" class="control-task"><a href="{% url 'projects:project_detail' row.project.pk %}">{{ row.project.name }}</a><small>{{ row.project.code }} · PM {{ row.project.manager|person_name|default:"belum ada" }}</small></td>
+          <td data-label="Siklus hidup"><span class="{{ row.project.lifecycle_status|lifecycle_style }}">{{ row.project.get_lifecycle_status_display }}</span></td>
+          <td data-label="Health">{% if row.project.health_status %}<span class="{{ row.project.health_status|health_style }}">{{ row.project.get_health_status_display }}</span>{% else %}<span class="text-muted-foreground">—</span>{% endif %}</td>
+          <td data-label="Target" class="text-right tabular-nums">{{ row.planned|pct }}</td>
+          <td data-label="Aktual" class="text-right tabular-nums">{{ row.actual|pct }}</td>
+          <td data-label="Selisih" class="text-right tabular-nums {{ row.variance|comp }}">{{ row.variance|fmt2:" pp" }}</td>
+          <td data-label="Milestone" class="tabular-nums">{{ row.milestones_done }}/{{ row.milestones_total }}</td>
+          <td data-label="Berikutnya">{% if row.next_milestone %}{{ row.next_milestone.name }} · {{ row.next_milestone.date|date:"d M" }}{% else %}—{% endif %}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="8" class="control-empty">Belum ada project yang Anda miliki. Minta Project Manager menetapkan Anda sebagai Owner.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<div class="overview-pair mt-6">
+  <section class="pcc-panel min-w-0" aria-labelledby="own-issues">
+    <div class="pcc-section border-b"><h2 id="own-issues">Issue besar</h2></div>
+    <ul class="overview-list">
+      {% for issue in issues %}<li><span class="issue-severity" data-severity="{{ issue.severity }}">{{ issue.severity|severity_label }}</span><div><a href="{% url 'work:issue_update' issue.pk %}">{{ issue.title }}</a><p>{{ issue.project.code }} · {{ issue.status|status_label }}{% if issue.due_date %} · target {{ issue.due_date|date:"d M" }}{% endif %}</p></div><span class="row-meta">{{ issue.owner|person_name|default:"Belum ada penanggung jawab" }}</span></li>{% empty %}<li class="overview-empty">Tidak ada issue kritis atau tinggi yang terbuka.</li>{% endfor %}
+    </ul>
+  </section>
+  <section class="pcc-panel min-w-0" aria-labelledby="own-risks">
+    <div class="pcc-section border-b"><h2 id="own-risks">Risiko besar</h2></div>
+    <ul class="overview-list">
+      {% for risk in risks %}<li><span class="issue-severity" data-severity="{{ risk.severity }}">{{ risk.severity|severity_label }}</span><div><span>{{ risk.title }}</span><p>{{ risk.project.code }}{% if risk.due_date %} · tinjau {{ risk.due_date|date:"d M" }}{% endif %}</p></div><span class="row-meta">{{ risk.owner|person_name|default:"Belum ada pemilik" }}</span></li>{% empty %}<li class="overview-empty">Tidak ada risiko tinggi yang terbuka.</li>{% endfor %}
+    </ul>
+  </section>
+</div>
+
+<section class="pcc-panel mt-6" aria-labelledby="own-ms">
+  <div class="pcc-section border-b"><h2 id="own-ms">Milestone mendatang</h2></div>
+  <ul class="overview-list">
+    {% for ms in upcoming %}<li><span class="tabular-nums overview-progress">{{ ms.date|date:"d M" }}</span><div><a href="{% url 'projects:project_milestones' ms.project_id %}">{{ ms.name }}</a><p>{{ ms.project.code }}</p></div><span class="row-meta">{{ ms.owner|person_name }}</span></li>{% empty %}<li class="overview-empty">Tidak ada milestone yang akan datang.</li>{% endfor %}
+  </ul>
+</section>
+{% endblock %}
