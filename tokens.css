@@ -113,11 +113,11 @@
     --content-max: 1400px;
     --rail-w: 64px;
     --project-sidebar-w: 0px;
-    --radius-chips: 9999px;
-    --radius-nav: 9999px;
-    --radius-cards: 12px;
-    --radius-inputs: 9px;
-    --radius-buttons: 9999px;
+    --radius-chips: 6px;
+    --radius-nav: 6px;
+    --radius-cards: 6px;
+    --radius-inputs: 6px;
+    --radius-buttons: 6px;
 
     /* Depth & motion */
     --shadow-subtle: none;
@@ -210,8 +210,9 @@ html[data-theme="light"] { color-scheme: light; }
 
     --radius-sm: 4px;
     --radius-md: 6px;
-    --radius-lg: 8px;
-    --radius-xl: 10px;
-    --radius-2xl: 12px;
-    --radius-3xl: 14px;
+    /* Batas bentuk: tidak ada sudut melebihi md (6px). */
+    --radius-lg: 6px;
+    --radius-xl: 6px;
+    --radius-2xl: 6px;
+    --radius-3xl: 6px;
 }

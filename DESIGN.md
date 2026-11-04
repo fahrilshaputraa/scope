@@ -531,15 +531,15 @@ Applied to the running app on 3 November 2026 through `tokens.css` and `input.cs
 
 Applied:
 - Neutral grayscale palette: canvas and cards `#ffffff`, sunken `#f3f4f7`, sidebar `#f8f9fa`, ink `#202020`, secondary text `#646464`, hairline `#e8e8e8`. Input edges use `#8a8a8a` so they keep 3:1 contrast. Dark mode uses the same neutral grays, with no green tint.
-- Shapes: pill (9999px) buttons, chips, status badges, nav items and project tabs; 12px panels; 9px inputs.
+- Shapes: **every corner is capped at Tailwind `md` (6px)** — buttons, chips, status badges, nav items, tabs, panels, inputs, menus, avatars, markers and switches. This overrides the reference's 9999px pills and 12-20px cards. Tokens: `--radius-buttons`, `--radius-chips`, `--radius-nav`, `--radius-cards`, `--radius-inputs` are 6px; `--radius-lg` to `--radius-3xl` are also 6px so existing `rounded-xl`-style utilities cannot exceed it. Progress bars and tiny swatches use 3px or less.
 - Type: Plus Jakarta Sans (self-hosted, `static/fonts/plus-jakarta-sans-latin.woff2`, OFL license beside it) for page titles, panel headings, buttons and big numbers at weight 700 with slightly negative tracking; Inter for body text. Page titles are 32px, not the 48-80px marketing sizes.
 - Focus ring is the signal blue `#0091ff` (`#4db3ff` in dark mode). Info status uses the violet family.
 
 Kept on purpose (product needs, not in the reference):
 - Semantic status colors (success, warning, danger, info) with text labels; color never carries meaning alone.
 - Actual progress teal `#477c6b` and planned progress orange `#b45816`, with solid and dashed line styles.
-- Smaller radius on dense controls (icon buttons, table rows, menu items).
 
 Not applied:
 - Rotating conic-gradient border, the 83deg brand gradient, the dark fade panels and the G2/trust-strip patterns. These are marketing-page devices. If used at all, use them on the login page or empty states only.
 - Plus Jakarta Sans is limited to the Latin subset.
+- Anything in the reference above that mentions pills, `9999px`, or radii of 12px and larger (buttons, tags, badges, cards, images, avatar clusters, the conic-border pill) is superseded by the 6px cap.

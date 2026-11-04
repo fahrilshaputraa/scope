@@ -28,7 +28,7 @@
                 <div class="flex items-start gap-4 px-6 py-4">
                     <div class="mt-1 flex flex-col items-center">
                         {% if ms.status == "completed" %}
-                            <span class="flex size-5 items-center justify-center rounded-full bg-foreground text-background">
+                            <span class="flex size-5 items-center justify-center rounded-md bg-foreground text-background">
                                 <svg aria-hidden="true" focusable="false" class="size-3"
                                      viewBox="0 0 24 24"
                                      fill="none"
@@ -40,7 +40,7 @@
                                 </svg>
                             </span>
                         {% elif ms.status == "delayed" %}
-                            <span class="flex size-5 items-center justify-center rounded-full bg-foreground text-background">
+                            <span class="flex size-5 items-center justify-center rounded-md bg-foreground text-background">
                                 <svg aria-hidden="true" focusable="false" class="size-3"
                                      viewBox="0 0 24 24"
                                      fill="none"
@@ -51,9 +51,9 @@
                                 </svg>
                             </span>
                         {% elif ms.status == "in_progress" %}
-                            <span class="size-5 rounded-full border-2 border-foreground bg-muted"></span>
+                            <span class="size-5 rounded-md border-2 border-foreground bg-muted"></span>
                         {% else %}
-                            <span class="size-5 rounded-full border-2 border-muted bg-background"></span>
+                            <span class="size-5 rounded-md border-2 border-muted bg-background"></span>
                         {% endif %}
                     </div>
                     <div class="min-w-0 flex-1">
