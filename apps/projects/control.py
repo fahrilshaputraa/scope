@@ -4,7 +4,7 @@ Pengecualian task yang perlu ditindaklanjuti PM: terlambat, terhambat, menunggu
 review, terlambat mulai, dan menyimpang dari baseline.
 """
 
-from django.db.models import F, Q
+from django.db.models import Count, F, Q
 from django.utils import timezone
 
 from apps.work.models import Task, TaskStatus
@@ -73,11 +73,24 @@ def flag_counts(tasks, flags=FLAGS) -> dict[str, int]:
     return {flag: tasks.filter(flag_filter(flag, today)).count() for flag in flags}
 
 
+def flag_counts_by_project(project_ids, flags=EXCEPTION_FLAGS) -> dict[int, dict[str, int]]:
+    """Jumlah pengecualian per project dalam satu query (tanpa N+1)."""
+    today = timezone.localdate()
+    aggregates = {flag: Count("pk", filter=flag_filter(flag, today)) for flag in flags}
+    result = {pk: dict.fromkeys(flags, 0) for pk in project_ids}
+    rows = Task.objects.filter(project_id__in=list(project_ids)).values("project_id")
+    for row in rows.annotate(**aggregates):
+        result[row["project_id"]].update({flag: row[flag] for flag in flags})
+    return result
+
+
 def exception_total(counts: dict[str, int]) -> int:
     return sum(counts.get(flag, 0) for flag in ("overdue", "blocked", "review"))
 
 
 def project_tasks(project):
-    return Task.objects.filter(project=project).select_related(
-        "assignee", "phase", "parent_task"
+    return (
+        Task.objects.filter(project=project)
+        .select_related("assignee", "phase", "parent_task")
+        .prefetch_related("collaborators", "subtasks")
     )

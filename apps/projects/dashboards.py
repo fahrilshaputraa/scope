@@ -6,19 +6,14 @@ from django.utils import timezone
 from apps.work.models import OPEN_ISSUE_STATUSES, Issue
 
 from .models import ASSESSED_LIFECYCLE, Milestone, MilestoneStatus, Project
-from .services import actual_progress, planned_progress_on, variance
+from .services import actual_progress, planned_progress_on, variance, with_project_metrics
 
 MAJOR_SEVERITIES = ("critical", "high")
 LIST_LIMIT = 8
 
 
 def owned_projects(user):
-    return (
-        Project.objects.filter(owner=user)
-        .select_related("manager")
-        .prefetch_related("baseline_points", "tasks__subtasks", "milestones")
-        .order_by("name")
-    )
+    return with_project_metrics(Project.objects.filter(owner=user)).order_by("name")
 
 
 def owner_dashboard_context(user):

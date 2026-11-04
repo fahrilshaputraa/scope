@@ -105,6 +105,24 @@ def variance_level(project) -> str:
     return VarianceLevel.DELAYED
 
 
+def open_issues_of(project) -> list:
+    """Issue terbuka project; dari prefetch (``open_issues_cache``) bila tersedia."""
+    from apps.work.models import OPEN_ISSUE_STATUSES, Issue
+
+    cached = getattr(project, "open_issues_cache", None)
+    if cached is not None:
+        return cached
+    return list(Issue.objects.filter(project=project, status__in=OPEN_ISSUE_STATUSES))
+
+
+def open_risks_of(project) -> list:
+    """Risiko terbuka project; dari prefetch (``open_risks_cache``) bila tersedia."""
+    cached = getattr(project, "open_risks_cache", None)
+    if cached is not None:
+        return cached
+    return list(project.risks.filter(status="open"))
+
+
 def health_status(project) -> str | None:
     """Kondisi pelaksanaan project (PRD §7.2); None bila lifecycle belum dinilai.
 
@@ -112,15 +130,14 @@ def health_status(project) -> str | None:
     - Kritis: terlambat dan ada issue kritis terbuka, atau lewat target dengan selisih terlambat.
     - Perlu perhatian: selisih di bawah ambang, atau ada issue kritis terbuka.
     """
-    from apps.work.models import OPEN_ISSUE_STATUSES, Issue
-
     if project.lifecycle_status not in ASSESSED_LIFECYCLE:
         return None
-    level = variance_level(project)
+    return _assess(project, variance_level(project), open_issues_of(project))
+
+
+def _assess(project, level, open_issues) -> str:
     overdue = project.is_overdue
-    critical_issues = Issue.objects.filter(
-        project=project, status__in=OPEN_ISSUE_STATUSES, severity="critical"
-    ).exists()
+    critical_issues = any(issue.severity == "critical" for issue in open_issues)
     delayed = overdue or level == VarianceLevel.DELAYED
     if delayed and ((overdue and level == VarianceLevel.DELAYED) or critical_issues):
         return HealthStatus.CRITICAL
@@ -164,33 +181,58 @@ def closure_requirements(project) -> list[str]:
 
 
 def project_health(project) -> dict:
-    """Project health summary untuk Overview (PRD §9.1)."""
-    from apps.work.models import Issue, IssueStatus
+    """Ringkasan health untuk Overview dan dashboard (PRD §9.1).
 
+    Dihitung sekali per panggilan dari data yang sudah dimuat; panggil sekali per
+    project lalu pakai ulang hasilnya.
+    """
     level = variance_level(project)
-    schedule = health_status(project) or HealthStatus.ON_TRACK
-
-    open_issues = Issue.objects.filter(
-        project=project,
-        status__in=[IssueStatus.OPEN, IssueStatus.IN_PROGRESS, IssueStatus.BLOCKED],
-    )
+    open_issues = open_issues_of(project)
+    risks = open_risks_of(project)
+    assessed = project.lifecycle_status in ASSESSED_LIFECYCLE
+    health = _assess(project, level, open_issues) if assessed else None
     severity_rank = ["critical", "high", "medium", "low"]
-    risks = project.risks.filter(status="open")
-    risky_count = risks.count()
-    top_severity = next((s for s in severity_rank if risks.filter(severity=s).exists()), None)
-
+    present = {risk.severity for risk in risks}
     return {
-        "schedule": schedule,
-        "health_status": health_status(project),
+        "schedule": health or HealthStatus.ON_TRACK,
+        "health_status": health,
         "progress": actual_progress(project),
         "planned": planned_progress_on(project),
         "variance": variance(project),
         "variance_level": level,
-        "open_issues": open_issues.count(),
-        "critical_issues": open_issues.filter(severity="critical").count(),
-        "risk_count": risky_count,
-        "risk_top_severity": top_severity,
+        "open_issues": len(open_issues),
+        "critical_issues": sum(1 for issue in open_issues if issue.severity == "critical"),
+        "risk_count": len(risks),
+        "risk_top_severity": next((s for s in severity_rank if s in present), None),
     }
+
+
+def with_project_metrics(queryset):
+    """Muat semua relasi yang dipakai progress, health, milestone, dan phase sekaligus."""
+    from django.db.models import Prefetch
+
+    from apps.work.models import OPEN_ISSUE_STATUSES, Issue
+
+    from .models import Risk
+
+    return queryset.select_related(
+        "manager__pcc_profile", "owner__pcc_profile", "current_phase"
+    ).prefetch_related(
+        "baseline_points",
+        "tasks__subtasks",
+        "milestones",
+        "phases",
+        Prefetch(
+            "issues",
+            queryset=Issue.objects.filter(status__in=OPEN_ISSUE_STATUSES).select_related(
+                "owner__pcc_profile", "task"
+            ),
+            to_attr="open_issues_cache",
+        ),
+        Prefetch(
+            "risks", queryset=Risk.objects.filter(status="open"), to_attr="open_risks_cache"
+        ),
+    )
 
 
 def record_snapshot(project, on_date: date | None = None) -> ProgressSnapshot:

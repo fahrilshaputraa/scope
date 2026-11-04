@@ -55,11 +55,13 @@ from .search import search_workspace
 from .services import (
     actual_progress,
     planned_progress_on,
+    project_health,
     record_activity,
     record_snapshot,
     timeline_data,
     variance,
     variance_level,
+    with_project_metrics,
 )
 
 PROJECT_TABS = [
@@ -80,11 +82,17 @@ HEALTH_CHOICES = HealthStatus.choices
 
 
 def _project_qs(user, *, include_archived=False):
-    return (
-        visible_projects(user, include_archived=include_archived)
-        .select_related("manager")
-        .prefetch_related("baseline_points", "tasks__subtasks", "milestones", "phases")
-    )
+    return with_project_metrics(visible_projects(user, include_archived=include_archived))
+
+
+def _task_counts(project) -> dict:
+    """Jumlah task per kelompok dari task yang sudah di-prefetch (tanpa query)."""
+    tasks = list(project.tasks.all())
+    return {
+        "total": len(tasks),
+        "blocked": sum(1 for t in tasks if t.status == TaskStatus.BLOCKED),
+        "done": sum(1 for t in tasks if t.status == TaskStatus.DONE),
+    }
 
 
 INTERNAL_TABS = {"issues", "notes", "activity", "history"}
@@ -124,25 +132,25 @@ def dashboard(request: HttpRequest) -> HttpResponse:
 
         return owner_dashboard(request)
     projects = list(_project_qs(request.user))
-    by_health = Counter(p.health_status for p in projects)
+    healths = {p.pk: project_health(p) for p in projects}  # sekali per project
+    by_health = Counter(healths[p.pk]["health_status"] for p in projects)
     rows = [
         {
             "project": p,
-            "planned": planned_progress_on(p),
-            "actual": actual_progress(p),
-            "variance": variance(p),
-            "level": p.variance_level,
+            "planned": healths[p.pk]["planned"],
+            "actual": healths[p.pk]["progress"],
+            "variance": healths[p.pk]["variance"],
+            "level": healths[p.pk]["variance_level"],
             "next_milestone": p.next_milestone,
         }
         for p in projects
     ]
-    from .services import project_health
 
     attention = []
     for row in rows:
         project = row["project"]
-        health = project_health(project)
-        blocked = project.tasks.filter(status=TaskStatus.BLOCKED).count()
+        health = healths[project.pk]
+        blocked = _task_counts(project)["blocked"]
         milestone = row["next_milestone"]
         reasons = []
         if project.lifecycle_status in CLOSED_LIFECYCLE:
@@ -155,7 +163,7 @@ def dashboard(request: HttpRequest) -> HttpResponse:
             reasons.append(
                 "Progress tertinggal" if not project.is_overdue else "Target project terlewat"
             )
-            reasons.append(project.get_health_status_display())
+            reasons.append(HealthStatus(health["health_status"]).label)
         if health["critical_issues"]:
             reasons.append(f"{health['critical_issues']} issue kritis")
         if blocked:
@@ -301,8 +309,18 @@ def project_list(request: HttpRequest) -> HttpResponse:
         .order_by("team")
         if t
     ]
+    phase_names = sorted(
+        {
+            p.effective_current_phase.name
+            for p in visible_projects(request.user)
+            .select_related("current_phase")
+            .prefetch_related("phases")
+            if p.effective_current_phase
+        }
+    )
     pms = list(
         User.objects.filter(Q(managed_projects__in=visible_projects(request.user)))
+        .select_related("pcc_profile")
         .distinct()
         .order_by("first_name", "username")
     )
@@ -332,13 +350,7 @@ def project_list(request: HttpRequest) -> HttpResponse:
             "status_choices": STATUS_CHOICES,
             "health_choices": HEALTH_CHOICES,
             "teams": teams,
-            "phases": sorted(
-                set(
-                    p.effective_current_phase.name
-                    for p in visible_projects(request.user)
-                    if p.effective_current_phase
-                )
-            ),
+            "phases": phase_names,
             "pms": pms,
             "can_create": can_create_project(request.user),
         },
@@ -351,38 +363,34 @@ def project_list(request: HttpRequest) -> HttpResponse:
 @login_required
 def project_detail(request: HttpRequest, pk: int) -> HttpResponse:
     project = _project_or_404(request, pk)
-    health = project.health()
-    data = timeline_data(project)
-    current_work = list(
-        project.tasks.filter(status=TaskStatus.IN_PROGRESS)
-        .select_related("assignee")
-        .order_by("due_date")
-    )
-    next_up = list(
-        project.tasks.filter(status__in=[TaskStatus.TODO, TaskStatus.BACKLOG])
-        .select_related("assignee")
-        .exclude(
-            dependencies__isnull=False,
-            dependencies__status__in=[s for s in TaskStatus.values if s != TaskStatus.DONE],
+    health = project_health(project)
+    today = timezone.localdate()
+    # Satu query untuk semua task yang relevan; dipilah di Python.
+    relevant = list(
+        Task.objects.filter(project=project)
+        .filter(
+            Q(status__in=[TaskStatus.IN_PROGRESS, TaskStatus.BLOCKED])
+            | (Q(due_date__lt=today) & ~Q(status=TaskStatus.DONE))
         )
-        .distinct()
-        .order_by("order", "start_date", "due_date")[:8]
-    )
-    open_issues = list(
-        project.issues.filter(status__in=["open", "in_progress", "blocked"]).select_related(
-            "owner", "task"
-        )[:6]
-    )
-    overdue_work = (
-        project.tasks.filter(due_date__lt=timezone.localdate())
-        .exclude(status__in=[TaskStatus.DONE, TaskStatus.BLOCKED])
         .select_related("assignee")
-        .order_by("due_date")
+        .prefetch_related("collaborators", "subtasks")
     )
-    activities = project.activities.select_related("actor")[:8]
-    milestones = list(project.milestones.all()) if project.next_milestone else []
+    by_due = lambda task: (task.due_date is None, task.due_date, task.pk)  # noqa: E731
+    current_work = sorted((t for t in relevant if t.status == TaskStatus.IN_PROGRESS), key=by_due)
+    blocked_work = [t for t in relevant if t.status == TaskStatus.BLOCKED]
+    overdue_work = sorted(
+        (
+            t
+            for t in relevant
+            if t.due_date and t.due_date < today and t.status != TaskStatus.BLOCKED
+        ),
+        key=by_due,
+    )
+    open_issues = (project.open_issues_cache or [])[:6]
+    activities = project.activities.select_related("actor__pcc_profile")[:8]
     baseline = list(project.baseline_points.all())
     snapshots = list(project.snapshots.all())
+    comment_thread = thread(project, CommentTarget.PROJECT, project.pk, limit=None)
 
     return render(
         request,
@@ -390,33 +398,16 @@ def project_detail(request: HttpRequest, pk: int) -> HttpResponse:
         {
             **project_context(request, project, "overview"),
             "health": health,
-            "blocked_work": project.tasks.filter(status=TaskStatus.BLOCKED).select_related(
-                "assignee"
-            ),
-            **data,
-            "blocked_timeline_rows": [
-                row for row in data["timeline_rows"] if row["task"].is_blocked
-            ],
+            "blocked_work": blocked_work,
             "overdue_work": overdue_work[:3],
-            "overdue_more": max(overdue_work.count() - 3, 0),
+            "overdue_more": max(len(overdue_work) - 3, 0),
             "current_work": current_work,
-            "next_up": next_up,
-            "completed_work": project.tasks.filter(status=TaskStatus.DONE).select_related(
-                "assignee"
-            ),
             "open_issues": open_issues,
             "activities": activities,
-            "milestones": milestones,
-            "chart": progress_chart_data(baseline, snapshots, actual_progress(project)),
+            "chart": progress_chart_data(baseline, snapshots, health["progress"]),
             "chart_has_plan": bool(baseline),
-            "comments": paginate(
-                request,
-                thread(project, CommentTarget.PROJECT, project.pk, limit=None),
-                THREAD_PAGE_SIZE,
-            ),
-            "comment_count": thread(
-                project, CommentTarget.PROJECT, project.pk, limit=None
-            ).count(),
+            "comments": paginate(request, comment_thread, THREAD_PAGE_SIZE),
+            "comment_count": comment_thread.count(),
         },
     )
 
@@ -581,8 +572,13 @@ def project_tasks(request: HttpRequest, pk: int) -> HttpResponse:
     )
     by_column = {column.pk: [] for column in custom_columns}
     tasks = (
-        project.tasks.select_related("assignee", "phase", "parent_task")
-        .prefetch_related("issues", "collaborators", "subtasks__assignee")
+        project.tasks.select_related("assignee__pcc_profile", "phase", "parent_task")
+        .prefetch_related(
+            "issues",
+            "collaborators__pcc_profile",
+            "subtasks__assignee__pcc_profile",
+            "subtasks__collaborators__pcc_profile",
+        )
         .order_by("order", "due_date")
     )
     for task in tasks:
@@ -795,15 +791,15 @@ def reports(request: HttpRequest) -> HttpResponse:
     projects = list(_project_qs(request.user))
     rows = []
     for p in projects:
-        health = p.health()
+        health = project_health(p)
         rows.append(
             {
                 "project": p,
                 "health": health,
-                "planned": planned_progress_on(p),
-                "actual": actual_progress(p),
-                "variance": variance(p),
-                "level": p.variance_level,
+                "planned": health["planned"],
+                "actual": health["progress"],
+                "variance": health["variance"],
+                "level": health["variance_level"],
                 "next_milestone": p.next_milestone,
             }
         )
@@ -814,9 +810,12 @@ def reports(request: HttpRequest) -> HttpResponse:
         p = row["project"]
         row["left"] = round((p.start_date - start).days / span * 100, 3)
         row["width"] = round(((p.target_end_date - p.start_date).days + 1) / span * 100, 3)
-        row["blocked"] = p.tasks.filter(status=TaskStatus.BLOCKED).count()
-        row["done"] = p.tasks.filter(status=TaskStatus.DONE).count()
-        row["task_count"] = p.tasks.count()
+        counts = _task_counts(p)
+        row["blocked"], row["done"], row["task_count"] = (
+            counts["blocked"],
+            counts["done"],
+            counts["total"],
+        )
     totals = {
         "projects": len(rows),
         "completed": sum(

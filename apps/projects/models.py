@@ -232,17 +232,18 @@ class Project(ArchivableModel):
 
     @property
     def next_milestone(self):
-        return self.milestones.exclude(status=MilestoneStatus.COMPLETED).order_by("date").first()
+        # Python atas ``all()``: tanpa query tambahan bila milestone sudah di-prefetch.
+        pending = [m for m in self.milestones.all() if m.status != MilestoneStatus.COMPLETED]
+        return min(pending, key=lambda m: (m.date, m.pk), default=None)
 
     @property
     def effective_current_phase(self):
         """Phase aktif: explicit current_phase, atau derive dari phase yang belum selesai."""
         if self.current_phase_id:
             return self.current_phase
-        return (
-            self.phases.exclude(status=PhaseStatus.COMPLETED).order_by("sequence").first()
-            or self.phases.order_by("-sequence").first()
-        )
+        phases = sorted(self.phases.all(), key=lambda p: (p.sequence, p.pk))
+        active = [p for p in phases if p.status != PhaseStatus.COMPLETED]
+        return active[0] if active else (phases[-1] if phases else None)
 
     @property
     def health_status(self):

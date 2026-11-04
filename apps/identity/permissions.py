@@ -52,8 +52,15 @@ def can_execute_task(user, task) -> bool:
     if is_admin(user):
         return True
     return has_perm(user, "task.update_progress") and (
-        task.assignee_id == user.id or task.collaborators.filter(pk=user.pk).exists()
+        task.assignee_id == user.id or _is_collaborator(user, task)
     )
+
+
+def _is_collaborator(user, task) -> bool:
+    # Pakai hasil prefetch bila ada, supaya daftar task tidak menjalankan query per baris.
+    if "collaborators" in getattr(task, "_prefetched_objects_cache", {}):
+        return any(person.pk == user.pk for person in task.collaborators.all())
+    return task.collaborators.filter(pk=user.pk).exists()
 
 
 def can_report_issue(user) -> bool:

@@ -323,7 +323,7 @@ def my_tasks(request: HttpRequest) -> HttpResponse:
 @login_required
 def issue_list(request: HttpRequest) -> HttpResponse:
     require_internal(request.user)
-    qs = Issue.objects.select_related("project", "owner", "task").filter(
+    qs = Issue.objects.select_related("project", "owner__pcc_profile", "task").filter(
         project__in=visible_projects(request.user)
     )
     status = request.GET.get("status", "open")

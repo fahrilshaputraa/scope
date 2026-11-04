@@ -29,13 +29,14 @@ from .control import (
     FLAGS,
     exception_total,
     flag_counts,
+    flag_counts_by_project,
     flag_filter,
     project_tasks,
     task_flags,
 )
 from .models import ActivityAction
 from .pagination import paginate
-from .services import record_activity
+from .services import record_activity, with_project_metrics
 from .views import project_context
 
 PER_PAGE = 25
@@ -78,8 +79,10 @@ def progress_task(request):
     """Monitoring seluruh task di project yang dikelola PM (hanya baca, PRD §10.2)."""
     _require(can_monitor_tasks(request.user))
     projects = controlled_projects(request.user)
-    base = Task.objects.filter(project__in=projects).select_related(
-        "project", "phase", "assignee", "parent_task"
+    base = (
+        Task.objects.filter(project__in=projects)
+        .select_related("project", "phase", "assignee", "parent_task")
+        .prefetch_related("collaborators", "subtasks")
     )
     params = request.GET
     project_id, phase_id = _int(params.get("project")), _int(params.get("phase"))
@@ -163,9 +166,11 @@ def _phases(projects, project_id):
 def control_index(request):
     """Ringkasan pengecualian per project yang dikontrol PM."""
     _require(can_control_projects(request.user))
+    projects = list(with_project_metrics(controlled_projects(request.user)).order_by("code"))
+    all_counts = flag_counts_by_project([p.pk for p in projects])
     rows = []
-    for project in controlled_projects(request.user).order_by("code"):
-        counts = flag_counts(Task.objects.filter(project=project), EXCEPTION_FLAGS)
+    for project in projects:
+        counts = all_counts[project.pk]
         rows.append({"project": project, "counts": counts, "total": exception_total(counts)})
     rows.sort(key=lambda row: (-row["total"], row["project"].code))
     return render(
@@ -182,7 +187,7 @@ SECTION_LIMIT = 50
 def project_control(request, pk):
     """Kontrol satu project: pengecualian, reassign, dan tindak lanjut."""
     _require(can_control_projects(request.user))
-    project = get_object_or_404(controlled_projects(request.user), pk=pk)
+    project = get_object_or_404(with_project_metrics(controlled_projects(request.user)), pk=pk)
     today = timezone.localdate()
     tasks = project_tasks(project)
     shown = set()
