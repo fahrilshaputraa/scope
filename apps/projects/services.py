@@ -248,6 +248,8 @@ def record_snapshot(project, on_date: date | None = None) -> ProgressSnapshot:
             "planned_progress": planned,
             "actual_progress": actual,
             "variance": var,
+            "baseline": current_baseline(project),
+            "health_status": health_status(project) or "",
         },
     )
     return snapshot
@@ -433,60 +435,120 @@ def timeline_data(project):
     }
 
 
-def capture_baseline(project, actor):
-    """Freeze task dates and derive a weighted cumulative planned curve."""
-    from django.db import transaction
+def _plan_error(message):
+    from django.core.exceptions import ValidationError
 
-    from .models import ProgressBaselinePoint
+    return ValidationError(message)
+
+
+def build_baseline_data(project) -> dict:
+    """Snapshot beku jadwal, bobot, phase, milestone, dan kurva planned progress."""
+    tasks = list(project.tasks.filter(parent_task__isnull=True))
+    if not tasks or any(not t.start_date or not t.due_date for t in tasks):
+        raise _plan_error(
+            "Isi tanggal mulai dan selesai seluruh task utama sebelum menyimpan baseline."
+        )
+    total = sum(t.weight for t in tasks)
+    if total <= 0:
+        raise _plan_error("Total bobot task harus lebih besar dari nol.")
+    first = min(t.start_date for t in tasks) - timezone.timedelta(days=1)
+    last = max(t.due_date for t in tasks)
+    curve = []
+    for i in range((last - first).days + 1):
+        day = first + timezone.timedelta(days=i)
+        value = Decimal("0")
+        for task in tasks:
+            fraction = max(
+                Decimal(0),
+                min(
+                    Decimal(1),
+                    Decimal((day - task.start_date).days + 1)
+                    / Decimal((task.due_date - task.start_date).days + 1),
+                ),
+            )
+            value += fraction * task.weight / total * 100
+        curve.append([day.isoformat(), str(value.quantize(_DP))])
+    return {
+        "tasks": [
+            {
+                "id": t.pk,
+                "title": t.title,
+                "parent": t.parent_task_id,
+                "start": t.start_date.isoformat() if t.start_date else None,
+                "end": t.due_date.isoformat() if t.due_date else None,
+                "weight": str(t.weight),
+            }
+            for t in project.tasks.all()
+        ],
+        "phases": [
+            {
+                "id": ph.pk,
+                "name": ph.name,
+                "start": ph.start_date.isoformat() if ph.start_date else None,
+                "end": ph.end_date.isoformat() if ph.end_date else None,
+            }
+            for ph in project.phases.all()
+        ],
+        "milestones": [
+            {"id": m.pk, "name": m.name, "date": m.date.isoformat()}
+            for m in project.milestones.all()
+        ],
+        "curve": curve,
+    }
+
+
+def current_baseline(project):
+    """Versi baseline yang sedang berlaku, atau None."""
+    from .models import BaselineStatus
+
+    return project.baselines.filter(status=BaselineStatus.ACTIVE).order_by("-version").first()
+
+
+def capture_baseline(project, actor, note=""):
+    """Buat versi baseline baru dari jadwal saat ini dan langsung berlakukan.
+
+    Versi lama tidak dihapus; statusnya menjadi ``superseded``.
+    """
+    from django.db import transaction
+    from django.db.models import Max
+
+    from apps.work.models import Task
+
+    from .models import Baseline, BaselineStatus, ProgressBaselinePoint
 
     with transaction.atomic():
-        tasks = list(project.tasks.filter(parent_task__isnull=True))
-        if not tasks or any(not t.start_date or not t.due_date for t in tasks):
-            from django.core.exceptions import ValidationError
-
-            raise ValidationError(
-                "Isi tanggal mulai dan selesai seluruh task utama sebelum menyimpan baseline."
-            )
-        total = sum(t.weight for t in tasks)
-        if total <= 0:
-            from django.core.exceptions import ValidationError
-
-            raise ValidationError("Total bobot task harus lebih besar dari nol.")
-        # Preserve baseline for subtasks too, but only root tasks affect cumulative progress.
-        all_tasks = list(project.tasks.all())
-        for task in all_tasks:
-            task.baseline_start_date, task.baseline_end_date = task.start_date, task.due_date
-        project.tasks.model.objects.bulk_update(
-            all_tasks, ["baseline_start_date", "baseline_end_date"]
+        data = build_baseline_data(project)
+        version = (project.baselines.aggregate(top=Max("version"))["top"] or 0) + 1
+        project.baselines.filter(status=BaselineStatus.ACTIVE).update(
+            status=BaselineStatus.SUPERSEDED
         )
-        first = min(t.start_date for t in tasks) - timezone.timedelta(days=1)
-        last = max(t.due_date for t in tasks)
-        points = []
-        for i in range((last - first).days + 1):
-            day = first + timezone.timedelta(days=i)
-            value = Decimal("0")
-            for task in tasks:
-                fraction = max(
-                    Decimal(0),
-                    min(
-                        Decimal(1),
-                        Decimal((day - task.start_date).days + 1)
-                        / Decimal((task.due_date - task.start_date).days + 1),
-                    ),
-                )
-                value += fraction * task.weight / total * 100
-            points.append(
-                ProgressBaselinePoint(
-                    project=project, date=day, planned_percent=value.quantize(_DP)
-                )
-            )
+        baseline = Baseline.objects.create(
+            project=project,
+            version=version,
+            created_by=actor,
+            note=note[:300],
+            baseline_data=data,
+        )
+        by_id = {t["id"]: t for t in data["tasks"]}
+        tasks = list(project.tasks.filter(pk__in=by_id))
+        for task in tasks:
+            row = by_id[task.pk]
+            task.baseline_start_date = date.fromisoformat(row["start"]) if row["start"] else None
+            task.baseline_end_date = date.fromisoformat(row["end"]) if row["end"] else None
+        Task.objects.bulk_update(tasks, ["baseline_start_date", "baseline_end_date"])
         project.baseline_points.all().delete()
-        ProgressBaselinePoint.objects.bulk_create(points)
+        ProgressBaselinePoint.objects.bulk_create(
+            ProgressBaselinePoint(
+                project=project, date=date.fromisoformat(day), planned_percent=Decimal(value)
+            )
+            for day, value in data["curve"]
+        )
         project._prefetched_objects_cache = {}
         record_snapshot(project)
         record_activity(
             project,
             actor,
             ActivityAction.BASELINE_UPDATED,
-            "Baseline timeline dan weighted planned progress disimpan.",
+            f"Baseline v{version} berlaku; planned progress dihitung dari versi ini.",
         )
+    return baseline

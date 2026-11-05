@@ -1208,11 +1208,11 @@ def capture_timeline_baseline(request, pk):
     from django.core.exceptions import ValidationError
 
     try:
-        capture_baseline(project, request.user)
+        baseline = capture_baseline(project, request.user)
     except ValidationError as exc:
         messages.error(request, " ".join(exc.messages))
         return _tab_redirect(pk, "timeline")
-    messages.success(request, "Baseline timeline dan kurva planned progress disimpan.")
+    messages.success(request, f"Baseline v{baseline.version} disimpan dan berlaku.")
     return _tab_redirect(pk, "timeline")
 
 

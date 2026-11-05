@@ -104,6 +104,12 @@ Belum: "keputusan tertunda" dan "penerimaan deliverable" di dashboard Owner menu
 
 ## Fase 5 — Baseline berversi, approval, review
 
+Status (5 November 2026): hanya baseline berversi yang dibangun (R5.1–R5.3). Mekanisme approval (R5.4–R5.6) sengaja tidak dipakai: tidak ada persetujuan baseline, review task, atau inbox approval.
+- R5.1: model `Baseline` (versi, status `active`/`superseded`, pembuat, `baseline_data` JSON). Versi lama tidak dihapus. Simpan baseline dari tab Jadwal membuat versi baru yang langsung berlaku; migrasi mengisi versi 1 untuk project yang sudah punya kurva.
+- R5.2: kurva planned progress tetap di `ProgressBaselinePoint` dan diganti saat versi baru dibuat (`capture_baseline`). Kurva manual belum punya antarmuka override terpisah.
+- R5.3: `ProgressSnapshot.baseline` dan `health_status` terisi saat snapshot dibuat; snapshot lama tidak dihitung ulang.
+- R5.4–R5.6: tidak dikerjakan (diputuskan 5 November 2026).
+
 | ID | Item | Cakupan | Selesai bila |
 |---|---|---|---|
 | R5.1 | Model `Baseline` | `version`, `approved_by`, `approved_at`, `baseline_data` (snapshot jadwal, bobot, milestone). Baseline lama tidak pernah dihapus. | BR-CHG-006. |

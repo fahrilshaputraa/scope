@@ -400,6 +400,42 @@ class ProgressBaselinePoint(models.Model):
         return f"{self.date} → {self.planned_percent}%"
 
 
+class BaselineStatus(models.TextChoices):
+    ACTIVE = "active", "Berlaku"
+    SUPERSEDED = "superseded", "Digantikan"
+
+
+class Baseline(models.Model):
+    """Versi baseline project (PRD §11.5, §12.4). Versi lama tidak pernah dihapus.
+
+    ``baseline_data`` adalah snapshot beku: jadwal task, bobot, phase, milestone,
+    dan kurva planned progress pada saat baseline dibuat.
+    """
+
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="baselines")
+    version = models.PositiveIntegerField()
+    status = models.CharField(
+        max_length=20, choices=BaselineStatus.choices, default=BaselineStatus.ACTIVE
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    note = models.CharField(max_length=300, blank=True)
+    baseline_data = models.JSONField(default=dict)
+
+    class Meta:
+        ordering = ["-version"]
+        unique_together = [("project", "version")]
+
+    def __str__(self):
+        return f"{self.project.code} baseline v{self.version}"
+
+    @property
+    def label(self):
+        return f"v{self.version}"
+
+
 class ProgressSnapshot(models.Model):
     """Snapshot progress harian untuk historical chart (PRD §34)."""
 
@@ -408,6 +444,10 @@ class ProgressSnapshot(models.Model):
     planned_progress = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
     actual_progress = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
     variance = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
+    baseline = models.ForeignKey(
+        Baseline, null=True, blank=True, on_delete=models.SET_NULL, related_name="snapshots"
+    )
+    health_status = models.CharField(max_length=20, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
