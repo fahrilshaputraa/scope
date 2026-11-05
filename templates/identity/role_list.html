@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Role &amp; permission — Scope{% endblock %}
+{% block subnav %}{% include "identity/_settings_nav.html" with active_settings="roles" %}{% endblock %}
 {% block content %}
-{% include "identity/_settings_nav.html" with active_settings="roles" %}
 <div class="mx-auto max-w-6xl">
   <h1 class="dashboard-page-title">Role &amp; permission</h1>
   <p class="dashboard-page-subtitle">Atur aksi yang boleh dilakukan tiap role. Workspace Admin selalu memiliki seluruh permission. Perubahan berlaku pada permintaan berikutnya.</p>

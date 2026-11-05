@@ -1,9 +1,9 @@
 {% extends "base.html" %}
 {% load static %}
 {% block title %}{% if query %}Pencarian panduan{% else %}{{ article.title }}{% endif %} — Docs Scope{% endblock %}
+{% block subnav %}{% include "identity/_settings_nav.html" with active_settings="docs" %}{% endblock %}
 {% block content %}
 <div class="docs-page" data-docs-page>
-    {% include "identity/_settings_nav.html" with active_settings="docs" %}
     <div class="docs-heading"><a href="{% url 'identity:docs' %}" class="docs-brand"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h6l2 2 2-2h6v15h-6l-2 2-2-2H4zM12 6v15M7 8h2M15 8h2M7 12h2M15 12h2"/></svg><span>Panduan Scope</span></a><span>{{ article_count }} topik · Bahasa Indonesia</span></div>
     <div class="docs-layout">
         {% if query %}

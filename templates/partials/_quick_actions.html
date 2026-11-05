@@ -1,0 +1,21 @@
+{% if quick_actions %}
+<dialog id="quick-actions" class="quick-dialog" aria-label="Quick actions" aria-modal="true">
+    <div class="quick-box">
+        <div class="quick-input">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="10" r="6"/><path d="m15 15 5 5"/></svg>
+            <label class="sr-only" for="quick-query">Cari aksi atau halaman</label>
+            <input id="quick-query" type="search" autocomplete="off" placeholder="Cari aksi atau halaman…" data-quick-query>
+            <kbd>Esc</kbd>
+        </div>
+        <ul class="quick-list" data-quick-list>
+            {% regroup quick_actions by group as quick_groups %}
+            {% for group in quick_groups %}
+            <li class="quick-group" role="presentation" data-quick-group>{{ group.grouper }}</li>
+            {% for action in group.list %}<li data-quick-item data-label="{{ action.label|lower }}"><a href="{{ action.url }}">{{ action.label }}</a></li>
+            {% endfor %}{% endfor %}
+        </ul>
+        <p class="quick-empty" data-quick-empty hidden>Tidak ada yang cocok. Tekan Enter untuk mencari di workspace.</p>
+        <form method="get" action="{% url 'projects:search' %}" data-quick-search hidden><input type="hidden" name="q"></form>
+    </div>
+</dialog>
+{% endif %}

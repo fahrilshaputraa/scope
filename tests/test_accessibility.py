@@ -198,7 +198,7 @@ def test_icon_only_controls_have_accessible_names(client, workspace, page_name):
 def test_action_drawer_is_a_labelled_modal_dialog(client, workspace):
     client.force_login(workspace["pm"])
     page = parse(client.get(reverse("projects:dashboard")))
-    dialogs = list(page.find("dialog"))
+    dialogs = [d for d in page.find("dialog") if d["attrs"].get("id") == "project-action-panel"]
     assert len(dialogs) == 1
     dialog = dialogs[0]
     assert dialog["attrs"].get("aria-modal") == "true"

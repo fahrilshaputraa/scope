@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Edit pengguna — Scope{% endblock %}
+{% block subnav %}{% include "identity/_settings_nav.html" with active_settings="users" %}{% endblock %}
 {% block content %}
-    {% include "identity/_settings_nav.html" with active_settings="users" %}
     {% include "identity/_user_form_card.html" with back_url=back_url title="Edit pengguna" subtitle=subtitle submit_label="Simpan perubahan" %}
 {% endblock %}
