@@ -12,6 +12,7 @@ from django.utils import timezone
 
 from apps.identity.permissions import visible_projects
 
+from .project_templates import custom_fields_text
 from .services import actual_progress, planned_progress_on, variance
 
 
@@ -20,6 +21,7 @@ def export_rows(projects, dataset):
         headers = [
             "Code",
             "Project",
+            "Jenis",
             "PM",
             "Siklus hidup",
             "Health",
@@ -34,6 +36,7 @@ def export_rows(projects, dataset):
             "Next milestone",
             "Current work",
             "Next work",
+            "Field tambahan",
         ]
         rows = []
         for p in projects:
@@ -42,6 +45,7 @@ def export_rows(projects, dataset):
                 [
                     p.code,
                     p.name,
+                    p.get_project_type_display(),
                     str(p.manager or ""),
                     p.get_lifecycle_status_display(),
                     p.get_health_status_display(),
@@ -60,6 +64,7 @@ def export_rows(projects, dataset):
                             "title", flat=True
                         )
                     ),
+                    custom_fields_text(p),
                 ]
             )
         return headers, rows
@@ -130,7 +135,339 @@ def export_rows(projects, dataset):
             for p in projects
             for m in p.milestones.select_related("owner")
         ]
+    builder = REPORT_BUILDERS.get(dataset)
+    if builder is not None:
+        return builder(list(projects))
     raise Http404("Jenis report tidak tersedia.")
+
+
+# ----------------------------------------------------------- report R8.3 ---
+
+
+def _schedule_deviation(project):
+    tasks = [t for t in project.tasks.all() if t.parent_task_id is None]
+    due = [t.due_date for t in tasks if t.due_date]
+    base = [t.baseline_end_date for t in tasks if t.baseline_end_date]
+    if not due or not base:
+        return None
+    return (max(due) - max(base)).days
+
+
+def _executive(projects):
+    from .services import project_health
+
+    headers = [
+        "Code",
+        "Project",
+        "Owner",
+        "PM",
+        "Siklus hidup",
+        "Health",
+        "Rencana %",
+        "Aktual %",
+        "Selisih pp",
+        "Phase",
+        "Milestone berikutnya",
+        "Issue terbuka",
+        "Risiko terbuka",
+        "Deviasi jadwal (hari)",
+    ]
+    rows = []
+    for p in projects:
+        health = project_health(p)
+        rows.append(
+            [
+                p.code,
+                p.name,
+                str(p.owner or ""),
+                str(p.manager or ""),
+                p.get_lifecycle_status_display(),
+                p.get_health_status_display(),
+                health["planned"],
+                health["progress"],
+                health["variance"],
+                str(p.effective_current_phase or ""),
+                str(p.next_milestone or ""),
+                health["open_issues"],
+                health["risk_count"],
+                _schedule_deviation(p),
+            ]
+        )
+    return headers, rows
+
+
+def _progress_report(projects):
+    from datetime import timedelta
+
+    from apps.work.progress import weighted_progress
+
+    headers = [
+        "Code",
+        "Bagian",
+        "Rencana %",
+        "Aktual %",
+        "Selisih pp",
+        "Task selesai",
+        "Total task",
+        "Tren 14 hari (pp)",
+    ]
+    rows = []
+    since = timezone.localdate() - timedelta(days=14)
+    for p in projects:
+        roots = [t for t in p.tasks.all() if t.parent_task_id is None]
+        snaps = [s for s in p.snapshots.all() if s.actual_progress is not None]
+        earlier = [s for s in snaps if s.date <= since]
+        trend = None
+        if snaps and earlier:
+            trend = snaps[-1].actual_progress - earlier[-1].actual_progress
+        rows.append(
+            [
+                p.code,
+                "Project",
+                planned_progress_on(p),
+                actual_progress(p),
+                variance(p),
+                sum(1 for t in roots if t.is_done),
+                len(roots),
+                trend,
+            ]
+        )
+        for phase in p.phases.all():
+            members = [t for t in roots if t.phase_id == phase.pk]
+            rows.append(
+                [
+                    p.code,
+                    f"Phase: {phase.name}",
+                    None,
+                    weighted_progress(members) if members else None,
+                    None,
+                    sum(1 for t in members if t.is_done),
+                    len(members),
+                    None,
+                ]
+            )
+    return headers, rows
+
+
+def _schedule(projects):
+    today = timezone.localdate()
+    headers = [
+        "Code",
+        "Jenis",
+        "Nama",
+        "Baseline mulai",
+        "Baseline selesai",
+        "Jadwal mulai",
+        "Jadwal selesai",
+        "Deviasi (hari)",
+        "Keterangan",
+    ]
+    rows = []
+    for p in projects:
+        for t in p.tasks.all():
+            note = "Terlambat" if t.is_overdue else ("Selesai" if t.is_done else "")
+            rows.append(
+                [
+                    p.code,
+                    "Task",
+                    t.title,
+                    t.baseline_start_date,
+                    t.baseline_end_date,
+                    t.start_date,
+                    t.due_date,
+                    t.schedule_deviation,
+                    note,
+                ]
+            )
+        for m in p.milestones.all():
+            if m.status == "completed":
+                note = "Tercapai"
+            elif m.date < today or m.status == "delayed":
+                note = "Terlambat"
+            else:
+                note = "Akan datang"
+            rows.append([p.code, "Milestone", m.name, None, None, None, m.date, None, note])
+    return headers, rows
+
+
+def _task_report(projects):
+    from collections import OrderedDict
+
+    headers = [
+        "Code",
+        "Pelaksana",
+        "Total",
+        "Selesai",
+        "Sedang dikerjakan",
+        "Terhambat",
+        "Menunggu pemeriksaan",
+        "Terlambat",
+    ]
+    rows = []
+    for p in projects:
+        groups = OrderedDict()
+        tasks = list(p.tasks.all())
+        for t in tasks:
+            name = str(t.assignee) if t.assignee_id else "Belum ditugaskan"
+            groups.setdefault(name, []).append(t)
+        for name, items in [("Semua pelaksana", tasks), *groups.items()]:
+            rows.append(
+                [
+                    p.code,
+                    name,
+                    len(items),
+                    sum(1 for t in items if t.status == "done"),
+                    sum(1 for t in items if t.status == "in_progress"),
+                    sum(1 for t in items if t.status == "blocked"),
+                    sum(1 for t in items if t.status == "review"),
+                    sum(1 for t in items if t.is_overdue),
+                ]
+            )
+    return headers, rows
+
+
+def _management(projects):
+    from .dashboards import portfolio_health
+    from .services import project_health
+
+    attention = {
+        row["project"].pk: row["reasons"] for row in portfolio_health(projects)["attention"]
+    }
+    headers = [
+        "Code",
+        "Project",
+        "Owner",
+        "Health",
+        "Rencana %",
+        "Aktual %",
+        "Selisih pp",
+        "Issue kritis",
+        "Risiko teratas",
+        "Milestone berikutnya",
+        "Perlu perhatian",
+    ]
+    rows = []
+    for p in projects:
+        health = project_health(p)
+        rows.append(
+            [
+                p.code,
+                p.name,
+                str(p.owner or ""),
+                p.get_health_status_display(),
+                health["planned"],
+                health["progress"],
+                health["variance"],
+                health["critical_issues"],
+                health["risk_top_severity"] or "",
+                str(p.next_milestone or ""),
+                "; ".join(attention.get(p.pk, [])),
+            ]
+        )
+    return headers, rows
+
+
+def _risks(projects):
+    headers = [
+        "Code",
+        "Risiko",
+        "Kemungkinan",
+        "Dampak",
+        "Skor",
+        "Tingkat",
+        "Status",
+        "Owner",
+        "Mitigasi",
+        "Tanggal tinjau",
+    ]
+    return headers, [
+        [
+            p.code,
+            r.title,
+            r.probability,
+            r.impact,
+            r.score,
+            r.get_severity_display(),
+            r.get_status_display(),
+            str(r.owner or ""),
+            r.mitigation,
+            r.review_date,
+        ]
+        for p in projects
+        for r in p.risks.select_related("owner")
+    ]
+
+
+def _deliverables(projects):
+    headers = [
+        "Code",
+        "Deliverable",
+        "Task",
+        "Pemilik",
+        "Penerima",
+        "Target",
+        "Diserahkan",
+        "Status",
+        "Kriteria",
+    ]
+    return headers, [
+        [
+            p.code,
+            d.name,
+            str(d.task or ""),
+            str(d.owner or ""),
+            str(d.reviewer or p.owner or ""),
+            d.due_date,
+            d.submission_date,
+            d.get_status_display(),
+            d.acceptance_criteria,
+        ]
+        for p in projects
+        for d in p.deliverables.select_related("task", "owner", "reviewer")
+    ]
+
+
+REPORT_BUILDERS = {
+    "executive": _executive,
+    "progress_report": _progress_report,
+    "schedule": _schedule,
+    "task_report": _task_report,
+    "management": _management,
+    "risks": _risks,
+    "deliverables": _deliverables,
+}
+
+#: Laporan bernama di halaman Laporan (R8.3); dataset lain hanya untuk unduhan.
+REPORTS = {
+    "executive": ("Executive Summary", "Ringkasan eksekutif per project."),
+    "progress_report": ("Progress", "Rencana, aktual, tren, dan progress per phase."),
+    "schedule": ("Jadwal", "Baseline vs jadwal saat ini, deviasi, dan milestone."),
+    "task_report": ("Task", "Distribusi task per status dan pelaksana."),
+    "management": ("Manajemen", "Portfolio, health, dan hal yang perlu perhatian."),
+}
+
+#: Dataset berisi detail task teknis: tidak untuk role Management (PRD §21.4).
+TASK_DETAIL_DATASETS = {"tasks", "timeline", "schedule"}
+#: Dataset internal: tidak untuk role tanpa ``project.view_internal`` (Client).
+INTERNAL_DATASETS = {"issues", "risks", "summary"}
+
+
+def dataset_problem(user, dataset) -> str:
+    from apps.identity.permissions import can_view_internal, is_management
+
+    if dataset in TASK_DETAIL_DATASETS and is_management(user) and not user.is_staff:
+        return "Laporan ini berisi detail task teknis dan tidak tersedia untuk role Management."
+    if dataset in INTERNAL_DATASETS and not can_view_internal(user):
+        return "Laporan ini berisi data internal project."
+    return ""
+
+
+def report_projects(user):
+    from .services import with_project_metrics
+
+    return (
+        with_project_metrics(visible_projects(user)).prefetch_related("snapshots").order_by("code")
+    )
 
 
 def safe_cell(value):
@@ -144,11 +481,17 @@ def safe_cell(value):
 
 @login_required
 def export_report(request):
-    projects = (
-        visible_projects(request.user)
-        .select_related("manager")
-        .prefetch_related("baseline_points", "tasks", "phases", "milestones")
-    )
+    """Unduh laporan; butuh ``report.export`` dan hanya memuat data yang boleh dilihat."""
+    from django.core.exceptions import PermissionDenied
+
+    from apps.identity.roles import has_perm
+
+    if not has_perm(request.user, "report.export"):
+        raise PermissionDenied
+    problem = dataset_problem(request.user, request.GET.get("dataset", "summary"))
+    if problem:
+        raise PermissionDenied(problem)
+    projects = report_projects(request.user)
     if request.GET.get("project"):
         try:
             project_id = int(request.GET["project"])
@@ -254,3 +597,48 @@ def export_report(request):
         raise Http404("Format export tidak tersedia.")
     response["Content-Disposition"] = f'attachment; filename="{filename}.{kind}"'
     return response
+
+
+@login_required
+def report_detail(request, kind):
+    """Halaman laporan R8.3; isinya sama persis dengan unduhan dataset yang sama."""
+    from django.core.exceptions import PermissionDenied
+    from django.shortcuts import render
+
+    from apps.identity.roles import has_perm
+
+    if kind not in REPORTS:
+        raise Http404("Jenis laporan tidak tersedia.")
+    if not has_perm(request.user, "report.view"):
+        raise PermissionDenied
+    problem = dataset_problem(request.user, kind)
+    if problem:
+        raise PermissionDenied(problem)
+    projects = report_projects(request.user)
+    selected = None
+    if request.GET.get("project", "").isdigit():
+        selected = get_object_or_404(projects, pk=int(request.GET["project"]))
+        rows_source = projects.filter(pk=selected.pk)
+    else:
+        rows_source = projects
+    headers, rows = export_rows(rows_source, kind)
+    title, description = REPORTS[kind]
+    return render(
+        request,
+        "projects/portfolio/report_detail.html",
+        {
+            "kind": kind,
+            "title": title,
+            "description": description,
+            "headers": headers,
+            "rows": rows,
+            "projects": projects,
+            "selected": selected,
+            "reports": [
+                (key, label)
+                for key, (label, _) in REPORTS.items()
+                if not dataset_problem(request.user, key)
+            ],
+            "can_export": has_perm(request.user, "report.export"),
+        },
+    )

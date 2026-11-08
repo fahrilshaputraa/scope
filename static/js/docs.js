@@ -3,7 +3,7 @@
     const page = document.querySelector('[data-docs-page]');
     if (!page) return;
 
-    const menu = page.querySelector('.docs-menu');
+    const menu = document.querySelector('.docs-menu'); // lives in the settings sidebar, outside the page
     const mobile = window.matchMedia('(max-width: 767px)');
     const setMenu = () => { if (menu) menu.open = !mobile.matches; };
     setMenu();

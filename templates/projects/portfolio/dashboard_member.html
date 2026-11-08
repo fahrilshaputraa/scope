@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% load pcc_tags %}
+{% block title %}Dashboard — Scope{% endblock %}
+{% block content %}
+<div class="flex flex-wrap items-end justify-between gap-4"><div><h1 class="dashboard-page-title">Pekerjaan Anda</h1><p class="dashboard-page-subtitle">Task yang perlu dikerjakan, yang terlambat atau terhambat, dan yang menunggu pemeriksaan.</p></div><a class="pcc-button" href="{% url 'work:my_tasks' %}">Buka pekerjaan saya</a></div>
+<nav class="dashboard-summary" aria-label="Ringkasan pekerjaan" data-member-summary>
+  <span><strong>{{ assigned_count }}</strong> task terbuka</span>
+  {% for section in sections %}<span><strong>{{ section.count }}</strong> {{ section.label|lower }}</span>{% endfor %}
+  {% if reviews %}<a href="{% url 'governance:my_reviews' %}"><strong>{{ reviews|length }}</strong> perlu Anda periksa</a>{% endif %}
+</nav>
+<div class="overview-pair mt-6">
+{% for section in sections %}{% if section.count %}
+  <section class="pcc-panel min-w-0" aria-labelledby="member-{{ section.key }}" data-member-section="{{ section.key }}">
+    <div class="pcc-section border-b"><h2 id="member-{{ section.key }}">{{ section.label }} · {{ section.count }}</h2></div>
+    <ul class="overview-list">
+      {% for task in section.tasks %}<li><span class="{{ task.status|status_style }}">{{ task.status|status_label }}</span><div><a href="{% url 'work:task_detail' task.pk %}">{{ task.title }}</a><p>{{ task.project.code }}{% if task.due_date %} · target {{ task.due_date|date:"d M" }}{% endif %}</p></div><span class="row-meta tabular-nums">{{ task.display_progress|floatformat:0 }}%</span></li>{% empty %}<li class="overview-empty">Tidak ada.</li>{% endfor %}
+    </ul>
+  </section>
+{% endif %}{% endfor %}
+  {% if not assigned_count %}<section class="pcc-panel min-w-0 empty-state"><h2>Tidak ada task terbuka</h2><p>Task yang ditugaskan kepada Anda akan muncul di sini, diurutkan dari yang paling mendesak.</p></section>{% endif %}
+  <section class="pcc-panel min-w-0" aria-labelledby="member-updates">
+    <div class="pcc-section border-b"><h2 id="member-updates">Pembaruan terbaru</h2></div>
+    <ul class="overview-list">{% for event in activity %}<li><span class="row-meta">{{ event.created_at|date:"d M H:i" }}</span><div><span>{{ event.message }}</span><p>{{ event.project.code }} · {{ event.actor|person_name|default:"Sistem" }}</p></div></li>{% empty %}<li class="overview-empty">Belum ada pembaruan.</li>{% endfor %}</ul>
+  </section>
+</div>
+{% endblock %}

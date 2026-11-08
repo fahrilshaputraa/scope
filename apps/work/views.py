@@ -13,10 +13,10 @@ from django.http import FileResponse, Http404, HttpRequest, HttpResponse, JsonRe
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
-from django.utils.dateparse import parse_date
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_http_methods, require_POST
 
+from apps.governance.services import task_review_context
 from apps.identity.permissions import (
     can_comment,
     can_execute_task,
@@ -221,9 +221,9 @@ def my_tasks(request: HttpRequest) -> HttpResponse:
     if due_filter == "overdue":
         filtered = filtered.filter(due_date__lt=today).exclude(status=TaskStatus.DONE)
     elif due_filter == "soon":
-        filtered = filtered.filter(
-            due_date__gte=today, due_date__lte=soon_end
-        ).exclude(status=TaskStatus.DONE)
+        filtered = filtered.filter(due_date__gte=today, due_date__lte=soon_end).exclude(
+            status=TaskStatus.DONE
+        )
     elif due_filter == "none":
         filtered = filtered.filter(due_date__isnull=True).exclude(status=TaskStatus.DONE)
 
@@ -238,9 +238,7 @@ def my_tasks(request: HttpRequest) -> HttpResponse:
     # Existing status sections stay intact for callers that read these keys.
     current = [task for task in tasks if task.status == TaskStatus.IN_PROGRESS]
     review = [task for task in tasks if task.status == TaskStatus.REVIEW]
-    next_up = [
-        task for task in tasks if task.status in (TaskStatus.TODO, TaskStatus.BACKLOG)
-    ][:10]
+    next_up = [task for task in tasks if task.status in (TaskStatus.TODO, TaskStatus.BACKLOG)][:10]
     blocked = [task for task in tasks if task.status == TaskStatus.BLOCKED]
     done = sorted(
         (task for task in tasks if task.status == TaskStatus.DONE),
@@ -274,9 +272,7 @@ def my_tasks(request: HttpRequest) -> HttpResponse:
         for task in tasks:
             if task.status == TaskStatus.DONE:
                 continue
-            entry = grouped.setdefault(
-                task.project_id, {"project": task.project, "tasks": []}
-            )
+            entry = grouped.setdefault(task.project_id, {"project": task.project, "tasks": []})
             entry["tasks"].append(task)
         project_groups = sorted(
             grouped.values(),
@@ -394,9 +390,7 @@ def issue_update(request: HttpRequest, pk: int) -> HttpResponse:
             thread(issue.project, CommentTarget.ISSUE, issue.pk, limit=None),
             THREAD_PAGE_SIZE,
         ),
-        "comment_count": thread(
-            issue.project, CommentTarget.ISSUE, issue.pk, limit=None
-        ).count(),
+        "comment_count": thread(issue.project, CommentTarget.ISSUE, issue.pk, limit=None).count(),
         "can_comment": can_comment(request.user),
     }
     comment_context["comments_page"] = comment_context["comments"]
@@ -447,8 +441,13 @@ def issue_update(request: HttpRequest, pk: int) -> HttpResponse:
     return render(
         request,
         "work/issue_form.html",
-        {"form": form, "project": issue.project, "issue": issue, "title": issue.title,
-         **comment_context},
+        {
+            "form": form,
+            "project": issue.project,
+            "issue": issue,
+            "title": issue.title,
+            **comment_context,
+        },
     )
 
 
@@ -593,7 +592,7 @@ def task_detail(request: HttpRequest, pk: int) -> HttpResponse:
                     recipients=comment_form.mentioned_users,
                     title=f"Anda disebut di komentar: {task.title}",
                     body=(
-                        f'{user_display(request.user)} menyebut Anda dalam komentar '
+                        f"{user_display(request.user)} menyebut Anda dalam komentar "
                         f'di task "{task.title}".'
                     ),
                     url=reverse("work:task_detail", args=[task.pk]),
@@ -614,6 +613,7 @@ def task_detail(request: HttpRequest, pk: int) -> HttpResponse:
             "comments_page": comments_page,
             "can_comment": can_comment(request.user),
             "attachment_form": AttachmentForm(),
+            **task_review_context(task),
             **watch_state(request.user, SubscriptionTarget.TASK, task.pk),
         },
     )
@@ -644,6 +644,14 @@ def task_update(request: HttpRequest, pk: int) -> HttpResponse:
     )
     if request.method == "POST" and form.is_valid():
         task = form.save()
+        from apps.governance.services import sync_task_review
+
+        try:
+            sync_task_review(task, old_status, request.user)
+        except ValidationError as exc:
+            transaction.set_rollback(True)
+            messages.error(request, " ".join(exc.messages))
+            return redirect("work:task_detail", pk=task.pk)
         if work_update and request.GET.get("clear_column") == "true":
             task.board_column = None
             task.save(update_fields=["board_column", "updated_at"])
@@ -720,9 +728,10 @@ def task_restore(request, pk):
     )
     if not can_manage_project(request.user, task.project):
         raise PermissionDenied
-    if task.parent_task_id and Task.all_objects.filter(
-        pk=task.parent_task_id, archived_at__isnull=False
-    ).exists():
+    if (
+        task.parent_task_id
+        and Task.all_objects.filter(pk=task.parent_task_id, archived_at__isnull=False).exists()
+    ):
         messages.error(request, "Pulihkan activity induk terlebih dahulu.")
         return redirect("projects:project_tasks", pk=task.project_id)
     if task.restore():
@@ -776,6 +785,13 @@ def task_status(request, pk):
     except ValidationError as exc:
         return JsonResponse({"ok": False, "error": " ".join(exc.messages)}, status=400)
     task.save()
+    from apps.governance.services import sync_task_review
+
+    try:
+        sync_task_review(task, old_status, request.user)
+    except ValidationError as exc:
+        transaction.set_rollback(True)
+        return JsonResponse({"ok": False, "error": " ".join(exc.messages)}, status=400)
     record_activity(
         task.project,
         request.user,
@@ -803,6 +819,10 @@ def task_progress(request, pk):
             {"ok": False, "error": "Progress activity dihitung otomatis dari detail activity."},
             status=400,
         )
+    if task.progress_method == "status":
+        return JsonResponse(
+            {"ok": False, "error": "Progress task ini dihitung dari statusnya."}, status=400
+        )
     try:
         value = Decimal(_params(request).get("progress", ""))
         if not value.is_finite() or not 0 <= value <= 100:
@@ -828,38 +848,62 @@ def task_progress(request, pk):
 @require_http_methods(["PATCH", "POST"])
 @transaction.atomic
 def task_dates(request, pk):
-    task = _task_or_404(request, pk)
+    """Gantt drag/resize/date edit (G4-G7). Only the current schedule changes.
+
+    Optional ``shift_successors=true`` pushes conflicting successors later (G7) and
+    ``preview=true`` returns the impact without saving. Rule violations answer 400
+    with a ``code``; an unconfirmed successor conflict answers 409 with ``impact``.
+    """
+    from .gantt import Plan, parse_day
+    from .gantt_views import fail, schedule
+
+    try:
+        task = _task_or_404(request, pk)
+    except Http404:
+        return fail("Task tidak ditemukan atau Anda tidak punya akses.", 404)
     if not can_manage_project(request.user, task.project):
         return JsonResponse(
-            {"ok": False, "error": "Hanya PM project yang dapat mengubah jadwal."}, status=403
+            {
+                "ok": False,
+                "code": "permission",
+                "error": "Hanya PM project atau Admin yang dapat mengubah jadwal.",
+            },
+            status=403,
         )
     params = _params(request)
     try:
-        start, end = parse_date(params.get("start", "")), parse_date(params.get("end", ""))
+        start, end = parse_day(params.get("start", "")), parse_day(params.get("end", ""))
     except ValueError:
         start, end = None, None
     if not start or not end or end < start:
         return JsonResponse(
             {
                 "ok": False,
+                "code": "order",
                 "error": (
                     "Tanggal mulai dan selesai harus valid; selesai tidak boleh sebelum mulai."
                 ),
             },
             status=400,
         )
-    task.start_date, task.due_date = start, end
-    task.save(update_fields=["start_date", "due_date", "updated_at"])
-    record_activity(
+    plan = Plan.load(task.project)
+    plan.move(plan.tasks[task.pk], start, end)
+    response = schedule(
+        request,
         task.project,
-        request.user,
-        ActivityAction.TIMELINE_CHANGED,
-        f'Timeline task "{task.title}" diubah.',
-        target=task,
+        plan,
+        primary={task.pk},
+        shift=params.get("shift_successors") == "true",
+        preview=params.get("preview") == "true",
+        reason="Timeline",
     )
-    return JsonResponse(
-        {"ok": True, "id": task.pk, "start": start.isoformat(), "end": end.isoformat()}
-    )
+    if response.status_code == 200 and b'"preview"' not in response.content:
+        import json
+
+        payload = json.loads(response.content)
+        payload.update(id=task.pk, start=start.isoformat(), end=end.isoformat())
+        return JsonResponse(payload)
+    return response
 
 
 @login_required
@@ -891,7 +935,11 @@ def attachment_download(request, pk):
     attachment = get_object_or_404(
         TaskAttachment, pk=pk, task__project__in=visible_projects(request.user)
     )
-    return FileResponse(attachment.file.open("rb"), as_attachment=True, filename=attachment.name)
+    response = FileResponse(
+        attachment.file.open("rb"), as_attachment=True, filename=attachment.name
+    )
+    response["X-Content-Type-Options"] = "nosniff"
+    return response
 
 
 @login_required

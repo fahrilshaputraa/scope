@@ -1,0 +1,7 @@
+{% load pcc_tags %}
+<section class="pcc-panel min-w-0" aria-labelledby="health-dist" data-health-distribution>
+  <div class="pcc-section border-b"><h2 id="health-dist">Distribusi health</h2><p class="mt-1 text-xs text-muted-foreground">{{ health.assessed }} project berjalan dinilai{% if health.unassessed %}; {{ health.unassessed }} belum dinilai (draf, perencanaan, atau selesai){% endif %}.</p></div>
+  <ul class="overview-list">
+    {% for row in health.rows %}<li><span class="{{ row.status|health_style }}">{{ row.label }}</span><div><progress class="pcc-progress" value="{{ row.share }}" max="100" aria-label="{{ row.label }} {{ row.share }}%"></progress></div><span class="row-meta tabular-nums">{{ row.count }} · {{ row.share }}%</span></li>{% endfor %}
+  </ul>
+</section>

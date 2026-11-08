@@ -143,8 +143,8 @@ def test_gantt_validates_and_persists_dates(client, setup_project):
     )
     task.refresh_from_db()
     assert task.start_date == date(2026, 10, 3) and task.due_date == date(2026, 10, 12)
-    rendered = client.get(reverse("projects:project_timeline", args=[p.pk])).content
-    assert b"Edit jadwal" in rendered
+    gantt = client.get(reverse("projects:project_timeline", args=[p.pk])).context["gantt"]
+    assert gantt["editable"] and gantt["urls"]["dates"] == reverse("work:task_dates", args=[0])
 
 
 def test_blocked_requires_reason_and_dependencies_gate_start(client, setup_project):
@@ -480,10 +480,11 @@ def test_schedule_views_and_blocked_work_are_separate(client, setup_project):
     assert task not in response.context["next_up"]
     url = reverse("projects:project_timeline", args=[project.pk])
     response = client.get(url)
-    assert b'data-fullscreen-panel="Timeline saat ini"' in response.content
-    assert b"?mode=update" in response.content
-    assert b"task-plan-fill" in response.content and b"task-actual-fill" in response.content
-    assert b"Perubahan tanggal dari baseline" in response.content
+    assert b'data-fullscreen-panel="Jadwal project"' in response.content
+    assert b"?mode=update" in response.content  # assignee opens the update drawer from a bar
+    gantt = response.context["gantt"]
+    assert not gantt["editable"] and "urls" not in gantt
+    assert any(row.get("task") == task.pk and row["status"] == "blocked" for row in gantt["rows"])
 
 
 def test_collaborator_can_update_shared_task_without_double_counting(client, setup_project):

@@ -3,7 +3,7 @@
 {% block project_content %}
     <div class="mt-6 flex flex-wrap items-center justify-between gap-3">
         <div>
-            <h2 class="text-lg font-normal tracking-tight">Kanban Board</h2>
+            <h2 class="text-lg font-normal tracking-tight">Papan task</h2>
             <p class="text-sm text-muted-foreground">Seret kartu untuk memindahkan status. Buka “Perbarui task” untuk mengubah detail.</p>
         </div>
         {% if can_manage %}
@@ -40,7 +40,7 @@
                     {% for task in tasks %}
                         {% include "projects/partials/_kanban_task.html" %}
                     {% empty %}
-                        <p class="flex-1 py-6 text-center text-xs text-muted-foreground">Drop task di sini</p>
+                        <p class="flex-1 py-6 text-center text-xs text-muted-foreground">Seret task ke sini</p>
                     {% endfor %}
                 </div>
             </div>

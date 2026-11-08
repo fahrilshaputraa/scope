@@ -18,6 +18,4 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         frequency = options["frequency"]
         count = deliver_digest(frequency)
-        self.stdout.write(
-            self.style.SUCCESS(f"Sent {count} {frequency} notification digest(s).")
-        )
+        self.stdout.write(self.style.SUCCESS(f"Sent {count} {frequency} notification digest(s)."))

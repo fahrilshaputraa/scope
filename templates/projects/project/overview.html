@@ -1,36 +1,62 @@
 {% extends "projects/_base.html" %}
 {% load pcc_tags static %}
 {% block project_content %}
-<section class="pcc-panel mt-6" data-fullscreen-panel="Plan vs actual" data-expand-label="Presentasi">
+{# U2: satu layar menjawab "bagaimana kondisinya dan apa yang harus dilakukan sekarang". #}
+{% if readiness %}
+<section class="pcc-panel mt-6 readiness" aria-labelledby="readiness-title" data-readiness>
+  <div class="pcc-section border-b visualization-toolbar">
+    <div><h2 id="readiness-title">Siap berjalan · {{ readiness.done }} dari {{ readiness.total }}</h2><p class="mt-1 text-sm text-muted-foreground">{% if readiness.ready %}Semua syarat terpenuhi. Mulai project agar progress dan health dipantau harian.{% else %}Lengkapi syarat berikut sebelum project mulai berjalan.{% endif %}</p></div>
+    {% if readiness.can_start %}<form method="post" action="{% url 'projects:project_start' project.pk %}" data-confirm="Mulai project sekarang? Status berubah menjadi Berjalan dan health mulai dihitung.">{% csrf_token %}<button class="pcc-button" type="submit"><svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m7 4 13 8-13 8z"/></svg>Mulai project</button></form>{% endif %}
+  </div>
+  <progress class="pcc-progress readiness-bar" value="{{ readiness.done }}" max="{{ readiness.total }}" aria-label="{{ readiness.done }} dari {{ readiness.total }} syarat terpenuhi"></progress>
+  <ol class="readiness-list">
+    {% for step in readiness.steps %}
+    <li class="{% if step.done %}is-done{% endif %}" data-ready-step="{{ step.key }}">
+      <span class="readiness-mark" aria-hidden="true">{% if step.done %}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>{% endif %}</span>
+      <div><span>{{ step.label }}</span><span class="sr-only">{% if step.done %} — selesai{% else %} — belum{% endif %}</span>{% if step.hint and not step.done %}<p>{{ step.hint }}</p>{% endif %}</div>
+      {% if not step.done and step.action %}
+        {% if step.action.post %}<form method="post" action="{{ step.action.url }}">{% csrf_token %}<input type="hidden" name="next" value="{{ request.path }}"><button type="submit" class="pcc-button pcc-button-secondary">{{ step.action.label }}</button></form>
+        {% else %}<a {% if step.action.drawer %}data-project-action {% endif %}class="pcc-button pcc-button-secondary" href="{{ step.action.url }}">{{ step.action.label }}</a>{% endif %}
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ol>
+</section>
+{% endif %}
+<div class="overview-main mt-6">
+  <section class="pcc-panel min-w-0" data-fullscreen-panel="Plan vs actual" data-expand-label="Presentasi">
     <div class="pcc-section border-b visualization-toolbar">
-        <div><h2 class="text-xl">Rencana vs progress</h2><p class="mt-1 text-sm text-muted-foreground">{{ health.variance|variance_summary }}</p></div>
-        <div data-visualization-actions><a class="pcc-button pcc-button-secondary" href="{% url 'projects:project_progress' project.pk %}"><svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 17l5-5 4 3 7-8M3 21h18"/></svg>Detail progress</a></div>
+      <div><h2>Rencana vs aktual</h2><p class="mt-1 text-sm text-muted-foreground">{{ health.variance|variance_summary }}</p></div>
+      <div data-visualization-actions><a class="subtle-action" href="{% url 'projects:project_progress' project.pk %}">Detail progress</a></div>
     </div>
     <div class="pcc-section">
-        {% if chart_has_plan %}<div class="overview-chart" data-chart-frame><canvas id="progress-chart" role="img" aria-label="Rencana {{ health.planned|pct }} dibanding progress {{ health.progress|pct }}"></canvas></div>
-        {% else %}<div class="py-12"><h3>Rencana progress belum tersedia.</h3><p class="mt-2 text-sm text-muted-foreground">Progress saat ini {{ health.progress|pct }}. Tambahkan baseline di tab Progress untuk melihat perbandingan.</p>{% if can_manage %}<a class="pcc-button pcc-button-secondary mt-4" href="{% url 'projects:project_progress' project.pk %}"><svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 17l5-5 4 3 7-8M3 21h18"/></svg>Atur rencana progress</a>{% endif %}</div>{% endif %}
+      {% if chart_has_plan %}<div class="overview-chart" data-chart-frame><canvas id="progress-chart" role="img" aria-label="Rencana {{ health.planned|pct }} dibanding aktual {{ health.progress|pct }}"></canvas></div>
+      {% else %}<div class="empty-state"><h3>Belum ada rencana untuk dibandingkan</h3><p>Aktual saat ini {{ health.progress|pct }}. Kurva rencana muncul setelah baseline dibuat dari jadwal.</p>{% if can_manage and not readiness %}<div class="empty-state-actions"><form method="post" action="{% url 'projects:capture_baseline' project.pk %}">{% csrf_token %}<input type="hidden" name="next" value="{{ request.path }}"><button class="pcc-button pcc-button-secondary" type="submit">Buat baseline dari jadwal</button></form></div>{% endif %}</div>{% endif %}
     </div>
-</section>
-<div class="overview-pair mt-6">
-    <section class="pcc-panel min-w-0" aria-labelledby="overview-attention-title">
-        <div class="pcc-section border-b visualization-toolbar"><h2 id="overview-attention-title">Perlu ditindaklanjuti</h2>{% if can_view_internal %}<a class="subtle-action" href="{% url 'projects:project_issues' project.pk %}">Semua masalah ({{ health.open_issues }})</a>{% endif %}</div>
-        <ul class="overview-list">
-            {% for task in blocked_work %}<li><span class="{{ 'blocked'|status_style }}">Terhambat</span><div><a href="{% url 'work:task_detail' task.pk %}">{{ task.title }}</a><p>{{ task.blocked_reason|default:"Alasan belum dicatat."|truncatechars:120 }}</p></div><span class="row-meta">{{ task.assignee_names }}</span></li>{% endfor %}
-            {% for task in overdue_work %}<li><span class="{{ 'delayed'|status_style }}">Terlambat</span><div><a href="{% url 'work:task_detail' task.pk %}">{{ task.title }}</a><p>Target {{ task.due_date|date:"d M Y" }} · progress {{ task.display_progress|floatformat:0 }}%</p></div><span class="row-meta">{{ task.assignee_names }}</span></li>{% endfor %}
-            {% if overdue_more %}<li class="overview-empty"><a href="{% url 'projects:project_tasks' project.pk %}">+{{ overdue_more }} task terlambat lainnya</a></li>{% endif %}
-            {% if can_view_internal %}{% for issue in open_issues|slice:":2" %}<li><span class="issue-severity" data-severity="{{ issue.severity }}">{{ issue.severity|severity_label }}</span><div><a href="{% url 'work:issue_update' issue.pk %}">{{ issue.title }}</a><p>{{ issue.status|status_label }}{% if issue.due_date %} · target {{ issue.due_date|date:"d M" }}{% endif %}</p></div><span class="row-meta">{{ issue.owner|person_name|default:"Belum ada penanggung jawab" }}</span></li>{% endfor %}{% endif %}
-            {% if not blocked_work and not overdue_work and not open_issues or not blocked_work and not overdue_work and not can_view_internal %}<li class="overview-empty">Tidak ada hambatan, keterlambatan, atau masalah terbuka. Project berjalan sesuai catatan terakhir.</li>{% endif %}
-        </ul>
+  </section>
+  <div class="overview-side">
+    <section class="pcc-panel min-w-0" aria-labelledby="overview-attention-title" data-next-actions>
+      <div class="pcc-section border-b visualization-toolbar"><h2 id="overview-attention-title">Lakukan sekarang</h2>{% if can_view_internal %}<a class="subtle-action" href="{% url 'projects:project_issues' project.pk %}">Masalah ({{ health.open_issues }})</a>{% endif %}</div>
+      <ul class="overview-list action-list">
+        {% for item in next_actions %}<li><span class="{% if item.tone == 'issue' %}issue-severity{% elif item.tone == 'danger' %}{{ 'blocked'|status_style }}{% elif item.tone == 'warning' %}{{ 'delayed'|status_style }}{% else %}pcc-status pcc-status-info{% endif %}"{% if item.severity %} data-severity="{{ item.severity }}"{% endif %}>{{ item.badge }}</span><div><a href="{{ item.url }}"{% if item.drawer and can_manage %} data-project-action{% endif %}>{{ item.title }}</a><p>{{ item.meta|truncatechars:90 }}{% if item.who %} · {{ item.who }}{% endif %}</p></div></li>
+        {% empty %}<li class="overview-empty">Tidak ada hambatan, keterlambatan, atau masalah penting. Lanjutkan pekerjaan berjalan.</li>{% endfor %}
+        {% if next_actions_more %}<li class="overview-empty"><a class="underline" href="{% url 'projects:project_tasks' project.pk %}?view=list&amp;filter=overdue">+{{ next_actions_more }} hal lainnya</a></li>{% endif %}
+      </ul>
     </section>
-    <section class="pcc-panel min-w-0" aria-labelledby="overview-work-title">
-        <div class="pcc-section border-b visualization-toolbar"><h2 id="overview-work-title">Pekerjaan berjalan</h2><span class="overview-links"><a class="subtle-action" href="{% url 'projects:project_tasks' project.pk %}">Papan task</a><a class="subtle-action" href="{% url 'projects:project_timeline' project.pk %}">Jadwal</a></span></div>
-        <ul class="overview-list">
-            {% for task in current_work|slice:":5" %}<li><span class="overview-progress tabular-nums">{{ task.display_progress|floatformat:0 }}%</span><div><a href="{% url 'work:task_detail' task.pk %}">{{ task.title }}</a><p>{{ task.due_date|date:"d M"|default:"Tanpa target" }}</p></div><span class="row-meta">{{ task.assignee_names }}</span></li>{% empty %}<li class="overview-empty">Belum ada task yang sedang dikerjakan.</li>{% endfor %}
-        </ul>
-        {% with milestone=project.next_milestone %}{% if milestone %}<div class="pcc-section border-t overview-milestone"><span class="text-xs text-muted-foreground">Milestone berikutnya</span><p><a class="underline" href="{% url 'projects:project_milestones' project.pk %}">{{ milestone.name }}</a> · {{ milestone.date|date:"d M Y" }}</p></div>{% endif %}{% endwith %}
+    <section class="pcc-panel min-w-0" aria-labelledby="overview-ms-title">
+      <div class="pcc-section border-b visualization-toolbar"><h2 id="overview-ms-title">Milestone berikutnya</h2><a class="subtle-action" href="{% url 'projects:project_milestones' project.pk %}">Semua</a></div>
+      {% with milestone=project.next_milestone %}{% if milestone %}<div class="pcc-section overview-milestone"><p class="text-lg">{{ milestone.name }}</p><p class="mt-1 text-sm text-muted-foreground tabular-nums">{{ milestone.date|date:"d M Y" }} · {% if milestone.date < today %}terlewat {{ milestone.date|timesince:today }}{% elif milestone.date == today %}hari ini{% else %}{{ milestone.date|timeuntil:today }} lagi{% endif %}</p></div>
+      {% else %}<div class="pcc-section text-sm text-muted-foreground">Belum ada milestone mendatang.{% if can_manage %} <a data-project-action class="underline" href="{% url 'projects:milestone_create' project.pk %}">Tambah milestone</a>{% endif %}</div>{% endif %}{% endwith %}
     </section>
+  </div>
 </div>
-{% if can_view_internal %}<details class="pcc-panel mt-6"><summary class="pcc-section cursor-pointer">Aktivitas terbaru</summary><ul class="divide-y">{% for event in activities %}<li class="pcc-section text-sm">{{ event.message }}<p class="mt-2 text-xs text-muted-foreground">{{ event.actor|person_name|default:"System" }} · {{ event.created_at|date:"d M H:i" }}</p></li>{% empty %}<li class="pcc-section text-sm">Belum ada aktivitas.</li>{% endfor %}</ul><a class="block pcc-section text-sm underline" href="{% url 'projects:project_activity' project.pk %}">Semua aktivitas</a></details>{% endif %}
+<section class="pcc-panel mt-6 min-w-0" aria-labelledby="overview-work-title">
+  <div class="pcc-section border-b visualization-toolbar"><h2 id="overview-work-title">Pekerjaan berjalan</h2><span class="overview-links"><a class="subtle-action" href="{% url 'projects:project_tasks' project.pk %}?view=list">Daftar</a><a class="subtle-action" href="{% url 'projects:project_timeline' project.pk %}">Jadwal</a></span></div>
+  <ul class="overview-list">
+    {% for task in current_work|slice:":5" %}<li><span class="overview-progress tabular-nums">{{ task.display_progress|floatformat:0 }}%</span><div><a href="{% url 'work:task_detail' task.pk %}">{{ task.title }}</a><p>{{ task.due_date|date:"d M"|default:"Tanpa target" }}</p></div><span class="row-meta">{{ task.assignee_names }}</span></li>{% empty %}<li class="overview-empty">Belum ada task yang sedang dikerjakan.{% if can_manage %} <a class="underline" href="{% url 'projects:project_timeline' project.pk %}">Buka jadwal</a> untuk menyusun pekerjaan.{% endif %}</li>{% endfor %}
+  </ul>
+</section>
+{% if can_view_internal %}<details class="pcc-panel mt-6"><summary class="pcc-section cursor-pointer">Aktivitas terbaru</summary><ul class="divide-y">{% for event in activities %}<li class="pcc-section text-sm">{{ event.message }}<p class="mt-2 text-xs text-muted-foreground">{{ event.actor|person_name|default:"Sistem" }} · {{ event.created_at|date:"d M H:i" }}</p></li>{% empty %}<li class="pcc-section text-sm">Belum ada aktivitas.</li>{% endfor %}</ul><a class="block pcc-section text-sm underline" href="{% url 'projects:project_activity' project.pk %}">Semua aktivitas</a></details>{% endif %}
 <details class="pcc-panel mt-6"{% if comment_count %} open{% endif %}><summary class="pcc-section cursor-pointer">Diskusi project <span class="text-xs text-muted-foreground">({{ comment_count }})</span></summary>{% include "work/partials/_comment_thread.html" with comments=comments comment_count=comment_count target_type="project" target_id=project.pk heading="Diskusi project" %}</details>
 {% endblock %}
 {% block extra_js %}{% if chart_has_plan %}{% include "projects/partials/_progress_chart.html" %}{% endif %}{% endblock %}

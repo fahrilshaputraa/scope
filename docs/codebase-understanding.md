@@ -1,3 +1,9 @@
+> **ARSIP HISTORIS.** Dokumen ini adalah audit awal dan tidak lagi mencerminkan kondisi kode.
+> Status terkini: sistem role admin/pm/owner/management/member/client dengan
+> permission per role, baseline berversi, Progress Task, Project Control, tautan publik
+> (masa berlaku, kata sandi), lockout login, dan deployment Docker. Rujukan terbaru:
+> `README.md`, `PRD.md`, `docs/deployment.md`. Acuan "CashPilot" di bawah hanya konteks sejarah.
+
 # PCC: implementation compared with PRD
 
 ## Status setelah perbaikan

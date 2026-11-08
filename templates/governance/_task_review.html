@@ -1,0 +1,22 @@
+{% load pcc_tags %}
+{% if review_needed or review_requests %}
+<section class="pcc-panel" aria-labelledby="review-panel-title" data-task-review>
+  <div class="pcc-section border-b flex flex-wrap items-center justify-between gap-3">
+    <div><h2 id="review-panel-title" class="text-base font-normal">Pemeriksaan</h2><p class="mt-1 text-sm text-muted-foreground">{% if task.reviewer %}Reviewer: {{ task.reviewer|person_name }}.{% else %}Diperiksa sesuai aturan persetujuan project.{% endif %} Task selesai setelah hasilnya disetujui.</p></div>
+    {% if review_pending %}
+      <a class="pcc-button pcc-button-secondary" href="{% url 'governance:approval_detail' review_pending.pk %}">Menunggu pemeriksaan</a>
+    {% elif can_edit and review_needed and not task.is_done %}
+      <form method="post" action="{% url 'governance:task_submit' task.pk %}" class="flex flex-wrap items-end gap-2">{% csrf_token %}
+        <label class="sr-only" for="review-note">Catatan untuk reviewer</label>
+        <input id="review-note" name="note" class="pcc-field" maxlength="2000" placeholder="Catatan untuk reviewer (opsional)">
+        <button class="pcc-button">Kirim untuk diperiksa</button>
+      </form>
+    {% endif %}
+  </div>
+  {% if review_requests %}
+  <ul class="overview-list">
+    {% for r in review_requests %}<li><span class="{{ r.status|status_style }}">{{ r.get_status_display }}</span><div><a href="{% url 'governance:approval_detail' r.pk %}">Dikirim {{ r.created_at|date:"d M Y H:i" }}</a>{% for step in r.steps.all %}{% if step.reason %}<p>{{ step.approver|person_name }}: {{ step.reason }}</p>{% endif %}{% endfor %}</div><span class="row-meta">{{ r.requested_by|person_name }}</span></li>{% endfor %}
+  </ul>
+  {% endif %}
+</section>
+{% endif %}

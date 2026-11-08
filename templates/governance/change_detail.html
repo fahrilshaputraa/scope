@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% load pcc_tags %}
+{% block title %}CR-{{ change.pk }} — Scope{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-3xl">
+  <a class="text-sm text-muted-foreground hover:underline" href="{% url 'governance:project_approvals' project.pk %}">← {{ project.code }} · Persetujuan</a>
+  <div class="mt-3 flex flex-wrap items-start justify-between gap-4">
+    <div><h1 class="text-2xl font-normal">{{ change.title }}</h1><p class="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted-foreground"><span class="{{ change.status|status_style }}" data-change-status="{{ change.status }}">{{ change.get_status_display }}</span> CR-{{ change.pk }} · {{ change.get_classification_display }} · diajukan {{ change.requester|person_name|default:"—" }}</p></div>
+    <div class="flex flex-wrap gap-2">
+      {% if can_edit %}<a data-project-action class="pcc-button pcc-button-secondary" href="{% url 'governance:change_edit' change.pk %}">Edit</a><form method="post" action="{% url 'governance:change_submit' change.pk %}">{% csrf_token %}<button class="pcc-button">Ajukan</button></form>{% endif %}
+      {% if my_turn %}{% if change.status == 'submitted' %}<form method="post" action="{% url 'governance:change_review' change.pk %}">{% csrf_token %}<button class="pcc-button pcc-button-secondary">Mulai tinjau</button></form>{% endif %}<a class="pcc-button" href="{% url 'governance:approval_detail' my_turn.pk %}">Putuskan</a>{% endif %}
+      {% if can_apply %}<form method="post" action="{% url 'governance:change_apply' change.pk %}" data-confirm="Terapkan perubahan ini? Target project diperbarui dan versi baseline baru dibuat.">{% csrf_token %}<button class="pcc-button">Terapkan</button></form>{% endif %}
+    </div>
+  </div>
+  <section class="pcc-panel mt-6">
+    <dl class="pcc-section grid gap-4 sm:grid-cols-2 text-sm">
+      <div><dt class="text-muted-foreground">Alasan</dt><dd class="mt-1">{{ change.reason|linebreaksbr }}</dd></div>
+      <div><dt class="text-muted-foreground">Penilaian dampak</dt><dd class="mt-1">{{ change.impact_assessment|linebreaksbr }}</dd></div>
+      <div><dt class="text-muted-foreground">Dampak jadwal</dt><dd class="mt-1">{{ change.schedule_impact|default:"—"|linebreaksbr }}</dd></div>
+      <div><dt class="text-muted-foreground">Dampak scope</dt><dd class="mt-1">{{ change.scope_impact|default:"—"|linebreaksbr }}</dd></div>
+      <div><dt class="text-muted-foreground">Target selesai</dt><dd class="mt-1 tabular-nums">{{ project.target_end_date|date:"d M Y" }}{% if change.proposed_end_date %} → {{ change.proposed_end_date|date:"d M Y" }}{% endif %}</dd></div>
+      <div><dt class="text-muted-foreground">Baseline hasil perubahan</dt><dd class="mt-1">{% if change.applied_baseline %}v{{ change.applied_baseline.version }} · {{ change.applied_baseline.get_status_display }}{% else %}—{% endif %}</dd></div>
+      {% if change.description %}<div class="sm:col-span-2"><dt class="text-muted-foreground">Rincian</dt><dd class="mt-1">{{ change.description|linebreaksbr }}</dd></div>{% endif %}
+    </dl>
+    {% if change.status == 'approved' %}<p class="pcc-section border-t text-sm text-muted-foreground" role="status">Disetujui. Selama belum diterapkan, PM dapat menyesuaikan deadline, milestone, bobot, dan deliverable meski kontrol perubahan aktif.</p>{% elif change.status == 'rejected' %}<p class="pcc-section border-t text-sm" role="status">Ditolak dan tidak dapat diterapkan.</p>{% endif %}
+  </section>
+  {% include "governance/_approval_history.html" %}
+</div>
+{% endblock %}

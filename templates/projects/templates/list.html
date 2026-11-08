@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% load pcc_tags %}
+{% block title %}Template project — Scope{% endblock %}
+{% block subnav %}{% include "identity/_settings_nav.html" with active_settings="templates" %}{% endblock %}
+{% block content %}
+<div class="flex flex-wrap items-end justify-between gap-4">
+  <div><h1 class="dashboard-page-title">Template project</h1><p class="dashboard-page-subtitle">Struktur siap pakai untuk mempercepat pembuatan rencana. Mengubah template tidak mengubah project yang sudah dibuat.</p></div>
+  <a data-project-action class="pcc-button" href="{% url 'projects:template_create' %}"><svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Template baru</a>
+</div>
+<section class="pcc-panel mt-6" data-template-list>
+  <div class="overflow-x-auto" tabindex="0" role="region" aria-label="Daftar template">
+    <table class="pcc-table responsive-table">
+      <thead><tr><th>Template</th><th>Jenis</th><th>Isi</th><th class="text-right">Versi</th><th class="text-right">Dipakai</th><th>Status</th><th></th></tr></thead>
+      <tbody>
+      {% for t in templates %}
+        <tr>
+          <td data-label="Template" class="control-task"><a data-project-action href="{% url 'projects:template_edit' t.pk %}">{{ t.name }}</a><small>{{ t.description|truncatechars:80|default:"—" }}</small></td>
+          <td data-label="Jenis">{{ t.project_type|project_type_label }}</td>
+          <td data-label="Isi" class="text-sm">{{ t.summary.phases }} phase · {{ t.summary.packages }} WP · {{ t.summary.tasks }} task · {{ t.summary.milestones }} milestone · {{ t.summary.days }} hari</td>
+          <td data-label="Versi" class="text-right tabular-nums">v{{ t.version }}</td>
+          <td data-label="Dipakai" class="text-right tabular-nums">{{ t.project_count }}</td>
+          <td data-label="Status">{% if t.is_active %}<span class="pcc-status pcc-status-success">Aktif</span>{% else %}<span class="pcc-status pcc-status-neutral">Nonaktif</span>{% endif %}</td>
+          <td class="text-right"><form method="post" action="{% url 'projects:template_delete' t.pk %}" data-confirm="Hapus template ini? Project yang dibuat darinya tidak berubah.">{% csrf_token %}<button class="text-xs underline">Hapus</button></form></td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="7" class="control-empty">Belum ada template. Buat dari outline, atau buka project yang rapi lalu pilih "Simpan sebagai template" di menu Lainnya.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% load pcc_tags %}
+{% block title %}Dashboard — Scope{% endblock %}
+{% block content %}
+<div><h1 class="dashboard-page-title">Project Anda</h1><p class="dashboard-page-subtitle">Progress, milestone, dan deliverable dari project yang dibagikan kepada Anda.</p></div>
+{% if pending %}
+<section class="pcc-panel mt-6" aria-labelledby="client-pending" data-pending-acceptance>
+  <div class="panel-heading"><h2 id="client-pending">Menunggu penerimaan Anda · {{ pending|length }}</h2></div>
+  <ul class="overview-list">{% for item in pending %}<li><span class="pcc-status pcc-status-info">{{ item.deliverable.get_status_display }}</span><div><a href="{% url 'governance:deliverable_detail' item.deliverable.pk %}">{{ item.deliverable.name }}</a><p>{{ item.deliverable.project.code }} · {{ item.deliverable.acceptance_criteria|truncatechars:90 }}</p></div><a class="pcc-button" href="{% url 'governance:approval_detail' item.step.request_id %}">Terima atau tolak</a></li>{% endfor %}</ul>
+</section>
+{% endif %}
+<section class="pcc-panel project-register mt-6" aria-labelledby="client-projects">
+  <div class="panel-heading"><h2 id="client-projects">Ringkasan project</h2></div>
+  <div class="overflow-x-auto" tabindex="0" role="region" aria-label="Project yang dibagikan"><table class="pcc-table responsive-table"><thead><tr><th>Project</th><th>Status</th><th class="text-right">Rencana</th><th class="text-right">Aktual</th><th class="text-right">Target</th></tr></thead><tbody>
+  {% for row in rows %}<tr><td data-label="Project" class="control-task"><a href="{% url 'projects:project_detail' row.project.pk %}">{{ row.project.name }}</a><small>{{ row.project.code }}</small></td><td data-label="Status"><span class="{{ row.project.lifecycle_status|lifecycle_style }}">{{ row.project.get_lifecycle_status_display }}</span></td><td data-label="Rencana" class="text-right tabular-nums">{{ row.planned|pct }}</td><td data-label="Aktual" class="text-right tabular-nums">{{ row.actual|pct }}</td><td data-label="Target" class="text-right tabular-nums">{{ row.project.target_end_date|date:"d M Y" }}</td></tr>{% empty %}<tr><td colspan="5" class="control-empty">Belum ada project yang dibagikan kepada Anda.</td></tr>{% endfor %}
+  </tbody></table></div>
+</section>
+<div class="overview-pair mt-6">
+  <section class="pcc-panel min-w-0" aria-labelledby="client-ms"><div class="pcc-section border-b"><h2 id="client-ms">Milestone mendatang</h2></div><ul class="overview-list">{% for ms in milestones %}<li><span class="tabular-nums overview-progress">{{ ms.date|date:"d M" }}</span><div><span>{{ ms.name }}</span><p>{{ ms.project.code }}</p></div></li>{% empty %}<li class="overview-empty">Tidak ada milestone mendatang.</li>{% endfor %}</ul></section>
+  <section class="pcc-panel min-w-0" aria-labelledby="client-deliv"><div class="pcc-section border-b"><h2 id="client-deliv">Deliverable</h2></div><ul class="overview-list">{% for d in deliverables %}<li><span class="{{ d.status|status_style }}">{{ d.get_status_display }}</span><div><a href="{% url 'governance:deliverable_detail' d.pk %}">{{ d.name }}</a><p>{{ d.project.code }}{% if d.due_date %} · target {{ d.due_date|date:"d M Y" }}{% endif %}</p></div></li>{% empty %}<li class="overview-empty">Belum ada deliverable.</li>{% endfor %}</ul></section>
+</div>
+<section class="pcc-panel mt-6" aria-labelledby="client-updates"><div class="pcc-section border-b"><h2 id="client-updates">Pembaruan terbaru</h2></div><ul class="overview-list">
+  {% for ms in updates %}<li><span class="pcc-status pcc-status-success">Milestone tercapai</span><div><span>{{ ms.name }}</span><p>{{ ms.project.code }} · {{ ms.date|date:"d M Y" }}</p></div></li>{% endfor %}
+  {% for d in accepted %}<li><span class="pcc-status pcc-status-success">Deliverable diterima</span><div><span>{{ d.name }}</span><p>{{ d.project.code }} · {{ d.updated_at|date:"d M Y" }}</p></div></li>{% endfor %}
+  {% if not updates and not accepted %}<li class="overview-empty">Belum ada pembaruan.</li>{% endif %}
+</ul></section>
+{% endblock %}

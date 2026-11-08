@@ -43,6 +43,8 @@
             dialog.open ? dialog.close() : open();
         }
     });
+    /* Form actions (task, masalah, milestone…) open in the project drawer: close the palette first. */
+    dialog.addEventListener('click', event => { if (event.target.closest('a[data-project-action]')) dialog.close(); });
     query.addEventListener('input', filter);
     query.addEventListener('keydown', event => {
         const list = visible();

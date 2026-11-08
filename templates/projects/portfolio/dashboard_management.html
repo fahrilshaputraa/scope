@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% load pcc_tags %}
+{% block title %}Portfolio — Scope{% endblock %}
+{% block content %}
+<div class="flex flex-wrap items-end justify-between gap-4"><div><h1 class="dashboard-page-title">Kondisi portfolio</h1><p class="dashboard-page-subtitle">Health, progress, dan hal yang butuh perhatian manajemen. Detail task ada di halaman project.</p></div><a class="pcc-button pcc-button-secondary" href="{% url 'projects:report_detail' 'management' %}">Laporan manajemen</a></div>
+<nav class="dashboard-summary" aria-label="Ringkasan portfolio" data-management-summary>
+  <span><strong>{{ rows|length }}</strong> project</span>
+  {% for row in health.rows %}<span><strong>{{ row.count }}</strong> {{ row.label|lower }}</span>{% endfor %}
+  <span>Aktual rata-rata <strong>{{ portfolio_actual|floatformat:1 }}%</strong>{% if portfolio_planned is not None %} / rencana <strong>{{ portfolio_planned|floatformat:1 }}%</strong>{% endif %}</span>
+</nav>
+<div class="overview-pair mt-6">
+  <section class="pcc-panel min-w-0" aria-labelledby="mgmt-attention">
+    <div class="pcc-section border-b"><h2 id="mgmt-attention">Perlu perhatian manajemen</h2></div>
+    <ul class="overview-list">
+      {% for row in health.attention %}<li><span class="{{ row.health.health_status|health_style }}">{{ row.health.health_status|health_label }}</span><div><a href="{% url 'projects:project_detail' row.project.pk %}">{{ row.project.name }}</a><p>{{ row.reasons|join:", " }} · target {{ row.project.target_end_date|date:"d M Y" }}</p></div><span class="row-meta tabular-nums">{{ row.health.progress|pct }}</span></li>{% empty %}<li class="overview-empty">Semua project berjalan sesuai rencana.</li>{% endfor %}
+    </ul>
+  </section>
+  {% include "projects/portfolio/_health_distribution.html" %}
+</div>
+<section class="pcc-panel project-register mt-6" aria-labelledby="mgmt-progress">
+  <div class="panel-heading"><h2 id="mgmt-progress">Rencana vs aktual</h2></div>
+  <div class="overflow-x-auto" tabindex="0" role="region" aria-label="Rencana dan aktual per project">
+    <table class="pcc-table responsive-table"><thead><tr><th>Project</th><th>Owner</th><th>Siklus hidup</th><th>Health</th><th class="text-right">Rencana</th><th class="text-right">Aktual</th><th class="text-right">Selisih</th><th class="text-right">Target</th></tr></thead><tbody>
+    {% for row in rows %}<tr><td data-label="Project" class="control-task"><a href="{% url 'projects:project_detail' row.project.pk %}">{{ row.project.name }}</a><small>{{ row.project.code }} · {{ row.project.project_type|project_type_label }}</small></td><td data-label="Owner">{{ row.project.owner|person_name|default:"—" }}</td><td data-label="Siklus hidup"><span class="{{ row.project.lifecycle_status|lifecycle_style }}">{{ row.project.get_lifecycle_status_display }}</span></td><td data-label="Health">{% if row.project.health_status %}<span class="{{ row.project.health_status|health_style }}">{{ row.project.get_health_status_display }}</span>{% else %}—{% endif %}</td><td data-label="Rencana" class="text-right tabular-nums">{{ row.planned|pct }}</td><td data-label="Aktual" class="text-right tabular-nums">{{ row.actual|pct }}</td><td data-label="Selisih" class="text-right tabular-nums {{ row.variance|comp }}">{{ row.variance|fmt2:" pp" }}</td><td data-label="Target" class="text-right tabular-nums">{{ row.project.target_end_date|date:"d M Y" }}</td></tr>{% empty %}<tr><td colspan="8" class="control-empty">Belum ada project di portfolio.</td></tr>{% endfor %}
+    </tbody></table>
+  </div>
+</section>
+<div class="overview-pair mt-6">
+  <section class="pcc-panel min-w-0" aria-labelledby="mgmt-issues"><div class="pcc-section border-b"><h2 id="mgmt-issues">Masalah besar</h2></div><ul class="overview-list">{% for issue in issues %}<li><span class="issue-severity" data-severity="{{ issue.severity }}">{{ issue.severity|severity_label }}</span><div><span>{{ issue.title }}</span><p>{{ issue.project.code }}{% if issue.due_date %} · target {{ issue.due_date|date:"d M" }}{% endif %}</p></div></li>{% empty %}<li class="overview-empty">Tidak ada masalah kritis atau tinggi.</li>{% endfor %}</ul></section>
+  <section class="pcc-panel min-w-0" aria-labelledby="mgmt-risks"><div class="pcc-section border-b"><h2 id="mgmt-risks">Risiko kritis</h2></div><ul class="overview-list">{% for risk in risks %}<li><span class="issue-severity" data-severity="{{ risk.severity }}">Skor {{ risk.score }}</span><div><span>{{ risk.title }}</span><p>{{ risk.project.code }}{% if risk.review_date %} · tinjau {{ risk.review_date|date:"d M" }}{% endif %}</p></div></li>{% empty %}<li class="overview-empty">Tidak ada risiko kritis.</li>{% endfor %}</ul></section>
+</div>
+<section class="pcc-panel mt-6" aria-labelledby="mgmt-ms"><div class="pcc-section border-b"><h2 id="mgmt-ms">Milestone mendatang</h2></div><ul class="overview-list">{% for ms in milestones %}<li><span class="tabular-nums overview-progress">{{ ms.date|date:"d M" }}</span><div><span>{{ ms.name }}</span><p>{{ ms.project.code }}</p></div></li>{% empty %}<li class="overview-empty">Tidak ada milestone mendatang.</li>{% endfor %}</ul></section>
+{% endblock %}

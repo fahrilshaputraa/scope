@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% load pcc_tags %}
+{% block title %}Pemeriksaan saya — Scope{% endblock %}
+{% block content %}
+<div><h1 class="dashboard-page-title">Pemeriksaan saya</h1><p class="dashboard-page-subtitle">Task yang dikirim pelaksana untuk Anda periksa, dan task Anda yang sedang diperiksa.</p></div>
+<section class="pcc-panel mt-6" aria-labelledby="review-title" data-review-queue>
+  <div class="panel-heading"><h2 id="review-title">Perlu diperiksa · {{ rows|length }}</h2></div>
+  <div class="overflow-x-auto" tabindex="0" role="region" aria-label="Task yang perlu diperiksa">
+    <table class="pcc-table responsive-table">
+      <thead><tr><th>Task</th><th>Pelaksana</th><th class="text-right">Target</th><th class="text-right">Dikirim</th><th class="text-right">Aksi</th></tr></thead>
+      <tbody>
+      {% for row in rows %}{% with r=row.request t=row.task %}
+        <tr>
+          <td data-label="Task" class="control-task"><a href="{% url 'work:task_detail' t.pk %}">{{ t.title }}</a><small>{{ t.project.code }}{% if r.note %} · {{ r.note|truncatechars:80 }}{% endif %}</small></td>
+          <td data-label="Pelaksana">{{ t.assignee|person_name|default:"—" }}</td>
+          <td data-label="Target" class="text-right tabular-nums">{{ t.due_date|date:"d M"|default:"—" }}</td>
+          <td data-label="Dikirim" class="text-right tabular-nums">{{ r.created_at|date:"d M Y" }}</td>
+          <td data-label="Aksi" class="text-right"><span class="inline-flex flex-wrap justify-end gap-2"><form method="post" action="{% url 'governance:approval_quick' r.pk %}">{% csrf_token %}<input type="hidden" name="next" value="{{ request.path }}"><button class="pcc-button">Setujui</button></form><a class="pcc-button pcc-button-secondary" href="{% url 'governance:approval_detail' r.pk %}">Tolak dengan alasan</a></span></td>
+        </tr>
+      {% endwith %}{% empty %}
+        <tr><td colspan="5" class="control-empty">Tidak ada task yang menunggu pemeriksaan Anda.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+<section class="pcc-panel mt-6" aria-labelledby="waiting-title">
+  <div class="pcc-section border-b"><h2 id="waiting-title">Task saya yang sedang diperiksa</h2></div>
+  <ul class="overview-list">
+    {% for t in waiting %}<li><span class="{{ t.status|status_style }}">{{ t.status|status_label }}</span><div><a href="{% url 'work:task_detail' t.pk %}">{{ t.title }}</a><p>{{ t.project.code }} · reviewer {{ t.reviewer|person_name|default:"PM project" }}</p></div><span class="row-meta">{{ t.due_date|date:"d M"|default:"" }}</span></li>{% empty %}<li class="overview-empty">Tidak ada task Anda yang menunggu pemeriksaan.</li>{% endfor %}
+  </ul>
+</section>
+{% endblock %}

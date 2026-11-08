@@ -186,9 +186,7 @@ def _resolve_project(notification: Notification):
         return issue.project if issue is not None else None
     if notification.target_type == "milestone":
         milestone = (
-            Milestone.objects.filter(pk=notification.target_id)
-            .select_related("project")
-            .first()
+            Milestone.objects.filter(pk=notification.target_id).select_related("project").first()
         )
         return milestone.project if milestone is not None else None
     return None
@@ -204,9 +202,7 @@ def _group_notifications(notifications):
         else:
             key = f"type:{notification.target_type or 'lainnya'}"
             label = (
-                notification.get_target_type_display()
-                if notification.target_type
-                else "Lainnya"
+                notification.get_target_type_display() if notification.target_type else "Lainnya"
             )
         groups.setdefault(key, {"label": label, "items": []})["items"].append(notification)
     return groups.values()

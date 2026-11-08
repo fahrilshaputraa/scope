@@ -1,0 +1,50 @@
+{% extends "projects/_base.html" %}
+{% load pcc_tags %}
+{% block project_content %}
+<div class="mt-6 visualization-toolbar"><div><h2 class="text-lg">Struktur project</h2><p class="mt-1 text-sm text-muted-foreground">Phase → work package → task → detail activity. Bobot setiap kelompok harus berjumlah 100%.</p></div>
+  {% if can_edit %}<div class="flex flex-wrap gap-2"><a data-project-action class="pcc-button" href="{% url 'projects:work_package_create' project.pk %}"><svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Tambah work package</a><a data-project-action class="pcc-button pcc-button-secondary" href="{% url 'projects:progress_settings' project.pk %}">Pengaturan bobot dan progress</a></div>{% endif %}
+</div>
+<nav class="dashboard-summary mt-4" aria-label="Pengaturan progress"><span>Bobot <strong>{{ project.get_weight_mode_display|lower }}</strong></span><span>Status-based: Sedang dikerjakan <strong>{{ status_config.in_progress|floatformat:0 }}%</strong>, Menunggu pemeriksaan <strong>{{ status_config.review|floatformat:0 }}%</strong></span></nav>
+
+<section class="pcc-panel mt-4" aria-labelledby="tree-title" data-structure-tree>
+  <div class="pcc-section border-b"><h2 id="tree-title">Hierarki pekerjaan</h2></div>
+  <div class="structure-tree pcc-section">
+    {% for node in tree %}
+      <details open class="structure-node">
+        <summary><strong>{% if node.phase %}{{ node.phase.sequence }} · {{ node.phase.name }}{% else %}Tanpa phase{% endif %}</strong>{% if node.phase %} <span class="text-xs text-muted-foreground">{{ node.phase.start_date|date:"d M"|default:"" }}{% if node.phase.end_date %} — {{ node.phase.end_date|date:"d M Y" }}{% endif %}</span>{% endif %}</summary>
+        <ul class="ml-4 mt-2 space-y-2 border-l pl-4">
+          {% for wp in node.packages %}
+            <li data-work-package="{{ wp.package.pk }}">
+              <div class="flex flex-wrap items-center gap-2"><span class="pcc-status pcc-status-neutral">Work package</span><span>{{ wp.package.name }}</span>{% if can_edit %}<a data-project-action class="subtle-action" href="{% url 'projects:work_package_edit' project.pk wp.package.pk %}">Edit</a><form method="post" action="{% url 'projects:work_package_delete' project.pk wp.package.pk %}" data-confirm="Hapus work package ini? Task di dalamnya tetap ada tanpa work package.">{% csrf_token %}<button class="text-xs underline">Hapus</button></form>{% endif %}</div>
+              <ul class="ml-4 mt-1 space-y-1 border-l pl-4">{% for row in wp.tasks %}{% include "projects/partials/_structure_task.html" %}{% empty %}<li class="text-sm text-muted-foreground">Belum ada task. Pilih work package ini saat mengedit task.</li>{% endfor %}</ul>
+            </li>
+          {% endfor %}
+          {% for row in node.tasks %}{% include "projects/partials/_structure_task.html" %}{% endfor %}
+          {% if not node.packages and not node.tasks %}<li class="text-sm text-muted-foreground">Belum ada pekerjaan di phase ini.</li>{% endif %}
+        </ul>
+      </details>
+    {% empty %}
+      <p class="text-sm text-muted-foreground">Belum ada phase atau task. Tambahkan phase dan task, atau buat project dari template.</p>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="pcc-panel mt-6" aria-labelledby="weights-title" data-weight-groups>
+  <div class="pcc-section border-b"><h2 id="weights-title">Bobot per kelompok</h2><p class="mt-1 text-sm text-muted-foreground">Progress project dihitung dari task utama; progress activity dihitung dari detailnya. Tidak ada yang dihitung dua kali.</p></div>
+  {% for group in groups %}
+    <div class="pcc-section border-b" data-weight-group="{{ group.parent_id|default:'root' }}">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <p>{{ group.label }} · total <strong class="tabular-nums">{{ group.total|floatformat:2 }}</strong>{% if group.complete %} <span class="pcc-status pcc-status-success">100%</span>{% else %} <span class="pcc-status pcc-status-warning">Belum 100%</span>{% endif %}</p>
+        {% if can_edit %}<div class="flex flex-wrap gap-2">
+          <form method="post" action="{% url 'projects:weights_action' project.pk %}">{% csrf_token %}<input type="hidden" name="parent" value="{{ group.parent_id|default:'' }}"><button name="action" value="equalize" class="pcc-button pcc-button-secondary">Bagi rata</button></form>
+          <form method="post" action="{% url 'projects:weights_action' project.pk %}">{% csrf_token %}<input type="hidden" name="parent" value="{{ group.parent_id|default:'' }}"><button name="action" value="normalize" class="pcc-button pcc-button-secondary">Normalisasi ke 100%</button></form>
+          <a data-project-action class="pcc-button pcc-button-secondary" href="{% url 'projects:weights_edit' project.pk %}{% if group.parent_id %}?parent={{ group.parent_id }}{% endif %}">Atur bobot</a>
+        </div>{% endif %}
+      </div>
+      <ul class="mt-2 grid gap-1 text-sm sm:grid-cols-2">{% for item in group.tasks %}<li class="flex justify-between gap-3"><span class="truncate">{{ item.task.title }}</span><span class="tabular-nums text-muted-foreground">{% if item.share is not None %}{{ item.share|floatformat:2 }}%{% else %}—{% endif %}</span></li>{% endfor %}</ul>
+    </div>
+  {% empty %}
+    <p class="pcc-section text-sm text-muted-foreground">Belum ada task.</p>
+  {% endfor %}
+</section>
+{% endblock %}

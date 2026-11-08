@@ -8,11 +8,11 @@
  Chart.defaults.color = token('--color-ash');
  Chart.defaults.font.weight = 400;
  const chart = new Chart(canvas, { type: 'line', data: { labels: data.labels, datasets: [
- { label: 'Rencana', data: data.planned, borderColor: token('--timeline-plan'), borderDash: [6,4], borderWidth: 2, pointRadius: 3, pointHoverRadius: 5, pointBackgroundColor: token('--surface'), pointBorderColor: token('--timeline-plan'), pointBorderWidth: 1.5, tension: 0 },
+ { label: 'Rencana', data: data.planned, borderColor: token('--timeline-plan'), borderDash: [6,4], borderWidth: 2, pointRadius: ctx => data.planned_marks[ctx.dataIndex] ? 4 : 0, pointHoverRadius: 5, pointBackgroundColor: token('--surface'), pointBorderColor: token('--timeline-plan'), pointBorderWidth: 2, tension: 0 },
  { label: 'Aktual', data: data.actual, borderColor: token('--timeline-actual'), backgroundColor: token('--timeline-actual'), borderWidth: 2.5, pointRadius: 3, pointHoverRadius: 5, pointBackgroundColor: token('--timeline-actual'), pointBorderColor: token('--surface'), pointBorderWidth: 1.5, spanGaps: true, tension: 0 }
- ] }, options: { animation: canvas.closest('[data-presentation-player]') ? false : undefined, responsive: true, maintainAspectRatio: false, interaction: { mode:'index',intersect:false },
+ ] }, options: { animation: canvas.closest('[data-presentation-player]') ? false : undefined, responsive: true, maintainAspectRatio: false, interaction: { mode:'index',intersect:false }, layout: { padding: { top: 16, right: 32, left: 4, bottom: 4 } },
  plugins: {legend: {position:'bottom',labels:{usePointStyle:true,boxWidth:8}},tooltip:{callbacks:{label:c=>c.parsed.y === null ? '' : `${c.dataset.label}: ${c.parsed.y.toFixed(2)}%`}}},
- scales: { y:{min:0,max:100,ticks:{callback:v=>v+'%'},grid:{color:token('--color-hairline')}}, x:{grid:{display:false},ticks:{maxTicksLimit:8,maxRotation:0}} } } });
+ scales: { y:{min:0,max:106,afterBuildTicks(scale){scale.ticks=[0,10,20,30,40,50,60,70,80,90,100].map(value=>({value}));},ticks:{callback:v=>v+'%'},grid:{color:token('--color-hairline')}}, x:{grid:{display:false},ticks:{autoSkip:false,maxRotation:0,callback(v,i,all){const n=all.length,step=Math.max(1,Math.ceil(n/6));return (i===0||i===n-1||(i%step===0&&n-1-i>=step*0.6))?this.getLabelForValue(v):null;}}} } } });
  document.querySelectorAll('[data-zoom]').forEach(button => button.addEventListener('click', () => {
  document.querySelectorAll('[data-zoom]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));
  chart.options.scales.x.min = button.dataset.zoom === 'all' ? undefined : Math.max(0,data.today_index-Number(button.dataset.zoom));

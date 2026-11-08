@@ -26,15 +26,31 @@ class UserFormSections:
     """Kelompokkan field form user menjadi bagian-bagian yang mudah dipindai."""
 
     section_layout = [
-        ("Identitas", "Nama dan kontak yang tampil di aplikasi.", [
-            ("first_name", "last_name"), "email", ("display_name", "job_title"),
-        ]),
-        ("Akun", "Dipakai untuk masuk ke Scope.", [
-            "username", ("password1", "password2"), "is_active",
-        ]),
-        ("Peran", "Menentukan menu dan aksi yang tersedia. Pilih lebih dari satu bila perlu.", [
-            "roles",
-        ]),
+        (
+            "Identitas",
+            "Nama dan kontak yang tampil di aplikasi.",
+            [
+                ("first_name", "last_name"),
+                "email",
+                ("display_name", "job_title"),
+            ],
+        ),
+        (
+            "Akun",
+            "Dipakai untuk masuk ke Scope.",
+            [
+                "username",
+                ("password1", "password2"),
+                "is_active",
+            ],
+        ),
+        (
+            "Peran",
+            "Menentukan menu dan aksi yang tersedia. Pilih lebih dari satu bila perlu.",
+            [
+                "roles",
+            ],
+        ),
     ]
 
     @property
@@ -73,12 +89,12 @@ class LocalUserCreateForm(UserFormSections, UserCreationForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["username"].help_text = (
-            "Maksimal 150 karakter. Huruf, angka, dan @/./+/-/_ saja."
-        )
-        self.fields["password1"].help_text = (
-            "Minimal 8 karakter. Gunakan kombinasi yang sulit ditebak."
-        )
+        self.fields[
+            "username"
+        ].help_text = "Maksimal 150 karakter. Huruf, angka, dan @/./+/-/_ saja."
+        self.fields[
+            "password1"
+        ].help_text = "Minimal 8 karakter. Gunakan kombinasi yang sulit ditebak."
         self.fields["password2"].help_text = "Masukkan kata sandi yang sama untuk verifikasi."
         self.order_fields(
             [
@@ -173,13 +189,11 @@ class StaffPasswordResetForm(SetPasswordForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["new_password1"].label = "Kata sandi baru"
-        self.fields["new_password1"].help_text = (
-            "Minimal 8 karakter dan tidak terlalu mirip dengan data akun."
-        )
+        self.fields[
+            "new_password1"
+        ].help_text = "Minimal 8 karakter dan tidak terlalu mirip dengan data akun."
         self.fields["new_password2"].label = "Konfirmasi kata sandi baru"
-        self.fields["new_password2"].help_text = (
-            "Masukkan kata sandi yang sama untuk verifikasi."
-        )
+        self.fields["new_password2"].help_text = "Masukkan kata sandi yang sama untuk verifikasi."
 
     def clean_new_password1(self):
         password = self.cleaned_data.get("new_password1", "")

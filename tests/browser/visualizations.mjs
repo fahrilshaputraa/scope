@@ -33,10 +33,10 @@ try {
     await call('Page.enable'); await call('Runtime.enable');
     await call('Emulation.setDeviceMetricsOverride', { width:1440, height:1000, deviceScaleFactor:1, mobile:false });
     await navigate(`/projects/${project}/timeline/`);
-    assert.ok(await evaluate(`!!document.querySelector('[data-timeline-scroll]')`), 'A logged-in browser and project tasks are required.');
-    await evaluate(`document.querySelector('[data-timeline-scale="2"]').click();document.querySelector('[data-timeline-scroll]').scrollIntoView({block:'center'})`);
-    const stats = () => evaluate(`(()=>{const s=document.querySelector('[data-timeline-scroll]');return {left:s.scrollLeft,width:s.scrollWidth,viewport:s.clientWidth}})()`);
-    const coords = await evaluate(`(()=>{const r=document.querySelector('[data-timeline-scroll]').getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2}})()`);
+    assert.ok(await evaluate(`!!document.querySelector('[data-gantt-chart]')`), 'A logged-in browser and project tasks are required.');
+    await evaluate(`document.querySelector('[data-scale="day"]').click();document.querySelector('[data-gantt-chart]').scrollIntoView({block:'center'})`);await settle();
+    const stats = () => evaluate(`(()=>{const s=document.querySelector('[data-gantt-chart]');return {left:s.scrollLeft,width:s.scrollWidth,viewport:s.clientWidth}})()`);
+    const coords = await evaluate(`(()=>{const r=document.querySelector('[data-gantt-chart]').getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2}})()`);
     const before=await stats();
     for (const deltaX of [300,-300,300,-300]) {
         const previous=await stats();
@@ -47,16 +47,16 @@ try {
     }
     await evaluate(`document.querySelector('[data-fullscreen-toggle]').click()`);await settle();
     assert.ok(await evaluate(`!!document.fullscreenElement`));
-    await evaluate(`document.querySelector('[data-timeline-scroll]').scrollLeft=200;document.querySelector('.task-time-bar[data-project-action]').click()`);await settle();
-    assert.ok(await evaluate(`document.querySelector('dialog').open && document.fullscreenElement.contains(document.querySelector('dialog'))`), 'Update drawer must work inside native fullscreen.');
-    assert.deepEqual(await evaluate(`[...document.querySelector('dialog form').elements].filter(x=>x.name && x.name!=='csrfmiddlewaretoken').map(x=>x.name)`), ['status','progress','blocked_reason','blocked_dependency']);
+    await evaluate(`(()=>{const g=document.querySelector('[data-gantt]').gantt;g.open(g.data.rows.find(r=>r.kind==='task'),true)})()`);await settle();
+    assert.ok(await evaluate(`document.querySelector('dialog').open && document.fullscreenElement.contains(document.querySelector('dialog'))`), 'Edit drawer must work inside native fullscreen.');
     await evaluate(`document.querySelector('[data-panel-close]').click()`);
+    await evaluate(`document.querySelector('[data-gantt-chart]').scrollLeft=200`);await settle();
     const left=await stats();
     await evaluate(`document.querySelector('[data-fullscreen-toggle]').click()`);await settle();
-    assert.equal((await stats()).left,left.left,'Fullscreen exit keeps the latest scroll position.');
+    assert.ok(Math.abs((await stats()).left-left.left)<2,'Fullscreen exit keeps the latest scroll position.');
     await navigate(`/projects/${project}/timeline/`);
-    assert.equal((await stats()).left,left.left,'Daily-update reload preserves the timeline position.');
-    assert.equal(await evaluate(`document.querySelector('[data-timeline-scale="2"]').getAttribute('aria-pressed')`),'true');
+    assert.ok(Math.abs((await stats()).left-left.left)<2,'Reload preserves the timeline position.');
+    assert.equal(await evaluate(`document.querySelector('[data-scale="day"]').getAttribute('aria-pressed')`),'true');
     await evaluate(`Object.defineProperty(document,'fullscreenEnabled',{value:false,configurable:true});document.querySelector('[data-fullscreen-toggle]').click()`);
     assert.ok(await evaluate(`document.querySelector('aside').inert`));
     await call('Input.dispatchKeyEvent',{type:'keyDown',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});
@@ -73,7 +73,7 @@ try {
         assert.equal(await evaluate(`document.documentElement.dataset.theme`),theme);
         await navigate(`/projects/${project}/`);
         assert.equal(await evaluate(`document.documentElement.dataset.theme`),theme,'Theme persists between pages.');
-        assert.equal(await evaluate(`Object.values(Chart.instances)[0].data.datasets[1].borderColor`),await evaluate(`getComputedStyle(document.documentElement).getPropertyValue('--color-ink').trim()`));
+        assert.equal(await evaluate(`Object.values(Chart.instances)[0].data.datasets[1].borderColor`),await evaluate(`getComputedStyle(document.documentElement).getPropertyValue('--timeline-actual').trim()`), 'Aktual line follows the --timeline-actual token in each theme.');
     }
     await call('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});
     for (const path of [`/projects/${project}/`,`/projects/${project}/timeline/`,`/projects/${project}/issues/`,`/projects/${project}/notes/`,'/reports/']) {

@@ -102,6 +102,7 @@
                     {% if details %}<p class="mt-3 text-xs text-muted-foreground">Progress otomatis dari bobot detail activity. Selesaikan seluruh detail sebelum menandai activity selesai.</p>{% endif %}
                 </div>
             </div>
+            {% include "governance/_task_review.html" %}
             {% if not task.parent_task_id %}
                 <section class="pcc-panel pcc-section">
                     {% include 'work/_activity_details.html' with expand_details=True %}
@@ -225,13 +226,13 @@
                         </dd>
                     </div>
                     <div class="grid grid-cols-[100px_1fr] gap-2 px-5 py-3">
-                        <dt class="text-muted-foreground">Due</dt>
+                        <dt class="text-muted-foreground">Target</dt>
                         <dd class="tabular-nums {% if task.is_overdue %}font-normal text-foreground{% endif %}">
-                            {{ task.due_date|date:"d M Y"|default:"—" }}{% if task.is_overdue %} (overdue){% endif %}
+                            {{ task.due_date|date:"d M Y"|default:"—" }}{% if task.is_overdue %} (terlambat){% endif %}
                         </dd>
                     </div>
                     <div class="grid grid-cols-[100px_1fr] gap-2 px-5 py-3">
-                        <dt class="text-muted-foreground">Weight</dt>
+                        <dt class="text-muted-foreground">Bobot</dt>
                         <dd class="tabular-nums">
                             {{ task.weight }}
                         </dd>

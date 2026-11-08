@@ -1,0 +1,15 @@
+{% extends "public/base.html" %}
+{% block title %}Halaman dilindungi — Scope{% endblock %}
+{% block content %}
+<section class="mx-auto max-w-sm py-10">
+    <h1 class="text-lg font-normal">{{ project.name }}</h1>
+    <p class="mt-1 text-sm text-muted-foreground">Halaman ini dilindungi kata sandi.</p>
+    {% if error %}<p role="alert" class="mt-4 text-sm text-foreground">{{ error }}</p>{% endif %}
+    <form method="post" class="mt-4 space-y-3">
+        {% csrf_token %}
+        <label for="unlock-password" class="text-sm font-normal">Kata sandi</label>
+        <input id="unlock-password" class="pcc-field" type="password" name="password" autocomplete="off" required autofocus>
+        <button type="submit" class="pcc-button w-full">Buka</button>
+    </form>
+</section>
+{% endblock %}

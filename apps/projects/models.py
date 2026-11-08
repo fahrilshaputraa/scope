@@ -80,6 +80,36 @@ class ActivityAction(models.TextChoices):
     ISSUE_ARCHIVED = "issue.archived", "Issue archived"
     ISSUE_RESTORED = "issue.restored", "Issue restored"
     HISTORY_RESTORED = "history.restored", "History restored"
+    APPROVAL_REQUESTED = "approval.requested", "Approval requested"
+    APPROVAL_APPROVED = "approval.approved", "Approval approved"
+    APPROVAL_REJECTED = "approval.rejected", "Approval rejected"
+    APPROVAL_CANCELLED = "approval.cancelled", "Approval cancelled"
+    APPROVAL_POLICY = "approval.policy", "Approval configuration changed"
+    CHANGE_REQUEST_UPDATED = "change_request.updated", "Change request updated"
+    CHANGE_REQUEST_APPLIED = "change_request.applied", "Change request applied"
+    MAJOR_CHANGE = "change.major", "Major change recorded"
+    DELIVERABLE_UPDATED = "deliverable.updated", "Deliverable updated"
+    DELIVERABLE_ACCEPTED = "deliverable.accepted", "Deliverable accepted"
+    DELIVERABLE_REJECTED = "deliverable.rejected", "Deliverable rejected"
+    RISK_UPDATED = "risk.updated", "Risk updated"
+    RISK_CONVERTED = "risk.converted", "Risk converted to issue"
+    STRUCTURE_UPDATED = "structure.updated", "Structure updated"
+    WEIGHTS_UPDATED = "weights.updated", "Weights updated"
+    TEMPLATE_APPLIED = "template.applied", "Template applied"
+
+
+class ProjectType(models.TextChoices):
+    GENERAL = "general", "Umum"
+    SOFTWARE = "software", "Pengembangan perangkat lunak"
+    INFRASTRUCTURE = "infrastructure", "Infrastruktur"
+    IMPLEMENTATION = "implementation", "Implementasi untuk client"
+    RESEARCH = "research", "Riset dan kajian"
+    OPERATIONAL = "operational", "Operasional dan perbaikan proses"
+
+
+class WeightMode(models.TextChoices):
+    AUTO = "auto", "Otomatis dibagi rata"
+    MANUAL = "manual", "Diatur manual"
 
 
 class Project(ArchivableModel):
@@ -146,6 +176,30 @@ class Project(ArchivableModel):
     public_token = models.UUIDField(default=uuid4, unique=True, editable=False)
     is_public = models.BooleanField(default=False)
     published_at = models.DateTimeField(null=True, blank=True)
+    public_expires_at = models.DateTimeField(null=True, blank=True)
+    public_password_hash = models.CharField(max_length=255, blank=True, default="")
+    public_hide_task_titles = models.BooleanField(default=False)
+    change_control = models.BooleanField(
+        default=False,
+        help_text="Bila aktif, perubahan major setelah baseline harus melalui change request.",
+    )
+    project_type = models.CharField(
+        max_length=30, choices=ProjectType.choices, default=ProjectType.GENERAL
+    )
+    custom_fields = models.JSONField(
+        default=list, blank=True, help_text="Definisi field tambahan: key, label, type."
+    )
+    custom_values = models.JSONField(default=dict, blank=True)
+    progress_config = models.JSONField(
+        default=dict, blank=True, help_text="Persentase metode status-based per status."
+    )
+    weight_mode = models.CharField(
+        max_length=10, choices=WeightMode.choices, default=WeightMode.MANUAL
+    )
+    template = models.ForeignKey(
+        "ProjectTemplate", null=True, blank=True, on_delete=models.SET_NULL, related_name="projects"
+    )
+    template_version = models.PositiveIntegerField(null=True, blank=True)
 
     class Meta:
         ordering = ["name"]
@@ -159,6 +213,9 @@ class Project(ArchivableModel):
             raise ValidationError({"target_end_date": "Tanggal akhir harus setelah tanggal mulai."})
         if self.current_phase_id and self.current_phase.project_id != self.pk:
             raise ValidationError({"current_phase": "Phase harus berasal dari project yang sama."})
+        from apps.governance.changes import guard_major_change
+
+        guard_major_change(self, "project", self)
         self._validate_lifecycle()
 
     def _validate_lifecycle(self):
@@ -191,6 +248,11 @@ class Project(ArchivableModel):
                 raise ValidationError(
                     {"lifecycle_status": "Belum bisa diselesaikan: " + "; ".join(unmet) + "."}
                 )
+            from apps.governance.services import closure_gate
+
+            gate = closure_gate(self)
+            if gate:
+                raise ValidationError({"lifecycle_status": gate})
         elif status == LifecycleStatus.CANCELLED and not self.cancellation_reason.strip():
             raise ValidationError({"cancellation_reason": "Alasan pembatalan wajib diisi."})
 
@@ -351,9 +413,7 @@ class Phase(ArchivableModel):
         super().restore()
         from apps.work.models import Task
 
-        for task in Task.all_objects.filter(
-            phase=self, parent_task__isnull=True, archived_at=at
-        ):
+        for task in Task.all_objects.filter(phase=self, parent_task__isnull=True, archived_at=at):
             task.restore()
         return True
 
@@ -381,6 +441,13 @@ class Milestone(models.Model):
     def __str__(self):
         return self.name
 
+    def clean(self):
+        super().clean()
+        if self.project_id:
+            from apps.governance.changes import guard_major_change
+
+            guard_major_change(self, "milestone", self.project)
+
 
 class ProgressBaselinePoint(models.Model):
     """Titik planned progress baseline (PRD §11) — membentuk planned progress curve."""
@@ -403,6 +470,8 @@ class ProgressBaselinePoint(models.Model):
 class BaselineStatus(models.TextChoices):
     ACTIVE = "active", "Berlaku"
     SUPERSEDED = "superseded", "Digantikan"
+    PENDING = "pending", "Menunggu persetujuan"
+    REJECTED = "rejected", "Ditolak"
 
 
 class Baseline(models.Model):
@@ -423,6 +492,15 @@ class Baseline(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     note = models.CharField(max_length=300, blank=True)
     baseline_data = models.JSONField(default=dict)
+    approved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        help_text="Approver terakhir bila baseline melalui persetujuan.",
+    )
+    approved_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ["-version"]
@@ -502,6 +580,13 @@ class Decision(models.Model):
         on_delete=models.SET_NULL,
         related_name="+",
     )
+    related_issue = models.ForeignKey(
+        "work.Issue",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="decisions",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -509,6 +594,12 @@ class Decision(models.Model):
 
     def __str__(self):
         return self.title
+
+    def clean(self):
+        super().clean()
+        if self.related_issue_id and self.project_id:
+            if self.related_issue.project_id != self.project_id:
+                raise ValidationError({"related_issue": "Pilih issue dari project yang sama."})
 
 
 class ActivityEvent(models.Model):
@@ -526,10 +617,16 @@ class ActivityEvent(models.Model):
     active_role = models.CharField(max_length=20, blank=True, default="")
     message = models.CharField(max_length=300)
     object_repr = models.CharField(max_length=200, blank=True)
+    entity_type = models.CharField(max_length=30, blank=True, default="")
+    entity_id = models.PositiveBigIntegerField(null=True, blank=True)
+    reason = models.TextField(blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ["-created_at", "-id"]
+        indexes = [
+            models.Index(fields=["entity_type", "entity_id"], name="activity_entity_idx"),
+        ]
 
     def __str__(self):
         return f"[{self.action}] {self.message}"
@@ -541,6 +638,8 @@ class RevisionEntity(models.TextChoices):
     MILESTONE = "milestone", "Milestone"
     ISSUE = "issue", "Issue"
     RISK = "risk", "Risk"
+    DELIVERABLE = "deliverable", "Deliverable"
+    CHANGE_REQUEST = "change_request", "Change request"
 
 
 class RevisionAction(models.TextChoices):
@@ -584,31 +683,177 @@ class Revision(models.Model):
         return f"[{self.action}] {self.entity}:{self.object_id}"
 
 
+#: Skala probability dan impact 1–5 (PRD §16.1).
+RISK_SCALE = [
+    (1, "1 — Sangat rendah"),
+    (2, "2 — Rendah"),
+    (3, "3 — Sedang"),
+    (4, "4 — Tinggi"),
+    (5, "5 — Sangat tinggi"),
+]
+#: Pemetaan ``severity`` lama ke probability/impact (migrasi 0017, didokumentasikan di roadmap).
+SEVERITY_TO_SCALE = {"low": (2, 2), "medium": (3, 3), "high": (4, 4), "critical": (5, 5)}
+
+
+def risk_level(score: int) -> str:
+    """Tingkat risiko dari skor 1–25: rendah ≤4, sedang ≤9, tinggi ≤16, kritis ≥17."""
+    if score >= 17:
+        return "critical"
+    if score >= 10:
+        return "high"
+    if score >= 5:
+        return "medium"
+    return "low"
+
+
 class Risk(models.Model):
+    """Risiko: potensi kejadian (PRD §16). ``severity`` diturunkan dari skor."""
+
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="risks")
     title = models.CharField(max_length=200)
+    description = models.TextField(blank=True)
+    probability = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        choices=RISK_SCALE,
+        validators=[MinValueValidator(1), MaxValueValidator(5)],
+    )
+    impact = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        choices=RISK_SCALE,
+        validators=[MinValueValidator(1), MaxValueValidator(5)],
+    )
+    score = models.PositiveSmallIntegerField(default=9, editable=False)
     severity = models.CharField(
         max_length=20,
         choices=[("low", "Low"), ("medium", "Medium"), ("high", "High"), ("critical", "Critical")],
         default="medium",
+        editable=False,
     )
     status = models.CharField(
         max_length=20,
-        choices=[("open", "Open"), ("mitigated", "Mitigated"), ("closed", "Closed")],
+        choices=[
+            ("open", "Open"),
+            ("mitigated", "Mitigated"),
+            ("closed", "Closed"),
+            ("converted", "Menjadi masalah"),
+        ],
         default="open",
     )
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL
     )
     mitigation = models.TextField(blank=True)
-    due_date = models.DateField(null=True, blank=True)
+    review_date = models.DateField(null=True, blank=True)
+    issue = models.ForeignKey(
+        "work.Issue",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="source_risks",
+        help_text="Issue hasil konversi saat risiko benar-benar terjadi.",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ["due_date", "id"]
+        ordering = ["review_date", "id"]
 
     def __str__(self):
         return self.title
+
+    def clean(self):
+        super().clean()
+        errors = {}
+        if not self.owner_id:
+            errors["owner"] = "Risiko harus memiliki penanggung jawab."
+        if not (self.mitigation or "").strip():
+            errors["mitigation"] = "Tuliskan rencana mitigasi."
+        if not self.review_date:
+            errors["review_date"] = "Tentukan tanggal tinjau risiko."
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args, **kwargs):
+        if self.probability is None or self.impact is None:
+            fallback = SEVERITY_TO_SCALE.get(self.severity, (3, 3))
+            self.probability = self.probability or fallback[0]
+            self.impact = self.impact or fallback[1]
+        self.score = self.probability * self.impact
+        self.severity = risk_level(self.score)
+        if kwargs.get("update_fields") is not None:
+            kwargs["update_fields"] = set(kwargs["update_fields"]) | {
+                "probability",
+                "impact",
+                "score",
+                "severity",
+            }
+        super().save(*args, **kwargs)
+
+    @property
+    def is_open(self):
+        return self.status == "open"
+
+
+class WorkPackage(models.Model):
+    """Pengelompokan pekerjaan opsional di dalam phase (PRD §8.2, §26.9)."""
+
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="work_packages")
+    phase = models.ForeignKey(
+        "Phase", null=True, blank=True, on_delete=models.SET_NULL, related_name="work_packages"
+    )
+    name = models.CharField(max_length=200)
+    description = models.TextField(blank=True)
+    sequence = models.PositiveIntegerField(default=1)
+    start_date = models.DateField(null=True, blank=True)
+    end_date = models.DateField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["sequence", "id"]
+
+    def __str__(self):
+        return self.name
+
+    def clean(self):
+        super().clean()
+        if self.start_date and self.end_date and self.end_date < self.start_date:
+            raise ValidationError({"end_date": "Tanggal selesai harus setelah tanggal mulai."})
+        if self.phase_id and self.project_id and self.phase.project_id != self.project_id:
+            raise ValidationError({"phase": "Pilih phase dari project yang sama."})
+
+
+class ProjectTemplate(models.Model):
+    """Template project (PRD §5.3, §26.7). Project menyalin isinya saat dibuat.
+
+    Mengubah template tidak mengubah project yang sudah dibuat darinya.
+    """
+
+    workspace = models.ForeignKey(
+        "identity.Workspace", null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    name = models.CharField(max_length=200)
+    description = models.TextField(blank=True)
+    project_type = models.CharField(max_length=30, default="general")
+    structure_config = models.JSONField(default=dict, blank=True)
+    workflow_config = models.JSONField(default=dict, blank=True)
+    progress_config = models.JSONField(default=dict, blank=True)
+    approval_config = models.JSONField(default=list, blank=True)
+    custom_fields = models.JSONField(default=list, blank=True)
+    weight_mode = models.CharField(max_length=10, default="auto")
+    version = models.PositiveIntegerField(default=1)
+    is_active = models.BooleanField(default=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["name", "id"]
+
+    def __str__(self):
+        return self.name
 
 
 class PlanningImport(models.Model):

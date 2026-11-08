@@ -20,7 +20,9 @@ class Migration(migrations.Migration):
     dependencies = [("projects", "0010_project_members_through")]
 
     operations = [
-        migrations.RenameField(model_name="project", old_name="status", new_name="lifecycle_status"),
+        migrations.RenameField(
+            model_name="project", old_name="status", new_name="lifecycle_status"
+        ),
         migrations.RunPython(split_status, merge_status),
         migrations.AlterField(
             model_name="project",

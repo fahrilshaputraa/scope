@@ -7,8 +7,8 @@
             <h1 class="text-2xl font-normal tracking-tight">Project</h1>
             <p class="mt-1 text-sm text-muted-foreground">Seluruh project di workspace.</p>
         </div>
-        {% if can_create %}<div class="flex flex-wrap gap-2">{% if can_view_archived %}<a class="pcc-button pcc-button-secondary" href="{% if show_archived %}{% url 'projects:project_list' %}{% else %}?archived=1{% endif %}"><svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M5 6v14h14V6M8 6V4h8v2M10 11v5M14 11v5"/></svg>{% if show_archived %}Kembali ke project aktif{% else %}Arsip ({{ archived_count }}){% endif %}</a>{% endif %}<a data-project-action class="pcc-button pcc-button-secondary" href="{% url 'projects:plan_import_new' %}"><svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 2 6 6 3-6 2-2 7-2-7-6-2 6-3zM21 2v4m-2-2h4"/></svg>Import dari AI</a>
-            <a data-project-action href="{% url 'projects:project_create' %}"
+        {% if can_create %}<div class="flex flex-wrap gap-2">{% if can_view_archived %}<a class="pcc-button pcc-button-secondary" href="{% if show_archived %}{% url 'projects:project_list' %}{% else %}?archived=1{% endif %}"><svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M5 6v14h14V6M8 6V4h8v2M10 11v5M14 11v5"/></svg>{% if show_archived %}Kembali ke project aktif{% else %}Arsip ({{ archived_count }}){% endif %}</a>{% endif %}
+            <a href="{% url 'projects:project_create' %}"
                class="pcc-button">
                 <svg aria-hidden="true" focusable="false" class="size-4"
                      viewBox="0 0 24 24"
@@ -28,7 +28,7 @@
         {% if show_archived %}<input type="hidden" name="archived" value="1">{% endif %}
         <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
             <div>
-                <label for="q" class="text-xs font-normal text-muted-foreground">Search</label>
+                <label for="q" class="text-xs font-normal text-muted-foreground">Cari</label>
                 <input id="q"
                        name="q"
                        value="{{ filters.q }}"
@@ -76,7 +76,7 @@
                 <select id="team"
                         name="team"
                         class="mt-1 flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm">
-                    <option value="">Semua team</option>
+                    <option value="">Semua tim</option>
                     {% for team in teams %}
                         <option value="{{ team }}" {% if filters.team == team %}selected{% endif %}>{{ team }}</option>
                     {% endfor %}
@@ -149,7 +149,7 @@
                                            class="font-normal hover:underline">{{ row.project.name }}</a>
                                     {% endif %}
                                     <span class="ml-2 rounded-md bg-muted px-1.5 py-0.5 text-xs font-normal tabular-nums text-muted-foreground">{{ row.project.code }}</span>
-                                    <div class="mt-0.5 text-xs text-muted-foreground">{{ row.project.start_date|date:"d M Y" }} → {{ row.project.target_end_date|date:"d M Y" }}</div>
+                                    <div class="mt-0.5 text-xs text-muted-foreground">{{ row.project.start_date|date:"d M Y" }} → {{ row.project.target_end_date|date:"d M Y" }} · <span data-project-type>{{ row.project.project_type|project_type_label }}</span></div>
                                 </td>
                                 <td data-label="PM" class="px-4 py-3 text-muted-foreground">{{ row.project.manager|person_name|default:"—" }}</td>
                                 <td data-label="Phase" class="px-4 py-3">{{ row.project.effective_current_phase.name|default:"—" }}</td>

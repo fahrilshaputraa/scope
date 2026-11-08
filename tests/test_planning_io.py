@@ -224,7 +224,8 @@ def test_minimal_project_and_task_forms_keep_defaults(plan_case, client):
     )
     assert response.status_code == 302
     task = new.tasks.get()
-    assert task.weight == 1 and task.progress == 0 and task.status == "todo"
+    # Project baru memakai bobot otomatis: satu task utama = 100% (BR-WGT-001).
+    assert task.weight == 100 and task.progress == 0 and task.status == "todo"
     for route in ("project_detail", "project_tasks", "project_activity"):
         assert client.get(reverse("projects:" + route, args=[new.pk])).status_code == 200
     assert client.get(reverse("work:task_detail", args=[task.pk])).status_code == 200

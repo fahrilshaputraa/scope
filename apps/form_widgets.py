@@ -127,7 +127,33 @@ def style_form(form, primary=None):
             if name in RICH_FIELDS:
                 field.widget.attrs["data-wysiwyg"] = "true"
 
-    visible = list(form.visible_fields())
-    form.primary_fields = [f for f in visible if primary is None or f.name in primary]
-    form.extra_fields = [f for f in visible if primary is not None and f.name not in primary]
+    visible = [f.name for f in form.visible_fields()]
+    form.primary_fields = FieldList(form, [n for n in visible if primary is None or n in primary])
+    form.extra_fields = FieldList(
+        form, [n for n in visible if primary is not None and n not in primary]
+    )
     form.extra_errors = form.is_bound and any(f.errors for f in form.extra_fields)
+
+
+class FieldList:
+    """Daftar BoundField yang dibuat saat dirender.
+
+    Form sering mengubah label atau bantuan field setelah ``style_form``; BoundField
+    menyalin label saat dibuat, jadi daftar ini membuatnya ulang setiap kali dipakai
+    agar label yang tampil selalu yang terakhir.
+    """
+
+    def __init__(self, form, names):
+        self.form, self.names = form, list(names)
+
+    def __iter__(self):
+        for name in self.names:
+            if name in self.form.fields:
+                self.form._bound_fields_cache.pop(name, None)
+                yield self.form[name]
+
+    def __len__(self):
+        return sum(1 for name in self.names if name in self.form.fields)
+
+    def __bool__(self):
+        return len(self) > 0

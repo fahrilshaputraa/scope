@@ -4,15 +4,23 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('notifications', '0003_notification_emailed_at_and_more'),
+        ("notifications", "0003_notification_emailed_at_and_more"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='notification',
-            name='target_type',
-            field=models.CharField(choices=[('project', 'Project'), ('task', 'Task'), ('issue', 'Issue'), ('milestone', 'Milestone'), ('note', 'Note')], max_length=20),
+            model_name="notification",
+            name="target_type",
+            field=models.CharField(
+                choices=[
+                    ("project", "Project"),
+                    ("task", "Task"),
+                    ("issue", "Issue"),
+                    ("milestone", "Milestone"),
+                    ("note", "Note"),
+                ],
+                max_length=20,
+            ),
         ),
     ]

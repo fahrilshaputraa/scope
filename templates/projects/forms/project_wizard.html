@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% block title %}Buat project — Scope{% endblock %}
+{% block extra_head %}{{ template_spans|json_script:"template-spans" }}<script>
+/* Wizard 'Buat project': langkah, tanggal akhir otomatis, ringkasan tinjau. */
+window.projectWizard = function (initialStep) {
+    const spans = JSON.parse(document.getElementById('template-spans').textContent || '{}');
+    const DAY = 86400000;
+    const iso = d => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+    return {
+        step: initialStep, source: 'blank', endTouched: false, lines: 0, planDays: 0,
+        init() {
+            const f = this.$root;
+            this.source = (f.querySelector('[name=source]:checked') || {}).value || 'blank';
+            this.endTouched = f.dataset.bound === 'true';
+            this.readPlan();
+            // Galat dari server: buka langkah yang salah lalu fokuskan field pertamanya.
+            const error = this.$root.querySelector('[data-form-field] [role=alert]');
+            if (error) this.$nextTick(() => error.closest('[data-form-field]').querySelector('input,select,textarea')?.focus());
+            this.$watch('step', () => this.$nextTick(() => {
+                this.$root.querySelector('[data-wizard-heading]')?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+                this.$root.querySelector(`[data-step="${this.step}"] input:not([type=hidden]):not([type=radio]), [data-step="${this.step}"] select`)?.focus({ preventScroll: true });
+            }));
+        },
+        field(name) { return this.$root.querySelector(`[name=${name}]`); },
+        text(name) {
+            const el = this.field(name);
+            if (!el) return '—';
+            if (el.tagName === 'SELECT') return el.selectedOptions[0]?.textContent.trim() || '—';
+            return el.value || '—';
+        },
+        dateText(name) {
+            const v = this.field(name)?.value;
+            return v ? new Date(v + 'T00:00').toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+        },
+        readPlan() {
+            const raw = (this.field('plan_text')?.value || '').split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+            const outline = raw.some(l => /^[-+*]/.test(l));
+            const tasks = outline ? raw.filter(l => /^-(?!-)/.test(l)) : raw;
+            this.lines = tasks.length;
+            this.planDays = tasks.reduce((sum, l) => { const m = l.match(/\|\s*(\d+)\s*$/); return sum + (m ? Number(m[1]) : 5); }, 0);
+            this.autoEnd();
+        },
+        span() {
+            if (this.source === 'template') return Number(spans[this.field('template')?.value] || 0);
+            if (this.source === 'paste') return this.planDays;
+            return 0;
+        },
+        autoEnd() {
+            const start = this.field('start_date')?.value, end = this.field('target_end_date');
+            if (!start || !end || this.endTouched) return;
+            const days = this.span() || 30;
+            end.value = iso(new Date(new Date(start + 'T00:00').getTime() + (days - 1) * DAY));
+        },
+        sourceLabel() {
+            return { blank: 'Mulai kosong', paste: `Tempel daftar: ${this.lines} task`, template: `Template: ${this.text('template')}`, ai: 'Import rencana dari AI setelah project dibuat' }[this.source];
+        },
+        next() {
+            const fields = [...this.$root.querySelectorAll(`[data-step="${this.step}"] :is(input,select,textarea)`)].filter(el => !el.closest('[hidden]') && el.offsetParent !== null);
+            for (const el of fields) if (!el.reportValidity()) return;
+            if (this.step === 2 && this.source === 'template' && !this.field('template').value) { this.field('template').setCustomValidity('Pilih template.'); this.field('template').reportValidity(); this.field('template').setCustomValidity(''); return; }
+            if (this.step === 2 && this.source === 'paste' && !this.lines) { const t = this.field('plan_text'); t.setCustomValidity('Tulis minimal satu task.'); t.reportValidity(); t.setCustomValidity(''); return; }
+            this.step = Math.min(3, this.step + 1);
+        },
+        changed(e) {
+            const name = e.target.name;
+            if (name === 'source') { this.source = e.target.value; this.autoEnd(); }
+            else if (name === 'target_end_date') this.endTouched = true;
+            else if (name === 'start_date' || name === 'template') this.autoEnd();
+        },
+        back() { this.step = Math.max(1, this.step - 1); },
+    };
+};
+</script>{% endblock %}
+{% block content %}
+{% with f=form %}
+<div class="pcc-form-surface wizard" x-data="projectWizard({% if f.errors %}{% if f.template.errors or f.plan_text.errors or f.source.errors %}2{% else %}1{% endif %}{% else %}1{% endif %})" data-bound="{{ f.is_bound|yesno:'true,false' }}">
+  <a class="pcc-form-back text-sm text-muted-foreground hover:underline" href="{% url 'projects:project_list' %}">← Kembali</a>
+  <div class="pcc-panel mt-4">
+    <div class="pcc-section border-b">
+      <h1 data-wizard-heading>Buat project</h1>
+      <p class="mt-2 text-sm text-muted-foreground">Tiga langkah singkat. Semua bisa diubah lagi nanti.</p>
+      <ol class="wizard-steps" aria-label="Langkah">
+        <li :aria-current="step === 1 ? 'step' : null" :class="step > 1 && 'is-done'"><span>1</span>Data project</li>
+        <li :aria-current="step === 2 ? 'step' : null" :class="step > 2 && 'is-done'"><span>2</span>Sumber rencana</li>
+        <li :aria-current="step === 3 ? 'step' : null"><span>3</span>Tinjau</li>
+      </ol>
+    </div>
+    <form method="post" class="pcc-section" data-simple-form novalidate @change="changed($event)" @input="if ($event.target.name === 'plan_text') readPlan()" @submit="const b = $el.querySelector('[data-wizard-submit]'); b.setAttribute('aria-busy', 'true'); setTimeout(() => { b.disabled = true; b.lastChild.textContent = 'Membuat project…'; })" @keydown.enter="if (step < 3 && $event.target.tagName !== 'TEXTAREA') { $event.preventDefault(); next(); }">{% csrf_token %}
+      {% if f.non_field_errors %}<div role="alert" class="workspace-message is-error mb-5">{% for error in f.non_field_errors %}<p>{{ error }}</p>{% endfor %}</div>{% endif %}
+      {% if f.errors %}<p class="sr-only" role="alert">Form berisi kesalahan. Periksa field yang ditandai.</p>{% endif %}
+
+      <fieldset class="wizard-step wizard-grid" data-step="1" x-show="step === 1">
+        <legend class="sr-only">Data project</legend>
+        {% include "partials/_form_fields.html" with fields=f.step_one hide_global_errors=True %}
+        <details class="form-extra"{% if f.code.errors or f.project_type.errors or f.team.errors or f.members.errors or f.description.errors or f.lifecycle_status.errors %} open{% endif %}><summary>Opsi lanjutan <span>Kode, jenis, tim, anggota, deskripsi, dan status awal</span></summary><div class="mt-5 space-y-5">{% include "partials/_form_fields.html" with fields=f.advanced hide_global_errors=True %}</div></details>
+      </fieldset>
+
+      <fieldset class="wizard-step space-y-5" data-step="2" x-show="step === 2">
+        <legend class="wizard-legend">Dari mana rencana project ini?</legend>
+        <div class="source-options" role="radiogroup" aria-label="Sumber rencana">
+          {% for choice in f.source %}
+          <label class="source-option">
+            {{ choice.tag }}
+            <span><strong>{{ choice.choice_label }}</strong>
+              <small>{% if choice.data.value == 'blank' %}Buat project dulu, susun jadwal nanti dari tab Pekerjaan.{% elif choice.data.value == 'paste' %}Tulis atau tempel daftar task; jadwal disusun berurutan otomatis.{% elif choice.data.value == 'template' %}Salin phase, task, dan milestone dari template tim.{% else %}Unggah file JSON hasil AI setelah project dibuat.{% endif %}</small></span>
+          </label>
+          {% endfor %}
+        </div>
+        {% if f.source.errors %}{% for error in f.source.errors %}<p role="alert" class="text-xs">{{ error }}</p>{% endfor %}{% endif %}
+        <div x-show="source === 'template'">
+          {% if 'template' in f.fields %}{% with field=f.template %}<div class="grid gap-2" data-form-field="template"><label for="{{ field.id_for_label }}" class="text-sm">{{ field.label }}</label>{{ field }}{% if field.help_text %}<p id="help-template" class="text-xs text-muted-foreground">{{ field.help_text }}</p>{% endif %}{% for error in field.errors %}<p role="alert" class="text-xs">{{ error }}</p>{% endfor %}{% if not f.fields.template.queryset.exists %}<p class="text-xs text-muted-foreground">Belum ada template aktif. Admin dapat membuatnya di Pengaturan → Template.</p>{% endif %}</div>{% endwith %}{% endif %}
+        </div>
+        <div x-show="source === 'paste'">{% with field=f.plan_text %}<div class="grid gap-2" data-form-field="plan_text"><label for="{{ field.id_for_label }}" class="text-sm">{{ field.label }}</label>{{ field }}<p id="help-plan_text" class="text-xs text-muted-foreground">{{ field.help_text }}</p><p class="text-xs text-muted-foreground" aria-live="polite" x-text="lines ? `${lines} task, sekitar ${planDays} hari kerja berurutan.` : ''"></p>{% for error in field.errors %}<p role="alert" class="text-xs">{{ error }}</p>{% endfor %}</div>{% endwith %}</div>
+      </fieldset>
+
+      <section class="wizard-step" data-step="3" x-show="step === 3" x-cloak aria-labelledby="review-title">
+        <h2 id="review-title" class="wizard-legend">Tinjau sebelum dibuat</h2>
+        <dl class="wizard-review">
+          <div><dt>Nama</dt><dd x-text="text('name')"></dd></div>
+          <div><dt>Jadwal</dt><dd><span x-text="dateText('start_date')"></span> → <span x-text="dateText('target_end_date')"></span></dd></div>
+          <div><dt>Project Manager</dt><dd x-text="text('manager')"></dd></div>
+          <div><dt>Project Owner</dt><dd x-text="text('owner')"></dd></div>
+          <div><dt>Rencana</dt><dd x-text="sourceLabel()"></dd></div>
+        </dl>
+        <p class="mt-4 text-sm text-muted-foreground">Setelah dibuat, Ringkasan menampilkan checklist <strong>Siap berjalan</strong>: susun jadwal, buat baseline dengan satu klik, lalu mulai project.</p>
+      </section>
+
+      <div class="form-actions wizard-actions">
+        <a href="{% url 'projects:project_list' %}" class="pcc-button pcc-button-secondary" x-show="step === 1">Batal</a>
+        <button type="button" class="pcc-button pcc-button-secondary" x-show="step > 1" x-cloak @click="back()">Kembali</button>
+        <button type="button" class="pcc-button" x-show="step < 3" x-cloak @click="next()">Lanjut</button>
+        <button type="submit" class="pcc-button" x-show="step === 3" data-wizard-submit><svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>Buat project</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endwith %}
+{% endblock %}

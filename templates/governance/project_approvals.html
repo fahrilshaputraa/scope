@@ -1,0 +1,59 @@
+{% extends "projects/_base.html" %}
+{% load pcc_tags %}
+{% block project_content %}
+<div class="mt-6 visualization-toolbar"><div><h2 class="text-lg">Persetujuan dan perubahan</h2><p class="mt-1 text-sm text-muted-foreground">Keputusan yang menunggu, change request, dan aturan persetujuan project ini.</p></div>
+  {% if can_manage %}<div class="flex flex-wrap gap-2">
+    {% if plan_enabled %}<form method="post" action="{% url 'governance:request_plan' project.pk %}" data-confirm="Ajukan rencana project untuk disetujui?">{% csrf_token %}<button class="pcc-button pcc-button-secondary">Ajukan rencana</button></form>{% endif %}
+    {% if closure_enabled %}<form method="post" action="{% url 'governance:request_closure' project.pk %}" data-confirm="Ajukan penutupan project? Semua task harus selesai dan tidak ada issue terbuka.">{% csrf_token %}<button class="pcc-button pcc-button-secondary">Ajukan penutupan</button></form>{% endif %}
+    {% if change_submit_url %}<a data-project-action class="pcc-button" href="{{ change_submit_url }}"><svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Ajukan perubahan</a>{% endif %}
+  </div>{% elif change_submit_url %}<a data-project-action class="pcc-button" href="{{ change_submit_url }}">Ajukan perubahan</a>{% endif %}
+</div>
+
+<section class="pcc-panel mt-4" aria-labelledby="pending-title">
+  <div class="panel-heading"><h2 id="pending-title">Menunggu keputusan · {{ pending|length }}</h2></div>
+  {% include "governance/_request_table.html" with items=pending caption="Pengajuan menunggu" empty="Tidak ada pengajuan yang menunggu keputusan." %}
+</section>
+
+{% if changes is not None %}
+<section class="pcc-panel mt-6" aria-labelledby="changes-title" data-change-requests>
+  <div class="panel-heading"><h2 id="changes-title">Change request · {{ changes|length }}</h2>{% if change_control %}<span class="pcc-status pcc-status-info">Kontrol perubahan aktif</span>{% endif %}</div>
+  <div class="overflow-x-auto" tabindex="0" role="region" aria-label="Daftar change request">
+    <table class="pcc-table responsive-table">
+      <thead><tr><th>Perubahan</th><th>Pengaju</th><th>Klasifikasi</th><th>Status</th><th class="text-right">Diperbarui</th></tr></thead>
+      <tbody>
+      {% for cr in changes %}
+        <tr><td data-label="Perubahan" class="control-task"><a href="{% url 'governance:change_detail' cr.pk %}">{{ cr.title }}</a><small>CR-{{ cr.pk }}{% if cr.proposed_end_date %} · target baru {{ cr.proposed_end_date|date:"d M Y" }}{% endif %}</small></td><td data-label="Pengaju">{{ cr.requester|person_name|default:"—" }}</td><td data-label="Klasifikasi">{{ cr.get_classification_display }}</td><td data-label="Status"><span class="{{ cr.status|status_style }}">{{ cr.get_status_display }}</span></td><td data-label="Diperbarui" class="text-right tabular-nums">{{ cr.updated_at|date:"d M Y" }}</td></tr>
+      {% empty %}
+        <tr><td colspan="5" class="control-empty">Belum ada change request. Ajukan perubahan bila deadline, scope, bobot, milestone, atau deliverable perlu berubah setelah baseline.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endif %}
+
+<section class="pcc-panel mt-6" aria-labelledby="policy-title" data-approval-policies>
+  <div class="pcc-section border-b"><h2 id="policy-title">Aturan persetujuan</h2><p class="mt-1 text-sm text-muted-foreground">Semua persetujuan mati secara default. Aktifkan hanya yang dibutuhkan project ini.{% if change_control_url %} <a class="underline" data-project-action href="{{ change_control_url }}">Atur kontrol perubahan</a>.{% endif %}</p></div>
+  <div class="overflow-x-auto" tabindex="0" role="region" aria-label="Aturan persetujuan">
+    <table class="pcc-table responsive-table">
+      <thead><tr><th>Jenis</th><th>Status</th><th>Urutan</th><th>Approver</th><th>Self-approval</th>{% if can_configure %}<th></th>{% endif %}</tr></thead>
+      <tbody>
+      {% for row in policies %}
+        <tr data-policy="{{ row.type }}">
+          <td data-label="Jenis">{{ row.label }}</td>
+          <td data-label="Status">{% if row.enabled %}<span class="pcc-status pcc-status-success">Wajib</span>{% else %}<span class="pcc-status pcc-status-neutral">Mati</span>{% endif %}</td>
+          <td data-label="Urutan">{% if row.policy %}{{ row.policy.get_mode_display }}{% else %}—{% endif %}</td>
+          <td data-label="Approver">{% for person in row.approvers %}{{ forloop.counter }}. {{ person|person_name }}{% if not forloop.last %}, {% endif %}{% empty %}<span class="text-muted-foreground">{% if row.type == 'task' %}Reviewer task / PM{% elif row.type == 'deliverable' %}Reviewer deliverable / Owner{% else %}Project Owner{% endif %}</span>{% endfor %}</td>
+          <td data-label="Self-approval">{% if row.policy.allow_self_approval %}Diizinkan{% else %}Dilarang{% endif %}</td>
+          {% if can_configure %}<td class="text-right"><a data-project-action class="subtle-action" href="{% url 'governance:policy_edit' project.pk row.type %}">Atur</a></td>{% endif %}
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<details class="pcc-panel mt-6"><summary class="pcc-section cursor-pointer">Riwayat persetujuan · {{ history|length }}</summary>
+  {% include "governance/_request_table.html" with items=history caption="Riwayat persetujuan" empty="Belum ada riwayat persetujuan." %}
+</details>
+{% endblock %}

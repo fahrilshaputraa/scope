@@ -63,7 +63,9 @@ try {
  assert.notEqual(await evaluate(`document.querySelector('#slide-order li').dataset.slideKey`), original);
  await evaluate(`document.querySelector('#slide-order li [data-move="1"]').click()`);
  assert.equal(await evaluate(`document.querySelector('#slide-order li').dataset.slideKey`), original);
- await evaluate(`document.querySelector('[name=action][value=play]').click()`);await settle();
+ await evaluate(`document.querySelector('[name=action][value=play]').click()`);
+ // The drawer saves via fetch, then navigates to the player: wait for it instead of a fixed delay.
+ for (let i = 0; i < 20 && !(await evaluate(`!!document.querySelector('[data-presentation-player]')`).catch(() => false)); i++) await settle();
  assert.ok(await evaluate(`!!document.querySelector('[data-presentation-player]')`));
  await screenshot('overview-light');
  const count = await evaluate(`document.querySelectorAll('[data-slide]').length`);

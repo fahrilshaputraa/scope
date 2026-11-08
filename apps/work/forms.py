@@ -1,3 +1,6 @@
+import os
+import re
+
 from django import forms
 from django.core.exceptions import ValidationError
 
@@ -16,14 +19,17 @@ class TaskForm(SanitizeRichTextMixin, forms.ModelForm):
             "title",
             "description",
             "phase",
+            "work_package",
             "milestone",
             "assignee",
             "collaborators",
+            "reviewer",
             "status",
             "priority",
             "start_date",
             "due_date",
             "progress",
+            "progress_method",
             "weight",
             "labels",
             "order",
@@ -74,11 +80,23 @@ class TaskForm(SanitizeRichTextMixin, forms.ModelForm):
                 if self.instance.pk and self.instance.status not in self.PLANNING_STATUSES:
                     self.fields["status"].disabled = True
                     choices = list(TASK_STATUS_LABELS.items())
-                    self.fields["status"].help_text = (
-                        "Status diperbarui oleh pelaksana task, bukan PM."
-                    )
+                    self.fields[
+                        "status"
+                    ].help_text = "Status diperbarui oleh pelaksana task, bukan PM."
             self.fields["status"].choices = choices
-        fill_missing_defaults(self, ["status", "priority", "progress", "weight", "order"])
+        fill_missing_defaults(
+            self,
+            [
+                "status",
+                "priority",
+                "progress",
+                "weight",
+                "order",
+                "progress_method",
+                "reviewer",
+                "work_package",
+            ],
+        )
         primary = (
             ["title", "assignee", "collaborators", "due_date"]
             if not self.instance.pk
@@ -90,6 +108,7 @@ class TaskForm(SanitizeRichTextMixin, forms.ModelForm):
             primary.append("parent_task")
         if self.project and can_plan:
             self.fields["phase"].queryset = self.project.phases.all()
+            self.fields["work_package"].queryset = self.project.work_packages.all()
             self.fields["milestone"].queryset = self.project.milestones.all()
             self.fields["parent_task"].queryset = self.project.tasks.filter(
                 parent_task__isnull=True
@@ -103,6 +122,16 @@ class TaskForm(SanitizeRichTextMixin, forms.ModelForm):
             )
 
             self.fields["collaborators"].queryset = self.fields["assignee"].queryset
+            from django.contrib.auth.models import User
+            from django.db.models import Q
+
+            from apps.governance.models import ApprovalType
+            from apps.governance.services import approver_candidates
+
+            candidates = approver_candidates(self.project, ApprovalType.TASK).values("pk")
+            self.fields["reviewer"].queryset = User.objects.filter(
+                Q(pk__in=candidates) | Q(pk=self.instance.reviewer_id or 0)
+            )
         if "parent_task" in self.fields:
             self.fields["parent_task"].help_text = (
                 "Opsional. Pilih untuk menjadikan pekerjaan ini detail activity. "
@@ -114,6 +143,26 @@ class TaskForm(SanitizeRichTextMixin, forms.ModelForm):
             self.fields["phase"].disabled = True
             self.initial["phase"] = self.instance.parent_task.phase_id
             self.fields["phase"].help_text = "Mengikuti phase activity induk."
+        if "progress_method" in self.fields:
+            from .models import ProgressMethod
+
+            if self.instance.has_details:
+                self.fields["progress_method"].choices = [
+                    (ProgressMethod.SUBTASK, ProgressMethod.SUBTASK.label)
+                ]
+                self.fields["progress_method"].disabled = True
+                self.initial["progress_method"] = ProgressMethod.SUBTASK
+            else:
+                self.fields["progress_method"].choices = [
+                    c for c in ProgressMethod.choices if c[0] != ProgressMethod.SUBTASK
+                ]
+        if (
+            "progress" in self.fields
+            and self.instance.pk
+            and self.instance.progress_method == "status"
+        ):
+            self.fields["progress"].disabled = True
+            self.fields["progress"].help_text = "Dihitung otomatis dari status task."
         if self.instance.has_details:
             self.fields["progress"].disabled = True
             self.initial["progress"] = self.instance.display_progress
@@ -123,6 +172,25 @@ class TaskForm(SanitizeRichTextMixin, forms.ModelForm):
                 if name in self.fields:
                     self.fields[name].disabled = True
         style_form(self, primary=primary)
+        if "work_package" in self.fields:
+            self.fields["work_package"].label = "Work package (opsional)"
+            self.fields["work_package"].help_text = "Kelompok pekerjaan di dalam phase."
+        if "progress_method" in self.fields:
+            self.fields["progress_method"].label = "Metode progress"
+        if "weight" in self.fields and self.project and self.project.weight_mode == "auto":
+            self.fields["weight"].disabled = True
+            self.fields[
+                "weight"
+            ].help_text = (
+                "Mode bobot otomatis: dibagi rata dalam kelompoknya. Ubah di tab Struktur."
+            )
+        if "reviewer" in self.fields:
+            self.fields["reviewer"].label = "Reviewer (opsional)"
+            self.fields["reviewer"].empty_label = "Tanpa pemeriksaan"
+            self.fields["reviewer"].help_text = (
+                "Bila diisi, pelaksana mengirim task untuk diperiksa dan task baru selesai "
+                "setelah reviewer menyetujuinya."
+            )
         if "collaborators" in self.fields:
             self.fields[
                 "collaborators"
@@ -337,16 +405,57 @@ class ObjectCommentForm(SanitizeRichTextMixin, forms.ModelForm):
         )
 
 
+ALLOWED_ATTACHMENT_TYPES = {
+    ".pdf": {"application/pdf"},
+    ".doc": {"application/msword"},
+    ".docx": {"application/vnd.openxmlformats-officedocument.wordprocessingml.document"},
+    ".xls": {"application/vnd.ms-excel"},
+    ".xlsx": {"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"},
+    ".ppt": {"application/vnd.ms-powerpoint"},
+    ".pptx": {"application/vnd.openxmlformats-officedocument.presentationml.presentation"},
+    ".png": {"image/png"},
+    ".jpg": {"image/jpeg"},
+    ".jpeg": {"image/jpeg"},
+    ".gif": {"image/gif"},
+    ".webp": {"image/webp"},
+    ".txt": {"text/plain"},
+    ".csv": {"text/csv", "application/csv", "application/vnd.ms-excel", "text/plain"},
+    ".zip": {"application/zip", "application/x-zip-compressed"},
+}
+GENERIC_CONTENT_TYPES = {"", "application/octet-stream", "binary/octet-stream"}
+
+
+def sanitize_filename(name: str) -> str:
+    base = os.path.basename((name or "").replace("\\", "/"))
+    stem, ext = os.path.splitext(base)
+    stem = re.sub(r"[^\w.\- ]+", "_", stem, flags=re.UNICODE).strip(" ._")
+    stem = re.sub(r"\.{2,}", ".", stem)[:100] or "lampiran"
+    return f"{stem}{ext.lower()}"
+
+
 class AttachmentForm(forms.Form):
     file = forms.FileField(label="Lampiran")
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["file"].help_text = "Maksimal 10 MB per file."
+        self.fields[
+            "file"
+        ].help_text = "Maksimal 10 MB. Format: PDF, Office, gambar, TXT, CSV, ZIP."
         style_form(self)
 
     def clean_file(self):
         file = self.cleaned_data["file"]
         if file.size > 10 * 1024 * 1024:
             raise forms.ValidationError("Maksimal ukuran lampiran 10 MB.")
+        safe_name = sanitize_filename(file.name)
+        ext = os.path.splitext(safe_name)[1]
+        allowed = ALLOWED_ATTACHMENT_TYPES.get(ext)
+        if allowed is None:
+            raise forms.ValidationError(
+                "Jenis file tidak diizinkan. Gunakan PDF, Office, gambar, TXT, CSV, atau ZIP."
+            )
+        content_type = (getattr(file, "content_type", "") or "").split(";")[0].strip().lower()
+        if content_type not in GENERIC_CONTENT_TYPES and content_type not in allowed:
+            raise forms.ValidationError("Tipe konten file tidak sesuai dengan ekstensinya.")
+        file.name = safe_name
         return file

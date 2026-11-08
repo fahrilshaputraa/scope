@@ -9,6 +9,9 @@ class NotificationTarget(models.TextChoices):
     ISSUE = "issue", "Issue"
     MILESTONE = "milestone", "Milestone"
     NOTE = "note", "Note"
+    APPROVAL = "approval", "Approval"
+    CHANGE_REQUEST = "change_request", "Change request"
+    DELIVERABLE = "deliverable", "Deliverable"
 
 
 class Notification(models.Model):

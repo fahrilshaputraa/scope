@@ -50,12 +50,12 @@ def test_switch_role_changes_sidebar_and_session(client):
     user = make_user("andi", Role.PROJECT_MANAGER, Role.MANAGEMENT)
     client.force_login(user)
     pm_body = page(client, "projects:dashboard").content
-    assert b'aria-label="Project Control"' in pm_body and b"Portfolio" not in pm_body
+    assert b'aria-label="Kontrol project"' in pm_body and b"Portfolio" not in pm_body
     response = client.post(reverse("identity:switch_role"), {"role": Role.MANAGEMENT})
     assert response.status_code == 302 and response.url == reverse("projects:dashboard")
     assert client.session[SESSION_KEY] == Role.MANAGEMENT
     mgmt_body = page(client, "projects:dashboard").content
-    assert b"Portfolio" in mgmt_body and b'aria-label="Project Control"' not in mgmt_body
+    assert b"Portfolio" in mgmt_body and b'aria-label="Kontrol project"' not in mgmt_body
 
 
 def test_switching_to_an_unowned_role_is_refused(client):
@@ -128,7 +128,19 @@ def test_client_sees_shared_project_but_not_internal_pages(client):
     assert overview.status_code == 200
     assert b"Aktivitas terbaru" not in overview.content
     tabs = [key for key, _ in overview.context["tabs"]]
-    assert tabs == ["overview", "progress", "timeline", "tasks", "milestones"]
+    # Tab project (U6): Client tidak melihat Masalah, Catatan, dan Aktivitas.
+    assert tabs == ["overview", "work", "progress", "milestones"]
+    # Client melihat deliverable yang dibagikan (PRD §21.5) sebagai bagian Milestone.
+    assert overview.context["project_sections"] == [
+        "overview",
+        "tasks_list",
+        "tasks",
+        "timeline",
+        "structure",
+        "progress",
+        "milestones",
+        "deliverables",
+    ]
     assert client.get(reverse("projects:project_detail", args=[hidden.pk])).status_code == 404
     for name in ("project_issues", "project_notes", "project_activity", "project_history"):
         assert client.get(reverse("projects:" + name, args=[shared.pk])).status_code == 403

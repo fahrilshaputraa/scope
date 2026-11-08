@@ -32,6 +32,11 @@ PERMISSIONS = {
     "timeline.update": "Mengubah jadwal",
     "baseline.view": "Melihat baseline",
     "baseline.approve": "Menyetujui baseline",
+    "plan.approve": "Menyetujui rencana project",
+    "closure.approve": "Menyetujui penutupan project",
+    "approval.configure": "Mengatur alur persetujuan project",
+    "deliverable.manage": "Mengelola deliverable",
+    "deliverable.accept": "Menerima atau menolak deliverable",
     "milestone.manage": "Mengelola milestone",
     "issue.report": "Melaporkan issue",
     "issue.manage": "Mengelola issue",
@@ -43,6 +48,7 @@ PERMISSIONS = {
     "report.export": "Mengekspor laporan",
     "user.manage": "Mengelola user dan role",
     "template.manage": "Mengelola template project",
+    "audit.view": "Melihat audit trail workspace",
 }
 
 ALL_PERMISSIONS = sorted(PERMISSIONS)
@@ -98,6 +104,9 @@ DEFAULT_ROLE_PERMISSIONS = {
                 "comment.create",
                 "report.view",
                 "report.export",
+                "approval.configure",
+                "deliverable.manage",
+                "task.review",
             ]
         )
     ),
@@ -108,6 +117,7 @@ DEFAULT_ROLE_PERMISSIONS = {
             + [
                 "task.execute",
                 "task.update_progress",
+                "task.review",
                 "issue.report",
                 "comment.create",
                 "report.view",
@@ -121,6 +131,10 @@ DEFAULT_ROLE_PERMISSIONS = {
             + _INTERNAL
             + [
                 "baseline.approve",
+                "plan.approve",
+                "closure.approve",
+                "deliverable.accept",
+                "task.review",
                 "issue.report",
                 "change_request.submit",
                 "change_request.approve",
@@ -130,7 +144,7 @@ DEFAULT_ROLE_PERMISSIONS = {
             ]
         )
     ),
-    "client": sorted(set(_READ + ["comment.create", "report.view"])),
+    "client": sorted(set(_READ + ["comment.create", "report.view", "deliverable.accept"])),
     "management": sorted(
         set(_READ + _INTERNAL + ["project.view_all", "report.view", "report.export"])
     ),

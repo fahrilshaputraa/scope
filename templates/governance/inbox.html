@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% load pcc_tags %}
+{% block title %}Persetujuan — Scope{% endblock %}
+{% block content %}
+<div class="flex flex-wrap items-end justify-between gap-4">
+  <div><h1 class="dashboard-page-title">Persetujuan</h1><p class="dashboard-page-subtitle">Keputusan yang menunggu Anda: rencana, baseline, change request, deliverable, dan penutupan project.</p></div>
+  <a class="pcc-button pcc-button-secondary" href="{% url 'governance:my_reviews' %}">Pemeriksaan task</a>
+</div>
+<section class="pcc-panel mt-6" aria-labelledby="queue-title" data-approval-queue>
+  <div class="panel-heading"><h2 id="queue-title">Menunggu keputusan Anda · {{ rows|length }}</h2></div>
+  <div class="overflow-x-auto" tabindex="0" role="region" aria-label="Antrean persetujuan">
+    <table class="pcc-table responsive-table">
+      <thead><tr><th>Pengajuan</th><th>Project</th><th>Diajukan oleh</th><th class="text-right">Diajukan</th><th class="text-right">Aksi</th></tr></thead>
+      <tbody>
+      {% for row in rows %}{% with r=row.request %}
+        <tr>
+          <td data-label="Pengajuan" class="control-task"><a href="{% url 'governance:approval_detail' r.pk %}">{{ r.target_repr }}</a><small>{{ r.get_approval_type_display }}{% if r.note %} · {{ r.note|truncatechars:80 }}{% endif %}</small></td>
+          <td data-label="Project"><a class="subtle-action" href="{% url 'projects:project_detail' r.project_id %}">{{ r.project.code }}</a></td>
+          <td data-label="Diajukan oleh">{{ r.requested_by|person_name|default:"—" }}</td>
+          <td data-label="Diajukan" class="text-right tabular-nums">{{ r.created_at|date:"d M Y" }}</td>
+          <td data-label="Aksi" class="text-right"><span class="inline-flex flex-wrap justify-end gap-2"><form method="post" action="{% url 'governance:approval_quick' r.pk %}">{% csrf_token %}<input type="hidden" name="next" value="{{ request.path }}"><button class="pcc-button">Setujui</button></form><a class="pcc-button pcc-button-secondary" href="{% url 'governance:approval_detail' r.pk %}">Tinjau atau tolak</a></span></td>
+        </tr>
+      {% endwith %}{% empty %}
+        <tr><td colspan="5" class="control-empty">Tidak ada keputusan yang menunggu Anda. Pengajuan baru akan muncul di sini dan di notifikasi.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+<section class="pcc-panel mt-6" aria-labelledby="mine-title">
+  <div class="panel-heading"><h2 id="mine-title">Pengajuan saya yang belum diputuskan</h2></div>
+  {% include "governance/_request_table.html" with items=mine show_project=True caption="Pengajuan saya" empty="Anda tidak punya pengajuan yang menunggu." %}
+</section>
+{% if decided %}
+<section class="pcc-panel mt-6" aria-labelledby="decided-title">
+  <div class="pcc-section border-b"><h2 id="decided-title">Keputusan terakhir Anda</h2></div>
+  <ul class="overview-list">
+    {% for step in decided %}<li><span class="{{ step.status|status_style }}">{{ step.get_status_display }}</span><div><a href="{% url 'governance:approval_detail' step.request_id %}">{{ step.request.target_repr }}</a><p>{{ step.request.project.code }} · {{ step.request.get_approval_type_display }}{% if step.reason %} · {{ step.reason|truncatechars:80 }}{% endif %}</p></div><span class="row-meta">{{ step.decided_at|date:"d M Y" }}</span></li>{% endfor %}
+  </ul>
+</section>
+{% endif %}
+{% endblock %}

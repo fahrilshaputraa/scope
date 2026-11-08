@@ -27,6 +27,7 @@ from .views import _project_or_404, progress_chart_data, project_context
 
 DEFAULT_SECTIONS = [
     ("overview", "Rencana vs progress"),
+    ("timeline", "Jadwal"),
     ("ongoing", "Sedang dikerjakan"),
     ("next", "Periode berikutnya"),
     ("issues", "Daftar masalah"),
@@ -276,7 +277,7 @@ def presentation_slides(project, sections, start, end):
             limit = 4
         pages = (
             paginate_content(items, kind, limit, section.get("show_details", True))
-            if kind not in ("overview", "thanks")
+            if kind not in ("overview", "timeline", "thanks")
             else [[]]
         )
         for page, records in enumerate(pages, 1):
@@ -306,12 +307,19 @@ def presentation_play(request, pk):
         list(project.snapshots.order_by("date")),
         project.actual_progress,
     )
+    slides = presentation_slides(project, sections, start, end)
+    gantt = None
+    if any(slide["kind"] == "timeline" for slide in slides):
+        from apps.work.gantt import project_payload
+
+        gantt = project_payload(project, request.user)
     return render(
         request,
         "projects/presentation/play.html",
         {
             "project": project,
-            "slides": presentation_slides(project, sections, start, end),
+            "slides": slides,
+            "gantt": gantt,
             "chart": chart,
             "chart_has_plan": any(v is not None for v in chart["planned"]),
             "captured_at": timezone.now(),

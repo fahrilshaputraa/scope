@@ -124,7 +124,7 @@ def test_public_page_shows_progress_and_hides_internal_data(client, public_case)
         b"Actual",
         b"progress-chart-data",
         b"Secret task title",
-        b"task-timeline-grid",
+        b"data-gantt",
         b"public-phase",
         b"Belum ada pekerjaan di fase ini.",
     ):

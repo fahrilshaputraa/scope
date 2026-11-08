@@ -1,0 +1,20 @@
+{% extends "projects/_base.html" %}
+{% load pcc_tags %}
+{% block project_content %}
+<div class="mt-6 visualization-toolbar"><div><h2 class="text-lg">Deliverable</h2><p class="mt-1 text-sm text-muted-foreground">Output pekerjaan yang diserahkan dan diterima. Berbeda dari milestone yang menandai titik capaian.</p></div>{% if can_add %}<a data-project-action class="pcc-button" href="{% url 'governance:deliverable_create' project.pk %}"><svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Tambah deliverable</a>{% endif %}</div>
+<nav class="dashboard-summary mt-4" aria-label="Ringkasan deliverable"><span><strong>{{ deliverables|length }}</strong> total</span><span><strong>{{ counts.submitted|add:counts.under_review }}</strong> menunggu penerimaan</span><span><strong>{{ counts.accepted }}</strong> diterima</span><span><strong>{{ counts.rejected }}</strong> ditolak</span></nav>
+<section class="pcc-panel mt-4" data-deliverable-list>
+  <div class="overflow-x-auto" tabindex="0" role="region" aria-label="Daftar deliverable">
+    <table class="pcc-table responsive-table">
+      <thead><tr><th>Deliverable</th><th>Task</th><th>Pemilik</th><th>Penerima</th><th class="text-right">Target</th><th>Status</th></tr></thead>
+      <tbody>
+      {% for d in deliverables %}
+        <tr><td data-label="Deliverable" class="control-task"><a href="{% url 'governance:deliverable_detail' d.pk %}">{{ d.name }}</a><small>{{ d.acceptance_criteria|truncatechars:90 }}</small></td><td data-label="Task">{% if d.task %}{{ d.task.title }}{% else %}—{% endif %}</td><td data-label="Pemilik">{{ d.owner|person_name|default:"—" }}</td><td data-label="Penerima">{{ d.reviewer|person_name|default:"Project Owner" }}</td><td data-label="Target" class="text-right tabular-nums">{{ d.due_date|date:"d M Y"|default:"—" }}</td><td data-label="Status"><span class="{{ d.status|status_style }}">{{ d.get_status_display }}</span></td></tr>
+      {% empty %}
+        <tr><td colspan="6" class="control-empty">Belum ada deliverable.{% if can_add %} Tambahkan output yang harus diterima Owner atau client, lengkap dengan kriteria penerimaannya.{% endif %}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

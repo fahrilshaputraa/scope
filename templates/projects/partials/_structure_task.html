@@ -1,0 +1,5 @@
+{% load pcc_tags %}
+<li data-structure-task="{{ row.task.pk }}">
+  <div class="flex flex-wrap items-center gap-2 text-sm"><a class="hover:underline" href="{% url 'work:task_detail' row.task.pk %}">{{ row.task.title }}</a><span class="text-xs text-muted-foreground">{{ row.task.get_progress_method_display }} · {{ row.task.display_progress|floatformat:0 }}% · bobot {{ row.task.weight|floatformat:2 }}</span></div>
+  {% if row.details %}<ul class="ml-4 mt-1 space-y-1 border-l pl-4">{% for d in row.details %}<li class="text-sm"><a class="hover:underline" href="{% url 'work:task_detail' d.pk %}">{{ d.title }}</a> <span class="text-xs text-muted-foreground">{{ d.display_progress|floatformat:0 }}% · bobot {{ d.weight|floatformat:2 }}</span></li>{% endfor %}</ul>{% endif %}
+</li>

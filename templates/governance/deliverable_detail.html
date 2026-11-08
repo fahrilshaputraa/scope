@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% load pcc_tags %}
+{% block title %}{{ item.name }} — Scope{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-3xl">
+  <a class="text-sm text-muted-foreground hover:underline" href="{% url 'governance:project_deliverables' project.pk %}">← {{ project.code }} · Deliverable</a>
+  <div class="mt-3 flex flex-wrap items-start justify-between gap-4">
+    <div><h1 class="text-2xl font-normal">{{ item.name }}</h1><p class="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted-foreground"><span class="{{ item.status|status_style }}" data-deliverable-status="{{ item.status }}">{{ item.get_status_display }}</span> Pemilik {{ item.owner|person_name|default:"—" }} · penerima {{ item.reviewer|person_name|default:"Project Owner" }}</p></div>
+    <div class="flex flex-wrap gap-2">
+      {% if can_edit %}<a data-project-action class="pcc-button pcc-button-secondary" href="{% url 'governance:deliverable_edit' item.pk %}">Edit</a>{% endif %}
+      {% if can_submit %}<form method="post" action="{% url 'governance:deliverable_submit' item.pk %}">{% csrf_token %}<button class="pcc-button">{% if item.status == 'rejected' %}Ajukan ulang{% else %}Ajukan penerimaan{% endif %}</button></form>{% endif %}
+      {% if my_turn %}{% if item.status == 'submitted' %}<form method="post" action="{% url 'governance:deliverable_review' item.pk %}">{% csrf_token %}<button class="pcc-button pcc-button-secondary">Mulai tinjau</button></form>{% endif %}<a class="pcc-button" href="{% url 'governance:approval_detail' my_turn.pk %}">Terima atau tolak</a>{% endif %}
+    </div>
+  </div>
+  <section class="pcc-panel mt-6">
+    <dl class="pcc-section grid gap-4 sm:grid-cols-2 text-sm">
+      <div class="sm:col-span-2"><dt class="text-muted-foreground">Kriteria penerimaan</dt><dd class="mt-1">{{ item.acceptance_criteria|linebreaksbr }}</dd></div>
+      <div class="sm:col-span-2"><dt class="text-muted-foreground">Bukti hasil kerja</dt><dd class="mt-1">{{ item.evidence|default:"Belum ada bukti."|urlize|linebreaksbr }}</dd></div>
+      <div><dt class="text-muted-foreground">Task terkait</dt><dd class="mt-1">{% if item.task %}<a class="underline" href="{% url 'work:task_detail' item.task.pk %}">{{ item.task.title }}</a>{% else %}—{% endif %}</dd></div>
+      <div><dt class="text-muted-foreground">Target · diserahkan</dt><dd class="mt-1 tabular-nums">{{ item.due_date|date:"d M Y"|default:"—" }} · {{ item.submission_date|date:"d M Y"|default:"—" }}</dd></div>
+      {% if item.description %}<div class="sm:col-span-2"><dt class="text-muted-foreground">Deskripsi</dt><dd class="mt-1">{{ item.description|linebreaksbr }}</dd></div>{% endif %}
+    </dl>
+  </section>
+  {% include "governance/_approval_history.html" %}
+</div>
+{% endblock %}

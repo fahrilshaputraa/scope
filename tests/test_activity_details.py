@@ -200,8 +200,12 @@ def test_timeline_groups_details_even_when_dates_sort_before_parent(client, acti
     assert not rows[ids.index(child.pk)]["phase_heading"]
     client.force_login(activity.project.manager)
     response = client.get(reverse("projects:project_timeline", args=[activity.project_id]))
-    assert f'data-toggle-details="{activity.pk}"'.encode() in response.content
-    assert f'data-parent-task="{activity.pk}"'.encode() in response.content
+    gantt_rows = response.context["gantt"]["rows"]
+    keys = [row["id"] for row in gantt_rows]
+    parent_row = gantt_rows[keys.index(f"t{activity.pk}")]
+    assert parent_row["hasChildren"]
+    assert keys.index(f"t{child.pk}") == keys.index(f"t{activity.pk}") + 1
+    assert gantt_rows[keys.index(f"t{child.pk}")]["parent"] == f"t{activity.pk}"
     response = client.get(reverse("work:task_detail", args=[activity.pk]))
     assert b"Tambah detail activity" in response.content
     assert child.title.encode() in response.content

@@ -4,15 +4,18 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('work', '0009_task_status_in_review'),
+        ("work", "0009_task_status_in_review"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='task',
-            name='actual_start',
-            field=models.DateField(blank=True, help_text='Terisi otomatis saat pekerjaan pertama kali dimulai.', null=True),
+            model_name="task",
+            name="actual_start",
+            field=models.DateField(
+                blank=True,
+                help_text="Terisi otomatis saat pekerjaan pertama kali dimulai.",
+                null=True,
+            ),
         ),
     ]

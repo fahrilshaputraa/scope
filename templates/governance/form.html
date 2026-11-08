@@ -1,0 +1,5 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} — Scope{% endblock %}
+{% block content %}
+    {% include "partials/_form_card.html" with back_url=back_url title=title subtitle=subtitle %}
+{% endblock %}

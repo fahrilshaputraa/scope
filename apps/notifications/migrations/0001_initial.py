@@ -6,7 +6,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = [
@@ -15,40 +14,99 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
-            name='NotificationPreference',
+            name="NotificationPreference",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('in_app', models.BooleanField(default=True)),
-                ('email', models.BooleanField(default=False)),
-                ('digest', models.CharField(choices=[('off', 'Mati'), ('daily', 'Harian'), ('weekly', 'Mingguan')], default='off', max_length=10)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('user', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, related_name='notification_preference', to=settings.AUTH_USER_MODEL)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True, primary_key=True, serialize=False, verbose_name="ID"
+                    ),
+                ),
+                ("in_app", models.BooleanField(default=True)),
+                ("email", models.BooleanField(default=False)),
+                (
+                    "digest",
+                    models.CharField(
+                        choices=[("off", "Mati"), ("daily", "Harian"), ("weekly", "Mingguan")],
+                        default="off",
+                        max_length=10,
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                (
+                    "user",
+                    models.OneToOneField(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="notification_preference",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Notification preference',
-                'verbose_name_plural': 'Notification preferences',
+                "verbose_name": "Notification preference",
+                "verbose_name_plural": "Notification preferences",
             },
         ),
         migrations.CreateModel(
-            name='Notification',
+            name="Notification",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('verb', models.CharField(max_length=60)),
-                ('target_type', models.CharField(choices=[('project', 'Project'), ('task', 'Task'), ('issue', 'Issue'), ('milestone', 'Milestone')], max_length=20)),
-                ('target_id', models.PositiveBigIntegerField(blank=True, null=True)),
-                ('title', models.CharField(max_length=200)),
-                ('body', models.TextField(blank=True)),
-                ('url', models.CharField(blank=True, max_length=500)),
-                ('read_at', models.DateTimeField(blank=True, null=True)),
-                ('dedupe_key', models.CharField(max_length=255, unique=True)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('actor', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='+', to=settings.AUTH_USER_MODEL)),
-                ('recipient', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='notifications', to=settings.AUTH_USER_MODEL)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True, primary_key=True, serialize=False, verbose_name="ID"
+                    ),
+                ),
+                ("verb", models.CharField(max_length=60)),
+                (
+                    "target_type",
+                    models.CharField(
+                        choices=[
+                            ("project", "Project"),
+                            ("task", "Task"),
+                            ("issue", "Issue"),
+                            ("milestone", "Milestone"),
+                        ],
+                        max_length=20,
+                    ),
+                ),
+                ("target_id", models.PositiveBigIntegerField(blank=True, null=True)),
+                ("title", models.CharField(max_length=200)),
+                ("body", models.TextField(blank=True)),
+                ("url", models.CharField(blank=True, max_length=500)),
+                ("read_at", models.DateTimeField(blank=True, null=True)),
+                ("dedupe_key", models.CharField(max_length=255, unique=True)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                (
+                    "actor",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="+",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
+                (
+                    "recipient",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="notifications",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
             options={
-                'ordering': ['-created_at', '-id'],
-                'indexes': [models.Index(fields=['recipient', 'read_at', '-created_at'], name='notif_recipient_read_idx'), models.Index(fields=['recipient', '-created_at'], name='notif_recipient_created_idx')],
+                "ordering": ["-created_at", "-id"],
+                "indexes": [
+                    models.Index(
+                        fields=["recipient", "read_at", "-created_at"],
+                        name="notif_recipient_read_idx",
+                    ),
+                    models.Index(
+                        fields=["recipient", "-created_at"], name="notif_recipient_created_idx"
+                    ),
+                ],
             },
         ),
     ]

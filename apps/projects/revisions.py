@@ -14,6 +14,7 @@ from django.db.models.signals import m2m_changed, post_save, pre_save
 from django.utils.dateparse import parse_date, parse_datetime
 from django.utils.html import strip_tags
 
+from apps.governance.models import ChangeRequest, Deliverable
 from apps.identity.roles import active_role
 from apps.work.models import (
     TASK_STATUS_LABELS,
@@ -29,10 +30,12 @@ from .models import (
     MilestoneStatus,
     Phase,
     Project,
+    ProjectType,
     Revision,
     RevisionAction,
     RevisionEntity,
     Risk,
+    WeightMode,
 )
 
 
@@ -55,6 +58,8 @@ REVISION_FIELDS: dict[str, dict[str, FieldSpec]] = {
         "cancellation_reason": FieldSpec("Alasan pembatalan"),
         "current_phase": FieldSpec("Phase aktif", "phase", "current_phase_id"),
         "progress_override": FieldSpec("Progress manual", "percent"),
+        "project_type": FieldSpec("Jenis project", "choice"),
+        "weight_mode": FieldSpec("Mode bobot", "choice"),
         "manager": FieldSpec("Manager", "user", "manager_id"),
         "owner": FieldSpec("Owner", "user", "owner_id"),
         "members": FieldSpec("Anggota", "users"),
@@ -72,7 +77,9 @@ REVISION_FIELDS: dict[str, dict[str, FieldSpec]] = {
         "weight": FieldSpec("Bobot", "decimal"),
         "priority": FieldSpec("Prioritas", "choice"),
         "assignee": FieldSpec("PIC", "user", "assignee_id"),
+        "progress_method": FieldSpec("Metode progress"),
         "collaborators": FieldSpec("Rekan", "users"),
+        "reviewer": FieldSpec("Reviewer", "user", "reviewer_id"),
         "phase": FieldSpec("Phase", "phase", "phase_id"),
         "dependencies": FieldSpec("Dependensi", "tasks"),
         "archived_at": FieldSpec("Status arsip", "datetime"),
@@ -97,12 +104,33 @@ REVISION_FIELDS: dict[str, dict[str, FieldSpec]] = {
     },
     RevisionEntity.RISK: {
         "title": FieldSpec("Judul"),
-        "severity": FieldSpec("Severitas", "choice"),
+        "description": FieldSpec("Deskripsi", "rich"),
+        "probability": FieldSpec("Kemungkinan"),
+        "impact": FieldSpec("Dampak"),
         "status": FieldSpec("Status", "choice"),
         "owner": FieldSpec("Pemilik", "user", "owner_id"),
-        "due_date": FieldSpec("Tenggat", "date"),
+        "review_date": FieldSpec("Tanggal tinjau", "date"),
         "mitigation": FieldSpec("Mitigasi", "rich"),
     },
+}
+
+REVISION_FIELDS[RevisionEntity.DELIVERABLE] = {
+    "name": FieldSpec("Nama"),
+    "description": FieldSpec("Deskripsi"),
+    "acceptance_criteria": FieldSpec("Kriteria penerimaan"),
+    "evidence": FieldSpec("Bukti"),
+    "owner": FieldSpec("Pemilik", "user", "owner_id"),
+    "reviewer": FieldSpec("Penerima", "user", "reviewer_id"),
+    "due_date": FieldSpec("Target", "date"),
+}
+REVISION_FIELDS[RevisionEntity.CHANGE_REQUEST] = {
+    "title": FieldSpec("Judul"),
+    "description": FieldSpec("Rincian"),
+    "reason": FieldSpec("Alasan"),
+    "impact_assessment": FieldSpec("Penilaian dampak"),
+    "schedule_impact": FieldSpec("Dampak jadwal"),
+    "scope_impact": FieldSpec("Dampak scope"),
+    "proposed_end_date": FieldSpec("Target selesai baru", "date"),
 }
 
 ENTITY_MODELS = {
@@ -111,6 +139,8 @@ ENTITY_MODELS = {
     RevisionEntity.MILESTONE: Milestone,
     RevisionEntity.ISSUE: Issue,
     RevisionEntity.RISK: Risk,
+    RevisionEntity.DELIVERABLE: Deliverable,
+    RevisionEntity.CHANGE_REQUEST: ChangeRequest,
 }
 
 ENTITY_LABELS = {
@@ -119,6 +149,8 @@ ENTITY_LABELS = {
     RevisionEntity.MILESTONE: "Milestone",
     RevisionEntity.ISSUE: "Issue",
     RevisionEntity.RISK: "Risiko",
+    RevisionEntity.DELIVERABLE: "Deliverable",
+    RevisionEntity.CHANGE_REQUEST: "Change request",
 }
 
 _PRIORITY_LABELS = {
@@ -130,6 +162,8 @@ _PRIORITY_LABELS = {
 
 CHOICE_LABELS = {
     (RevisionEntity.PROJECT, "lifecycle_status"): dict(LifecycleStatus.choices),
+    (RevisionEntity.PROJECT, "project_type"): dict(ProjectType.choices),
+    (RevisionEntity.PROJECT, "weight_mode"): dict(WeightMode.choices),
     (RevisionEntity.TASK, "status"): TASK_STATUS_LABELS,
     (RevisionEntity.TASK, "priority"): _PRIORITY_LABELS,
     (RevisionEntity.MILESTONE, "status"): {
@@ -152,6 +186,7 @@ CHOICE_LABELS = {
         "open": "Terbuka",
         "mitigated": "Termitigasi",
         "closed": "Ditutup",
+        "converted": "Menjadi masalah",
     },
 }
 
@@ -245,8 +280,7 @@ def _stored_values(instance, entity):
     }
     row = manager.filter(pk=instance.pk).values(*mapping.keys()).first() or {}
     return {
-        name: _normalize(row.get(attname), spec.kind)
-        for attname, (name, spec) in mapping.items()
+        name: _normalize(row.get(attname), spec.kind) for attname, (name, spec) in mapping.items()
     }
 
 
@@ -348,7 +382,18 @@ def _capture_after_save(sender, instance, created=False, raw=False, **kwargs):
             changes[name] = {"old": old, "new": new}
     instance._revision_before = {}
     if changes:
-        _record_revision(instance, entity, changes, RevisionAction.UPDATED)
+        revision = _record_revision(instance, entity, changes, RevisionAction.UPDATED)
+        if entity in (RevisionEntity.PROJECT, RevisionEntity.TASK, RevisionEntity.MILESTONE):
+            from apps.governance.changes import note_major_change
+
+            state = _current_state()
+            note_major_change(
+                revision.project if revision else None,
+                entity,
+                _object_repr(instance, entity),
+                changes,
+                state["actor"] if state else None,
+            )
 
 
 def _capture_m2m_before(sender, instance, action, reverse, **kwargs):
@@ -542,9 +587,10 @@ def _validate_refs(entity, specs, plain, project):
             continue
         if spec.kind == "user" and not User.objects.filter(pk=value).exists():
             raise RestoreError(f"Pengguna untuk {spec.label} sudah tidak tersedia.")
-        if spec.kind == "phase" and not Phase.all_objects.filter(
-            pk=value, project_id=project.pk
-        ).exists():
+        if (
+            spec.kind == "phase"
+            and not Phase.all_objects.filter(pk=value, project_id=project.pk).exists()
+        ):
             raise RestoreError(f"{spec.label} pada riwayat ini tidak lagi valid untuk project.")
 
 
@@ -596,9 +642,7 @@ def restore_revision(revision, actor=None):
     specs = REVISION_FIELDS.get(entity)
     if model is None or specs is None:
         raise RestoreError("Jenis data pada riwayat ini tidak dikenal.")
-    obj = model._base_manager.filter(
-        pk=revision.object_id, project_id=revision.project_id
-    ).first()
+    obj = model._base_manager.filter(pk=revision.object_id, project_id=revision.project_id).first()
     if obj is None:
         raise RestoreError("Data yang dirujuk riwayat ini sudah tidak tersedia.")
 

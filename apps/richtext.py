@@ -23,8 +23,23 @@ RICH_FIELDS = {
 }
 
 ALLOWED_TAGS = {
-    "a", "b", "strong", "i", "em", "u", "s", "p", "br",
-    "ul", "ol", "li", "blockquote", "code", "pre", "h3", "h4",
+    "a",
+    "b",
+    "strong",
+    "i",
+    "em",
+    "u",
+    "s",
+    "p",
+    "br",
+    "ul",
+    "ol",
+    "li",
+    "blockquote",
+    "code",
+    "pre",
+    "h3",
+    "h4",
 }
 ALLOWED_ATTRIBUTES = {"a": {"href", "title"}}
 

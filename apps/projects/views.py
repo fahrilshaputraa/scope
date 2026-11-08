@@ -24,6 +24,7 @@ from apps.identity.permissions import (
     role_of,
     visible_projects,
 )
+from apps.identity.roles import has_perm
 from apps.notifications.models import SubscriptionTarget
 from apps.notifications.subscriptions import watch_state
 from apps.work.comments import THREAD_PAGE_SIZE, attach_threads, thread
@@ -50,6 +51,7 @@ from .models import (
     Revision,
 )
 from .pagination import paginate
+from .project_templates import custom_field_rows
 from .revisions import RestoreError, decorate_revisions, restore_revision
 from .search import search_workspace
 from .services import (
@@ -58,24 +60,73 @@ from .services import (
     project_health,
     record_activity,
     record_snapshot,
-    timeline_data,
     variance,
     variance_level,
     with_project_metrics,
 )
 
-PROJECT_TABS = [
-    ("overview", "Ringkasan"),
-    ("progress", "Progress"),
-    ("timeline", "Jadwal"),
-    ("tasks", "Pekerjaan"),
-    ("issues", "Masalah"),
-    ("milestones", "Milestone"),
-    ("notes", "Catatan"),
-    ("activity", "Aktivitas"),
-    ("history", "Riwayat"),
-    ("control", "Kontrol"),
+# Arsitektur informasi project (U6): tujuh tab; setiap tab punya satu atau lebih
+# bagian yang tampil sebagai pilihan tampilan (segmented control). URL lama tetap
+# berlaku: setiap bagian memakai URL-nya sendiri.
+# group -> (label tab, [(bagian, label tampilan)])
+PROJECT_GROUPS = [
+    ("overview", "Ringkasan", [("overview", "Ringkasan")]),
+    (
+        "work",
+        "Pekerjaan",
+        [
+            ("tasks_list", "Daftar"),
+            ("tasks", "Board"),
+            ("timeline", "Jadwal"),
+            ("structure", "Struktur"),
+        ],
+    ),
+    ("progress", "Progress", [("progress", "Progress")]),
+    ("issues", "Masalah & risiko", [("issues", "Masalah & risiko")]),
+    (
+        "milestones",
+        "Milestone & deliverable",
+        [("milestones", "Milestone"), ("deliverables", "Deliverable")],
+    ),
+    ("notes", "Catatan & keputusan", [("notes", "Catatan & keputusan")]),
+    (
+        "activity",
+        "Aktivitas",
+        [
+            ("activity", "Log aktivitas"),
+            ("history", "Riwayat perubahan"),
+            ("approvals", "Persetujuan & perubahan"),
+            ("control", "Kontrol"),
+        ],
+    ),
 ]
+# Bagian di luar tab: dibuka dari menu Lainnya → Pengaturan project.
+SETTINGS_SECTIONS = [
+    ("settings", "Umum"),
+    ("members", "Anggota"),
+    ("share", "Tautan publik"),
+]
+# Kompatibilitas: daftar datar (key, label) dari semua bagian bertab.
+PROJECT_TABS = [section for _, _, sections in PROJECT_GROUPS for section in sections]
+SECTION_URLS = {
+    "overview": ("projects:project_detail", ""),
+    "tasks_list": ("projects:project_tasks", "?view=list"),
+    "tasks": ("projects:project_tasks", ""),
+    "timeline": ("projects:project_timeline", ""),
+    "structure": ("projects:project_structure", ""),
+    "progress": ("projects:project_progress", ""),
+    "issues": ("projects:project_issues", ""),
+    "milestones": ("projects:project_milestones", ""),
+    "deliverables": ("governance:project_deliverables", ""),
+    "notes": ("projects:project_notes", ""),
+    "activity": ("projects:project_activity", ""),
+    "history": ("projects:project_history", ""),
+    "approvals": ("governance:project_approvals", ""),
+    "control": ("projects:project_control", ""),
+    "settings": ("projects:project_settings", ""),
+    "members": ("projects:project_members", ""),
+    "share": ("projects:project_share", ""),
+}
 
 STATUS_CHOICES = LifecycleStatus.choices
 HEALTH_CHOICES = HealthStatus.choices
@@ -95,25 +146,82 @@ def _task_counts(project) -> dict:
     }
 
 
-INTERNAL_TABS = {"issues", "notes", "activity", "history"}
+INTERNAL_TABS = {"issues", "notes", "activity", "history", "approvals"}
 CONTROL_TABS = {"control"}
+
+
+def can_submit_change(user, project):
+    from apps.governance.changes import can_submit_change as allowed
+
+    return allowed(user, project)
+
+
+def _section_url(key, project):
+    name, suffix = SECTION_URLS[key]
+    return reverse(name, args=[project.pk]) + suffix
+
+
+# Aksi utama header per bagian. Bagian yang punya tombol utama di toolbar-nya
+# sendiri (board, masalah, milestone, deliverable, catatan, persetujuan, jadwal)
+# tidak mendapat tombol kedua di header (U3: satu aksi utama per layar).
+HEADER_PRIMARY_SECTIONS = {"overview", "progress", "tasks_list", "activity", "history", "control"}
 
 
 def project_context(request, project, active_tab):
     internal = can_view_internal(request.user)
+    control = can_control_projects(request.user)
+
+    def allowed(key):
+        return (internal or key not in INTERNAL_TABS) and (key not in CONTROL_TABS or control)
+
+    tabs, groups, active_group, subtabs = [], [], None, []
+    for group_key, group_label, sections in PROJECT_GROUPS:
+        visible = [(key, label) for key, label in sections if allowed(key)]
+        if not visible:
+            continue
+        is_active = any(key == active_tab for key, _ in sections) or (
+            active_tab == "tasks" and group_key == "work"
+        )
+        tabs.append((group_key, group_label))
+        groups.append(
+            {
+                "key": group_key,
+                "label": group_label,
+                "url": _section_url(visible[0][0], project),
+                "active": is_active,
+            }
+        )
+        if is_active:
+            active_group = group_key
+            if len(visible) > 1:
+                subtabs = [
+                    {"key": key, "label": label, "url": _section_url(key, project)}
+                    for key, label in visible
+                ]
+    manage = can_manage_project(request.user, project)
+    if active_tab in {key for key, _ in SETTINGS_SECTIONS}:
+        active_group = "settings"
+        subtabs = [
+            {"key": key, "label": label, "url": _section_url(key, project)}
+            for key, label in SETTINGS_SECTIONS
+        ]
     return {
         "project": project,
-        "tabs": [
-            tab
-            for tab in PROJECT_TABS
-            if (internal or tab[0] not in INTERNAL_TABS)
-            and (tab[0] not in CONTROL_TABS or can_control_projects(request.user))
-        ],
+        # Tab utama (maksimal tujuh) dan semua bagian yang boleh dibuka.
+        "tabs": tabs,
+        "tab_groups": groups,
+        "project_sections": [key for key, _ in PROJECT_TABS if allowed(key)],
+        "subtabs": subtabs,
+        "active_group": active_group,
+        "header_primary": manage and active_tab in HEADER_PRIMARY_SECTIONS,
         "can_view_internal": internal,
         "active_tab": active_tab,
-        "can_manage": can_manage_project(request.user, project),
+        "can_manage": manage,
         "can_report": can_report_issue(request.user),
         "can_comment": can_comment(request.user),
+        "can_manage_templates": has_perm(request.user, "template.manage"),
+        "can_submit_change": can_submit_change(request.user, project),
+        "custom_rows": custom_field_rows(project),
         **watch_state(request.user, SubscriptionTarget.PROJECT, project.pk),
     }
 
@@ -127,10 +235,17 @@ def _project_or_404(request, pk, *, rich=False):
 
 @login_required
 def dashboard(request: HttpRequest) -> HttpResponse:
-    if role_of(request.user) == Role.OWNER:
-        from .dashboards import owner_dashboard
+    from . import dashboards
 
-        return owner_dashboard(request)
+    role = role_of(request.user)
+    if role == Role.OWNER:
+        return dashboards.owner_dashboard(request)
+    if role == Role.MEMBER:
+        return dashboards.member_dashboard(request)
+    if role == Role.MANAGEMENT:
+        return dashboards.management_dashboard(request)
+    if role == Role.CLIENT:
+        return dashboards.client_dashboard(request)
     projects = list(_project_qs(request.user))
     healths = {p.pk: project_health(p) for p in projects}  # sekali per project
     by_health = Counter(healths[p.pk]["health_status"] for p in projects)
@@ -165,7 +280,7 @@ def dashboard(request: HttpRequest) -> HttpResponse:
             )
             reasons.append(HealthStatus(health["health_status"]).label)
         if health["critical_issues"]:
-            reasons.append(f"{health['critical_issues']} issue kritis")
+            reasons.append(f"{health['critical_issues']} masalah kritis")
         if blocked:
             reasons.append(f"{blocked} task terhambat")
         if milestone and milestone.date <= timezone.localdate() + timezone.timedelta(days=7):
@@ -193,6 +308,7 @@ def dashboard(request: HttpRequest) -> HttpResponse:
             "attention": attention,
             "portfolio_actual": sum(row["actual"] for row in rows) / len(rows) if rows else 0,
             "chart_rows": rows[:6],
+            **dashboards.pm_dashboard_extras(request.user, projects),
             "today": timezone.localdate(),
             "counts": {
                 "total": len(projects),
@@ -391,12 +507,21 @@ def project_detail(request: HttpRequest, pk: int) -> HttpResponse:
     baseline = list(project.baseline_points.all())
     snapshots = list(project.snapshots.all())
     comment_thread = thread(project, CommentTarget.PROJECT, project.pk, limit=None)
+    context = project_context(request, project, "overview")
+    readiness = _readiness(request, project, context["can_manage"])
+    actions = _next_actions(
+        request, project, blocked_work, overdue_work, open_issues, context["can_view_internal"]
+    )
 
     return render(
         request,
         "projects/project/overview.html",
         {
-            **project_context(request, project, "overview"),
+            **context,
+            "readiness": readiness,
+            "today": today,
+            "next_actions": actions[:5],
+            "next_actions_more": max(len(actions) - 5, 0),
             "health": health,
             "blocked_work": blocked_work,
             "overdue_work": overdue_work[:3],
@@ -408,6 +533,219 @@ def project_detail(request: HttpRequest, pk: int) -> HttpResponse:
             "chart_has_plan": bool(baseline),
             "comments": paginate(request, comment_thread, THREAD_PAGE_SIZE),
             "comment_count": comment_thread.count(),
+        },
+    )
+
+
+READY_LIFECYCLE = (LifecycleStatus.DRAFT, LifecycleStatus.PLANNING)
+
+
+def _readiness(request, project, can_manage):
+    """Checklist 'Siap berjalan' (syarat lifecycle PRD §7.3) dengan aksi per syarat.
+
+    None bila project sudah melewati perencanaan.
+    """
+    if project.lifecycle_status not in READY_LIFECYCLE:
+        return None
+    from apps.governance.models import ApprovalType
+    from apps.governance.services import is_enabled, plan_approved
+
+    from .models import BaselineStatus
+
+    pk = project.pk
+    has_tasks = project.tasks.exists()
+    has_baseline = project.baseline_points.exists()
+    pending_baseline = project.baselines.filter(status=BaselineStatus.PENDING).exists()
+    edit = {"label": "Lengkapi info project", "url": reverse("projects:project_edit", args=[pk])}
+    steps = [
+        {
+            "key": "owner",
+            "label": "Project Owner ditentukan",
+            "done": bool(project.owner_id),
+            "action": {**edit, "drawer": True},
+        },
+        {
+            "key": "manager",
+            "label": "Project Manager ditentukan",
+            "done": bool(project.manager_id),
+            "action": {**edit, "drawer": True},
+        },
+        {
+            "key": "tasks",
+            "label": "Jadwal berisi task",
+            "done": has_tasks,
+            "action": {
+                "label": "Susun jadwal",
+                "url": reverse("projects:project_timeline", args=[pk]),
+            },
+        },
+        {
+            "key": "baseline",
+            "label": "Baseline dibuat dari jadwal",
+            "done": has_baseline,
+            "hint": (
+                "Baseline menunggu persetujuan."
+                if pending_baseline
+                else ("" if has_tasks else "Susun jadwal dulu, lalu buat baseline satu klik.")
+            ),
+            "action": (
+                {
+                    "label": "Buat baseline dari jadwal",
+                    "url": reverse("projects:capture_baseline", args=[pk]),
+                    "post": True,
+                }
+                if has_tasks and not pending_baseline
+                else None
+            ),
+        },
+    ]
+    if is_enabled(project, ApprovalType.PLAN):
+        steps.append(
+            {
+                "key": "plan",
+                "label": "Rencana project disetujui",
+                "done": plan_approved(project),
+                "action": {
+                    "label": "Ajukan rencana",
+                    "url": reverse("governance:request_plan", args=[pk]),
+                    "post": True,
+                }
+                if has_tasks
+                else None,
+            }
+        )
+    if not can_manage:
+        for step in steps:
+            step["action"] = None
+    done = sum(step["done"] for step in steps)
+    return {
+        "steps": steps,
+        "done": done,
+        "total": len(steps),
+        "ready": done == len(steps),
+        "can_start": can_manage and done == len(steps),
+    }
+
+
+def _next_actions(request, project, blocked, overdue, issues, internal):
+    """3–5 hal yang perlu dilakukan sekarang (U2), terpenting lebih dulu."""
+    from apps.governance.models import ApprovalRequest, ApprovalStatus
+
+    items = []
+    for task in blocked:
+        items.append(
+            {
+                "tone": "danger",
+                "badge": "Terhambat",
+                "title": task.title,
+                "url": reverse("work:task_detail", args=[task.pk]),
+                "meta": task.blocked_reason or "Alasan belum dicatat.",
+                "who": task.assignee_names,
+                "cta": "Tindak lanjuti",
+            }
+        )
+    if internal:
+        for issue in issues:
+            if issue.severity not in ("critical", "high"):
+                continue
+            items.append(
+                {
+                    "tone": "issue",
+                    "severity": issue.severity,
+                    "badge": "Kritis" if issue.severity == "critical" else "Tinggi",
+                    "title": issue.title,
+                    "url": reverse("work:issue_update", args=[issue.pk]),
+                    "meta": "Masalah terbuka"
+                    + (f" · target {issue.due_date:%d %b}" if issue.due_date else ""),
+                    "who": person_label(issue.owner) or "Belum ada penanggung jawab",
+                    "cta": "Perbarui",
+                    "drawer": True,
+                }
+            )
+    for task in overdue:
+        items.append(
+            {
+                "tone": "warning",
+                "badge": "Terlambat",
+                "title": task.title,
+                "url": reverse("work:task_detail", args=[task.pk]),
+                "meta": f"Target {task.due_date:%d %b %Y} · progress {task.display_progress:.0f}%",
+                "who": task.assignee_names,
+                "cta": "Buka task",
+            }
+        )
+    if internal:
+        pending = (
+            ApprovalRequest.objects.filter(project=project, status=ApprovalStatus.PENDING)
+            .order_by("created_at")
+            .first()
+        )
+        if pending:
+            items.append(
+                {
+                    "tone": "info",
+                    "badge": "Persetujuan",
+                    "title": pending.get_approval_type_display(),
+                    "url": reverse("governance:approval_detail", args=[pending.pk]),
+                    "meta": "Menunggu keputusan",
+                    "who": "",
+                    "cta": "Tinjau",
+                }
+            )
+    return items
+
+
+def person_label(user):
+    from .templatetags.pcc_tags import person_name
+
+    return person_name(user) if user else ""
+
+
+@login_required
+@require_POST
+def project_start(request: HttpRequest, pk: int) -> HttpResponse:
+    """Satu klik 'Mulai project' setelah checklist Siap berjalan terpenuhi."""
+    from django.core.exceptions import ValidationError
+
+    project = _project_or_404(request, pk)
+    if not _pm_check(request, project):
+        return redirect("projects:project_detail", pk=pk)
+    project.lifecycle_status = LifecycleStatus.IN_PROGRESS
+    try:
+        project.full_clean()
+    except ValidationError as exc:
+        messages.error(request, " ".join(exc.messages))
+        return redirect("projects:project_detail", pk=pk)
+    project.save()
+    record_activity(
+        project,
+        request.user,
+        ActivityAction.PROJECT_UPDATED,
+        f'Project "{project.name}" mulai berjalan.',
+        target=project,
+    )
+    messages.success(request, "Project berjalan. Progress dan health kini dipantau harian.")
+    return redirect("projects:project_detail", pk=pk)
+
+
+@login_required
+def project_settings(request: HttpRequest, pk: int) -> HttpResponse:
+    """Pengaturan project dalam satu halaman (dipindah dari tab dan menu Lainnya)."""
+    project = _project_or_404(request, pk)
+    if not can_manage_project(request.user, project):
+        raise PermissionDenied
+    from apps.governance.models import ApprovalPolicy
+
+    return render(
+        request,
+        "projects/project/settings.html",
+        {
+            **project_context(request, project, "settings"),
+            "approval_count": ApprovalPolicy.objects.filter(project=project, enabled=True).count(),
+            "column_count": project.board_columns.count(),
+            "custom_field_count": len(project.custom_fields or []),
+            "member_count": project.members.count(),
+            "can_configure_approvals": has_perm(request.user, "approval.configure"),
         },
     )
 
@@ -430,9 +768,9 @@ def progress_chart_data(baseline, snapshots, live_actual):
     def plan(day):
         if not points:
             return None
-        if day <= points[0]:
-            return planned[points[0]]
-        if day >= points[-1]:
+        if day < points[0] or day > points[-1]:
+            return None  # rencana tidak diperpanjang di luar tanggal baseline
+        if day == points[-1]:
             return planned[points[-1]]
         for left, right in zip(points, points[1:], strict=False):
             if left <= day <= right:
@@ -445,6 +783,7 @@ def progress_chart_data(baseline, snapshots, live_actual):
         "labels": [d.strftime("%d %b %Y") for d in labels],
         "iso": [d.isoformat() for d in labels],
         "planned": [plan(d) for d in labels],
+        "planned_marks": [d in planned for d in labels],
         "actual": [actual.get(d) for d in labels],
         "today_index": labels.index(today),
     }
@@ -455,23 +794,169 @@ def progress_chart_data(baseline, snapshots, live_actual):
 
 @login_required
 def project_create(request: HttpRequest) -> HttpResponse:
+    """Wizard 'Buat project': data inti → sumber rencana → tinjau (satu POST)."""
     if not can_create_project(request.user):
         return redirect("projects:project_list")
-    form = ProjectForm(request.POST or None, user=request.user)
+    from .forms import ProjectCreateForm
+    from .project_templates import template_spans
+
+    form = ProjectCreateForm(request.POST or None, user=request.user)
     if request.method == "POST" and form.is_valid():
-        project = form.save()
-        record_activity(
-            project,
-            request.user,
-            ActivityAction.PROJECT_CREATED,
-            f'Project "{project.name}" created ({project.code}).',
-        )
-        messages.success(request, f"Project {project.code} dibuat.")
-        return redirect("projects:project_detail", pk=project.pk)
+        from django.core.exceptions import ValidationError
+        from django.db import transaction
+
+        from .models import WeightMode
+        from .project_templates import apply_structure, apply_template
+
+        source = form.cleaned_data["source"]
+        try:
+            with transaction.atomic():
+                project = form.save(commit=False)
+                # Project baru memakai bobot otomatis sama rata (BR-WGT-001).
+                project.weight_mode = WeightMode.AUTO
+                project.save()
+                form.save_m2m()
+                record_activity(
+                    project,
+                    request.user,
+                    ActivityAction.PROJECT_CREATED,
+                    f'Project "{project.name}" created ({project.code}).',
+                )
+                template = form.cleaned_data.get("template")
+                counts = None
+                if source == "template" and template is not None:
+                    counts = apply_template(template, project, request.user)
+                elif source == "paste":
+                    counts = apply_structure(form.cleaned_data["plan_structure"], project)
+                    record_activity(
+                        project,
+                        request.user,
+                        ActivityAction.TASK_CREATED,
+                        f"{counts['tasks']} task dibuat dari daftar yang ditempel.",
+                    )
+                if counts:
+                    _extend_end_to_plan(project)
+        except ValidationError as exc:
+            form.add_error(None, " ".join(exc.messages))
+        else:
+            messages.success(request, f"Project {project.code} dibuat.")
+            if counts:
+                messages.info(
+                    request,
+                    f"Jadwal berisi {counts['phases']} phase, {counts['tasks']} task, "
+                    f"{counts['milestones']} milestone. Tetapkan pelaksana, lalu buat baseline.",
+                )
+            if source == "ai":
+                return redirect("projects:plan_import", pk=project.pk)
+            if source == "blank":
+                return redirect("projects:project_detail", pk=project.pk)
+            return redirect("projects:project_timeline", pk=project.pk)
     return render(
         request,
-        "projects/forms/project_form.html",
-        {"form": form, "project": None, "title": "Buat project"},
+        "projects/forms/project_wizard.html",
+        {
+            "form": form,
+            "project": None,
+            "title": "Buat project",
+            "template_spans": template_spans(),
+        },
+    )
+
+
+def _extend_end_to_plan(project):
+    """Tanggal akhir otomatis: mundurkan target bila jadwal yang dibuat lebih panjang."""
+    from django.db.models import Max
+
+    last = project.tasks.aggregate(last=Max("due_date"))["last"]
+    if last and last > project.target_end_date:
+        project.target_end_date = last
+        project.save(update_fields=["target_end_date", "updated_at"])
+
+
+@login_required
+def project_apply_template(request: HttpRequest, pk: int) -> HttpResponse:
+    """'Mulai dari template' untuk project yang jadwalnya masih kosong."""
+    from .forms import ApplyTemplateForm
+    from .project_templates import apply_template
+
+    project = _project_or_404(request, pk)
+    if not _pm_check(request, project):
+        return redirect("projects:project_detail", pk=pk)
+    if project.tasks.exists():
+        messages.error(request, "Template hanya bisa dipakai saat jadwal project masih kosong.")
+        return _tab_redirect(pk, "timeline")
+    form = ApplyTemplateForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        counts = apply_template(form.cleaned_data["template"], project, request.user)
+        _extend_end_to_plan(project)
+        messages.success(
+            request,
+            f"Template dipakai: {counts['phases']} phase, {counts['tasks']} task, "
+            f"{counts['milestones']} milestone.",
+        )
+        return _tab_redirect(pk, "timeline")
+    return render(
+        request,
+        "projects/forms/simple_form.html",
+        {
+            "form": form,
+            "project": project,
+            "title": "Mulai dari template",
+            "subtitle": "Isi jadwal kosong dengan struktur template.",
+            "submit_label": "Pakai template",
+            "back_url": reverse("projects:project_timeline", args=[pk]),
+        },
+    )
+
+
+@login_required
+def project_paste_tasks(request: HttpRequest, pk: int) -> HttpResponse:
+    """'Tempel daftar task' berbasis form (cadangan dialog Gantt, juga untuk mobile)."""
+    from .forms import PasteTasksForm
+    from .project_templates import apply_structure
+
+    project = _project_or_404(request, pk)
+    if not _pm_check(request, project):
+        return redirect("projects:project_detail", pk=pk)
+    from django.db.models import Max
+
+    last = project.tasks.aggregate(last=Max("due_date"))["last"]
+    start = last + PT if last else project.start_date
+    form = PasteTasksForm(request.POST or None, initial={"start_date": start})
+    if request.method == "POST" and form.is_valid():
+        from django.core.exceptions import ValidationError
+        from django.db import transaction
+
+        anchor = form.cleaned_data["start_date"]
+        try:
+            with transaction.atomic():
+                original = project.start_date
+                project.start_date = anchor  # offset dihitung dari tanggal mulai ini
+                counts = apply_structure(form.structure, project)
+                project.start_date = original
+                _extend_end_to_plan(project)
+        except ValidationError as exc:
+            form.add_error(None, " ".join(exc.messages))
+        else:
+            record_activity(
+                project,
+                request.user,
+                ActivityAction.TASK_CREATED,
+                f"{counts['tasks']} task dibuat dari daftar yang ditempel.",
+            )
+            messages.success(request, f"{counts['tasks']} task ditambahkan ke jadwal.")
+            return _tab_redirect(pk, "timeline")
+    return render(
+        request,
+        "projects/forms/simple_form.html",
+        {
+            "form": form,
+            "project": project,
+            "title": "Tempel daftar task",
+            "subtitle": "Buat banyak task sekaligus; jadwal disusun berurutan.",
+            "submit_label": "Buat task",
+            "back_url": reverse("projects:project_timeline", args=[pk]),
+        },
     )
 
 
@@ -538,10 +1023,9 @@ def project_progress(request: HttpRequest, pk: int) -> HttpResponse:
 
 @login_required
 def project_timeline(request: HttpRequest, pk: int) -> HttpResponse:
+    from apps.work.gantt import project_payload
+
     project = _project_or_404(request, pk)
-    data = timeline_data(project)
-    for row in data["timeline_rows"]:
-        row["can_edit"] = can_execute_task(request.user, row["task"])
     archived_phases = []
     if can_manage_project(request.user, project):
         archived_phases = list(
@@ -554,7 +1038,10 @@ def project_timeline(request: HttpRequest, pk: int) -> HttpResponse:
         "projects/project/timeline.html",
         {
             **project_context(request, project, "timeline"),
-            **data,
+            "gantt": project_payload(project, request.user),
+            "has_tasks": project.tasks.exists(),
+            "needs_baseline": not project.baseline_points.exists()
+            and not project.baselines.filter(status="pending").exists(),
             "phases": project.phases.all(),
             "archived_phases": archived_phases,
         },
@@ -581,6 +1068,8 @@ def project_tasks(request: HttpRequest, pk: int) -> HttpResponse:
         )
         .order_by("order", "due_date")
     )
+    if request.GET.get("view") == "list":
+        return _project_task_list(request, project, tasks)
     for task in tasks:
         task.can_edit = can_execute_task(request.user, task)
         if task.board_column_id in by_column:
@@ -608,6 +1097,64 @@ def project_tasks(request: HttpRequest, pk: int) -> HttpResponse:
             "custom_columns": custom_columns,
             "status_labels": TASK_STATUS_LABELS,
             "archived_tasks": archived_tasks,
+        },
+    )
+
+
+TASK_LIST_FILTERS = [
+    ("all", "Semua"),
+    ("open", "Belum selesai"),
+    ("overdue", "Terlambat"),
+    ("blocked", "Terhambat"),
+    ("done", "Selesai"),
+]
+
+
+def _project_task_list(request, project, tasks):
+    """Tampilan Daftar: satu baris per task utama, ringkas (U4)."""
+    today = timezone.localdate()
+    roots = [t for t in tasks if not t.parent_task_id]
+    roots.sort(
+        key=lambda t: (
+            t.phase.sequence if t.phase_id else 10**6,
+            t.start_date is None,
+            t.start_date or today,
+            t.order,
+            t.pk,
+        )
+    )
+    for task in roots:
+        task.can_edit = can_execute_task(request.user, task)
+        task.is_late = bool(
+            task.due_date and task.due_date < today and task.status != TaskStatus.DONE
+        )
+    counts = {
+        "all": len(roots),
+        "open": sum(t.status != TaskStatus.DONE for t in roots),
+        "overdue": sum(t.is_late for t in roots),
+        "blocked": sum(t.status == TaskStatus.BLOCKED for t in roots),
+        "done": sum(t.status == TaskStatus.DONE for t in roots),
+    }
+    selected = request.GET.get("filter", "all")
+    if selected not in counts:
+        selected = "all"
+    keep = {
+        "all": lambda t: True,
+        "open": lambda t: t.status != TaskStatus.DONE,
+        "overdue": lambda t: t.is_late,
+        "blocked": lambda t: t.status == TaskStatus.BLOCKED,
+        "done": lambda t: t.status == TaskStatus.DONE,
+    }[selected]
+    rows = [t for t in roots if keep(t)]
+    return render(
+        request,
+        "projects/project/task_list.html",
+        {
+            **project_context(request, project, "tasks_list"),
+            "task_rows": rows,
+            "filters": [(key, label, counts[key]) for key, label in TASK_LIST_FILTERS],
+            "selected_filter": selected,
+            "status_labels": TASK_STATUS_LABELS,
         },
     )
 
@@ -673,10 +1220,8 @@ def project_milestones(request: HttpRequest, pk: int) -> HttpResponse:
 def project_notes(request: HttpRequest, pk: int) -> HttpResponse:
     require_internal(request.user)
     project = _project_or_404(request, pk)
-    notes = attach_threads(
-        list(project.notes.select_related("author").all()), CommentTarget.NOTE
-    )
-    decisions = project.decisions.select_related("decision_maker").all()
+    notes = attach_threads(list(project.notes.select_related("author").all()), CommentTarget.NOTE)
+    decisions = project.decisions.select_related("decision_maker", "related_issue").all()
     entries = [{"kind": "note", "item": n, "date": n.created_at} for n in notes] + [
         {"kind": "decision", "item": d, "date": d.created_at} for d in decisions
     ]
@@ -778,16 +1323,20 @@ def note_list(request: HttpRequest) -> HttpResponse:
 
 @login_required
 def timeline_global(request: HttpRequest) -> HttpResponse:
+    from apps.work.gantt import portfolio_payload
+
     projects = list(_project_qs(request.user))
-    rows = [
-        {"project": p, "actual": actual_progress(p), "planned": planned_progress_on(p)}
-        for p in projects
-    ]
-    return render(request, "projects/portfolio/timeline.html", {"rows": rows})
+    return render(
+        request,
+        "projects/portfolio/timeline.html",
+        {"gantt": portfolio_payload(projects), "project_count": len(projects)},
+    )
 
 
 @login_required
 def reports(request: HttpRequest) -> HttpResponse:
+    from apps.work.gantt import portfolio_payload
+
     projects = list(_project_qs(request.user))
     rows = []
     for p in projects:
@@ -805,11 +1354,8 @@ def reports(request: HttpRequest) -> HttpResponse:
         )
     start = min((p.start_date for p in projects), default=timezone.localdate())
     end = max((p.target_end_date for p in projects), default=start)
-    span = max((end - start).days + 1, 1)
     for row in rows:
         p = row["project"]
-        row["left"] = round((p.start_date - start).days / span * 100, 3)
-        row["width"] = round(((p.target_end_date - p.start_date).days + 1) / span * 100, 3)
         counts = _task_counts(p)
         row["blocked"], row["done"], row["task_count"] = (
             counts["blocked"],
@@ -839,6 +1385,8 @@ def reports(request: HttpRequest) -> HttpResponse:
             "totals": totals,
             "portfolio_start": start,
             "portfolio_end": end,
+            "gantt": portfolio_payload(projects),
+            "is_management": role_of(request.user) == Role.MANAGEMENT,
         },
     )
 
@@ -1111,7 +1659,7 @@ def decision_create(request: HttpRequest, pk: int) -> HttpResponse:
     project = _project_or_404(request, pk)
     if not _pm_check(request, project):
         return _tab_redirect(pk, "notes")
-    form = DecisionForm(request.POST or None)
+    form = DecisionForm(request.POST or None, project=project)
     if request.method == "POST" and form.is_valid():
         decision = form.save(commit=False)
         decision.project = project
@@ -1172,20 +1720,17 @@ def risk_edit(request, pk, rid=None):
 
     project = _project_or_404(request, pk)
     risk = get_object_or_404(Risk, pk=rid, project=project) if rid else None
-    if not can_manage_project(request.user, project):
-        from django.core.exceptions import PermissionDenied
-
+    if not (can_manage_project(request.user, project) and has_perm(request.user, "risk.manage")):
         raise PermissionDenied
-    form = RiskForm(request.POST or None, instance=risk)
+    form = RiskForm(request.POST or None, instance=risk, project=project)
+    form.instance.project = project
     if request.method == "POST" and form.is_valid():
-        risk = form.save(commit=False)
-        risk.project = project
-        risk.save()
+        risk = form.save()
         record_activity(
             project,
             request.user,
-            ActivityAction.PROJECT_UPDATED,
-            f'Risiko "{risk.title}" diperbarui.',
+            ActivityAction.RISK_UPDATED,
+            f'Risiko "{risk.title}" disimpan (skor {risk.score}, {risk.get_severity_display()}).',
         )
         messages.success(request, "Risiko disimpan.")
         return redirect("projects:project_issues", pk=pk)
@@ -1194,6 +1739,40 @@ def risk_edit(request, pk, rid=None):
         "projects/forms/risk_form.html",
         {"project": project, "form": form, "title": "Risiko project"},
     )
+
+
+@login_required
+@require_POST
+def risk_convert(request, pk, rid):
+    """Risiko yang benar-benar terjadi dikonversi menjadi issue (PRD §16.2)."""
+    from .models import Risk
+
+    project = _project_or_404(request, pk)
+    risk = get_object_or_404(Risk, pk=rid, project=project)
+    if not (can_manage_project(request.user, project) and has_perm(request.user, "risk.manage")):
+        raise PermissionDenied
+    if risk.issue_id or risk.status == "converted":
+        messages.info(request, "Risiko ini sudah menjadi issue.")
+        return redirect("projects:project_issues", pk=pk)
+    issue = Issue.objects.create(
+        project=project,
+        title=risk.title,
+        description=risk.description or risk.mitigation,
+        severity=risk.severity,
+        priority=risk.severity,
+        owner=risk.owner,
+    )
+    risk.status, risk.issue = "converted", issue
+    risk.save(update_fields=["status", "issue"])
+    record_activity(
+        project,
+        request.user,
+        ActivityAction.RISK_CONVERTED,
+        f'Risiko "{risk.title}" terjadi dan dikonversi menjadi issue ISS-{issue.pk}.',
+        target=issue,
+    )
+    messages.success(request, "Risiko dikonversi menjadi issue.")
+    return redirect("work:issue_update", pk=issue.pk)
 
 
 @login_required
@@ -1206,14 +1785,30 @@ def capture_timeline_baseline(request, pk):
     if not _pm_check(request, project):
         return _tab_redirect(pk, "timeline")
     from django.core.exceptions import ValidationError
+    from django.utils.http import url_has_allowed_host_and_scheme
 
+    target = request.POST.get("next") or ""
+    back = (
+        redirect(target)
+        if url_has_allowed_host_and_scheme(
+            target, allowed_hosts={request.get_host()}, require_https=request.is_secure()
+        )
+        else _tab_redirect(pk, "timeline")
+    )
     try:
         baseline = capture_baseline(project, request.user)
     except ValidationError as exc:
         messages.error(request, " ".join(exc.messages))
-        return _tab_redirect(pk, "timeline")
-    messages.success(request, f"Baseline v{baseline.version} disimpan dan berlaku.")
-    return _tab_redirect(pk, "timeline")
+        return back
+    from .models import BaselineStatus
+
+    if baseline.status == BaselineStatus.PENDING:
+        messages.success(
+            request, f"Baseline v{baseline.version} diajukan. Berlaku setelah disetujui."
+        )
+    else:
+        messages.success(request, f"Baseline v{baseline.version} disimpan dan berlaku.")
+    return back
 
 
 @login_required

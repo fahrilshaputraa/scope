@@ -1,0 +1,46 @@
+{% extends "projects/_base.html" %}
+{% load pcc_tags %}
+{% block project_content %}
+{# Pengaturan project dalam satu tempat: yang jarang dipakai keluar dari tab dan menu. #}
+<div class="mt-6"><h2 class="text-lg">Pengaturan project</h2><p class="mt-1 text-sm text-muted-foreground">Semua pengaturan project ini di satu halaman. Perubahan berlaku untuk project ini saja.</p></div>
+<div class="settings-groups mt-4" data-project-settings>
+  <section class="pcc-panel" aria-labelledby="set-general">
+    <h3 id="set-general" class="settings-group-title">Informasi dan tim</h3>
+    <ul class="settings-list">
+      <li><div><strong>Informasi project</strong><p>Nama, tanggal, PM, Project Owner, jenis, dan status.</p></div><a data-project-action class="pcc-button pcc-button-secondary" href="{% url 'projects:project_edit' project.pk %}">Edit</a></li>
+      <li><div><strong>Anggota tim</strong><p>{{ member_count }} anggota. Hanya anggota yang bisa ditugaskan task.</p></div><a class="pcc-button pcc-button-secondary" href="{% url 'projects:project_members' project.pk %}">Atur anggota</a></li>
+      <li><div><strong>Field tambahan</strong><p>{% if custom_field_count %}{{ custom_field_count }} field{% else %}Belum ada field{% endif %} khusus untuk project ini.</p></div><a data-project-action class="pcc-button pcc-button-secondary" href="{% url 'projects:project_custom_fields' project.pk %}">Atur field</a></li>
+    </ul>
+  </section>
+  <section class="pcc-panel" aria-labelledby="set-plan">
+    <h3 id="set-plan" class="settings-group-title">Rencana dan progress</h3>
+    <ul class="settings-list">
+      <li><div><strong>Phase dan baseline</strong><p>Kelompokkan pekerjaan per phase dan simpan baseline jadwal.</p></div><a class="pcc-button pcc-button-secondary" href="{% url 'projects:project_timeline' project.pk %}#phases">Buka jadwal</a></li>
+      <li><div><strong>Bobot dan metode progress</strong><p>Bobot {{ project.get_weight_mode_display|lower }}; atur persentase status-based.</p></div><a data-project-action class="pcc-button pcc-button-secondary" href="{% url 'projects:progress_settings' project.pk %}">Atur progress</a></li>
+      <li><div><strong>Kolom board tambahan</strong><p>{% if column_count %}{{ column_count }} kolom{% else %}Belum ada kolom{% endif %} untuk feedback dan pembahasan.</p></div><a data-project-action class="pcc-button pcc-button-secondary" href="{% url 'projects:board_column_create' project.pk %}">Tambah kolom</a></li>
+      <li><div><strong>Rencana dari AI</strong><p>Unduh template JSON, isi dengan AI, lalu import sekaligus.</p></div><span class="settings-actions"><a class="subtle-action" href="{% url 'projects:plan_export' project.pk %}">Export JSON</a><a data-project-action class="pcc-button pcc-button-secondary" href="{% url 'projects:plan_import' project.pk %}">Import</a></span></li>
+      {% if can_manage_templates %}<li><div><strong>Template</strong><p>Simpan struktur project ini untuk dipakai project berikutnya.</p></div><a data-project-action class="pcc-button pcc-button-secondary" href="{% url 'projects:project_save_template' project.pk %}">Simpan sebagai template</a></li>{% endif %}
+    </ul>
+  </section>
+  <section class="pcc-panel" aria-labelledby="set-approval">
+    <h3 id="set-approval" class="settings-group-title">Persetujuan dan perubahan</h3>
+    <ul class="settings-list">
+      <li><div><strong>Aturan persetujuan</strong><p>{% if approval_count %}{{ approval_count }} aturan aktif{% else %}Semua persetujuan mati{% endif %}. Aktifkan hanya yang dibutuhkan.</p></div><a class="pcc-button pcc-button-secondary" href="{% url 'governance:project_approvals' project.pk %}#policy-title">{% if can_configure_approvals %}Atur persetujuan{% else %}Lihat aturan{% endif %}</a></li>
+      <li><div><strong>Kontrol perubahan</strong><p>{% if project.change_control %}Aktif: perubahan besar setelah baseline perlu change request.{% else %}Mati: perubahan jadwal langsung berlaku.{% endif %}</p></div><a data-project-action class="pcc-button pcc-button-secondary" href="{% url 'governance:change_control' project.pk %}">Ubah</a></li>
+    </ul>
+  </section>
+  <section class="pcc-panel" aria-labelledby="set-share">
+    <h3 id="set-share" class="settings-group-title">Berbagi dan integrasi</h3>
+    <ul class="settings-list">
+      <li><div><strong>Tautan publik</strong><p>{% if project.is_public %}Aktif. Orang dengan tautan dapat melihat ringkasan project.{% else %}Mati. Project hanya terlihat oleh anggota.{% endif %}</p></div><a class="pcc-button pcc-button-secondary" href="{% url 'projects:project_share' project.pk %}">Atur tautan</a></li>
+      <li><div><strong>Integrasi</strong><p>Kirim kabar task, milestone, dan masalah ke aplikasi lain lewat webhook.</p></div><a class="pcc-button pcc-button-secondary" href="{% url 'integrations:index' %}">Buka integrasi</a></li>
+    </ul>
+  </section>
+  <section class="pcc-panel" aria-labelledby="set-danger">
+    <h3 id="set-danger" class="settings-group-title">Arsip</h3>
+    <ul class="settings-list">
+      <li><div><strong>Arsipkan project</strong><p>Project hilang dari daftar, laporan, dan tautan publik sampai dipulihkan. Data tidak dihapus.</p></div><form method="post" action="{% url 'projects:project_archive' project.pk %}" data-confirm="Arsipkan project ini? Project akan hilang dari daftar, laporan, dan tautan publik sampai dipulihkan.">{% csrf_token %}<button type="submit" class="pcc-button pcc-button-secondary settings-danger">Arsipkan</button></form></li>
+    </ul>
+  </section>
+</div>
+{% endblock %}

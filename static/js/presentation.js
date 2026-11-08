@@ -78,6 +78,7 @@
   document.addEventListener('fullscreenchange', setFullscreenLabel);
   document.addEventListener('keydown', event => {
     if (event.target.closest('input, select, textarea') && event.key !== 'Escape') return;
+    if (event.target.closest('[data-gantt]')) return; // The schedule slide uses arrow keys itself.
     if (event.key === ' ' && event.target.closest('button, a')) return;
     if (event.key === 'ArrowRight' || event.key === 'PageDown' || event.key === ' ') {event.preventDefault(); show(index + 1);}
     if (event.key === 'ArrowLeft' || event.key === 'PageUp') {event.preventDefault(); show(index - 1);}

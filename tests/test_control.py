@@ -151,7 +151,7 @@ def test_progress_task_is_read_only_for_the_pm(client, world):
     client.force_login(world["pm"])
     body = client.get(reverse("projects:progress_task")).content.decode()
     assert "task_status" not in body and 'name="progress"' not in body
-    assert 'aria-label="Progress Task"' in body
+    assert 'aria-label="Progress task"' in body
 
 
 # --------------------------------------------------------- project control
@@ -179,10 +179,11 @@ def test_project_control_lists_each_task_once_and_checks_ownership(client, world
     other_url = reverse("projects:project_control", args=[world["other"].pk])
     assert client.get(other_url).status_code == 404
     detail = reverse("projects:project_detail", args=[p.pk])
-    assert "control" in [key for key, _ in client.get(detail).context["tabs"]]
+    # Kontrol menjadi bagian dari tab Aktivitas (U6), hanya untuk yang boleh mengontrol.
+    assert "control" in client.get(detail).context["project_sections"]
     client.force_login(world["worker"])
     assert client.get(url).status_code == 403
-    assert "control" not in [key for key, _ in client.get(detail).context["tabs"]]
+    assert "control" not in client.get(detail).context["project_sections"]
 
 
 # ---------------------------------------------------------------- reassign
@@ -289,6 +290,6 @@ def test_owner_with_another_role_gets_the_matching_dashboard(client, world):
 def test_pm_navigation_has_control_pages_but_not_my_tasks(client, world):
     client.force_login(world["pm"])
     body = client.get(reverse("projects:dashboard")).content
-    assert b'aria-label="Progress Task"' in body and b'aria-label="Project Control"' in body
+    assert b'aria-label="Progress task"' in body and b'aria-label="Kontrol project"' in body
     assert b'aria-label="Pekerjaan saya"' not in body
 

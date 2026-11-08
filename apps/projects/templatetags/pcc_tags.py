@@ -41,11 +41,25 @@ def plain(value):
     """Teks polos tanpa tag, untuk preview/kartu ringkas."""
     return strip_html(value)
 
+
 STATUS_STYLES = {
     **dict.fromkeys(
-        ["on_track", "ahead", "done", "completed", "resolved", "mitigated"],
+        [
+            "on_track",
+            "ahead",
+            "done",
+            "completed",
+            "resolved",
+            "mitigated",
+            "approved",
+            "accepted",
+            "applied",
+            "active",
+        ],
         "pcc-status pcc-status-success",
     ),
+    "rejected": "pcc-status pcc-status-danger",
+    **dict.fromkeys(["pending", "submitted", "under_review"], "pcc-status pcc-status-info"),
     **dict.fromkeys(["at_risk", "high", "medium", "on_hold"], "pcc-status pcc-status-warning"),
     **dict.fromkeys(["delayed", "blocked", "critical", "open"], "pcc-status pcc-status-danger"),
     **dict.fromkeys(
@@ -189,17 +203,6 @@ def health_style(value):
 
 
 @register.filter
-def bar_position(project):
-    """Posisi tengah 'hari ini' dalam rentang project → dict % untuk CSS bar."""
-    from django.utils import timezone
-
-    span = (project.target_end_date - project.start_date).days or 1
-    pos = (timezone.localdate() - project.start_date).days
-    pct = max(0, min(100, round(pos / span * 100)))
-    return {"left": 0, "width": pct}
-
-
-@register.filter
 def initials(user):
     if not user:
         return "?"
@@ -241,6 +244,16 @@ def status_label(status):
         "closed": "Ditutup",
         "upcoming": "Akan datang",
         "not_started": "Belum dimulai",
+        "pending": "Menunggu keputusan",
+        "approved": "Disetujui",
+        "rejected": "Ditolak",
+        "cancelled_request": "Dibatalkan",
+        "skipped": "Tidak diperlukan",
+        "draft": "Draf",
+        "submitted": "Diajukan",
+        "under_review": "Sedang ditinjau",
+        "accepted": "Diterima",
+        "applied": "Diterapkan",
     }.get(str(status), status)
 
 
@@ -270,3 +283,13 @@ def dict_get(mapping, key):
         return mapping.get(key, "")
     except AttributeError:
         return ""
+
+
+@register.filter
+def project_type_label(value):
+    from apps.projects.models import ProjectType
+
+    try:
+        return ProjectType(value).label
+    except ValueError:
+        return value or "—"

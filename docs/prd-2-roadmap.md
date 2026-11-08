@@ -59,7 +59,7 @@ Status (3 November 2026): R2.1–R2.4 selesai.
 - R2.2: pemilih role di sidebar (hanya muncul bila user punya lebih dari satu role), tanpa login ulang; setelah ganti role user diarahkan ke Dashboard.
 - R2.3: sidebar per role dari `apps/identity/navigation.py`. Hanya halaman yang sudah ada yang tampil; Progress Task, Project Control, Approvals, Deliverables, dan Templates menyusul di fase terkait. Penyimpangan dari PRD 6.1: PM, Member, Owner, dan Admin tetap punya menu Project agar halaman yang sudah ada tetap terjangkau, dan PM masih punya "Pekerjaan saya" sampai R3.4.
 - R2.4: role Client hanya melihat project yang dibagikan dan tidak dapat membuka catatan, issue, aktivitas, atau riwayat (permission `project.view_internal`). Halaman baru Role & permission (khusus Admin) mengatur matriks permission; Admin selalu memiliki semuanya. Halaman Pengguna dan Role & permission mengikuti permission `user.manage` pada role aktif, bukan `is_staff` semata.
-Belum dikerjakan: dashboard berbeda per role (R8.1), Templates dan Audit Logs di sidebar Admin (R7.5, R8.4).
+Belum dikerjakan: dashboard berbeda per role (R8.1), Templates dan Audit Logs di sidebar Admin (R7.5, R8.4). Update 8 November 2026: ketiganya selesai.
 
 | ID | Item | Cakupan | Selesai bila |
 |---|---|---|---|
@@ -108,7 +108,7 @@ Status (5 November 2026): hanya baseline berversi yang dibangun (R5.1–R5.3). M
 - R5.1: model `Baseline` (versi, status `active`/`superseded`, pembuat, `baseline_data` JSON). Versi lama tidak dihapus. Simpan baseline dari tab Jadwal membuat versi baru yang langsung berlaku; migrasi mengisi versi 1 untuk project yang sudah punya kurva.
 - R5.2: kurva planned progress tetap di `ProgressBaselinePoint` dan diganti saat versi baru dibuat (`capture_baseline`). Kurva manual belum punya antarmuka override terpisah.
 - R5.3: `ProgressSnapshot.baseline` dan `health_status` terisi saat snapshot dibuat; snapshot lama tidak dihitung ulang.
-- R5.4–R5.6: tidak dikerjakan (diputuskan 5 November 2026).
+- R5.4–R5.6 (8 November 2026, keputusan 5 November dibatalkan): selesai sebagai fitur yang dapat dikonfigurasi dan default mati. App baru `apps/governance`: `ApprovalPolicy` per project dan jenis (plan, baseline, task, deliverable, change request, closure), berurutan atau paralel, maksimal 3 approver, self-approval dilarang kecuali diizinkan; `ApprovalRequest` + `ApprovalStep` menyimpan riwayat dan alasan (penolakan wajib alasan, tidak ada aksi hapus). Otoritas berasal dari penunjukan (approver, `Task.reviewer`, reviewer deliverable, atau Project Owner) dan role aktif harus punya permission jenisnya (`plan.approve`, `baseline.approve`, `task.review`, `deliverable.accept`, `change_request.approve`, `closure.approve`). Baseline yang perlu persetujuan berstatus "Menunggu persetujuan" dan baru berlaku setelah disetujui; persetujuan rencana menjadi syarat Berjalan; persetujuan penutupan menjadi syarat Selesai dan otomatis menutup project. Review task: `Task.reviewer`; pelaksana Kirim untuk diperiksa → In Review → setujui (Done) atau tolak (kembali Sedang dikerjakan, alasan menjadi komentar). Halaman `/approvals/` (Persetujuan) dan `/reviews/` (Pemeriksaan saya), tab project "Persetujuan", keputusan tertunda di dashboard Owner. Perubahan konfigurasi tercatat di activity log.
 
 | ID | Item | Cakupan | Selesai bila |
 |---|---|---|---|
@@ -121,6 +121,12 @@ Status (5 November 2026): hanya baseline berversi yang dibangun (R5.1–R5.3). M
 
 ## Fase 6 — Change Request dan Deliverable
 
+Status (8 November 2026): R6.1–R6.4 selesai.
+- R6.1: klasifikasi di `apps/governance/changes.py`. Major: deadline project, tanggal milestone, bobot task, kriteria/target deliverable; selebihnya minor. Perubahan major setelah baseline berlaku selalu tercatat (`change.major`). `Project.change_control` (default mati): bila aktif, perubahan major ditolak kecuali ada change request yang sudah disetujui dan belum diterapkan ("jendela perubahan").
+- R6.2: `ChangeRequest` Draf → Diajukan → Sedang ditinjau → Disetujui/Ditolak → Diterapkan; alasan dan penilaian dampak wajib; persetujuan memakai mesin R5 (default Project Owner). Ditolak tidak bisa diterapkan.
+- R6.3: Terapkan mengubah target selesai (bila diusulkan) dan membuat versi baseline baru (`ChangeRequest.applied_baseline`); versi lama menjadi Digantikan. Catatan: PRD §26.17 meletakkan `change_request_id` di Baseline; relasinya dibalik untuk menghindari ketergantungan migrasi melingkar, maknanya sama.
+- R6.4: `Deliverable` (task terkait, kriteria penerimaan, bukti teks/tautan, pemilik, penerima, target, tanggal serah) Draf → Diajukan → Sedang ditinjau → Diterima/Ditolak; bukti wajib sebelum diajukan; diterima/ditolak oleh penerima yang ditunjuk atau Project Owner dengan `deliverable.accept` (default Owner dan Client). Tab project "Deliverable" (juga untuk Client).
+
 | ID | Item | Cakupan | Selesai bila |
 |---|---|---|---|
 | R6.1 | Klasifikasi perubahan | Minor boleh langsung; major (deadline, scope, bobot, milestone, deliverable) diarahkan ke Change Request setelah baseline disetujui. | BR-CHG-001 dan 002. |
@@ -129,6 +135,14 @@ Status (5 November 2026): hanya baseline berversi yang dibangun (R5.1–R5.3). M
 | R6.4 | Model `Deliverable` | Terkait task, acceptance criteria, evidence, status Draft sampai Accepted/Rejected. | Client/Owner dengan permission dapat menerima atau menolak. |
 
 ## Fase 7 — Risk, struktur, template
+
+Status (8 November 2026): R7.1–R7.6 selesai.
+- R7.1: `Risk` punya deskripsi, probability dan impact (1–5), skor = P × I, tanggal tinjau (rename dari `due_date`), status "Menjadi masalah", dan `issue` hasil konversi. Owner, mitigasi, dan tanggal tinjau wajib di form/`clean()` (data lama tidak dipaksa). `severity` kini diturunkan dari skor (≤4 rendah, ≤9 sedang, ≤16 tinggi, ≥17 kritis) sehingga query lama tetap jalan. Migrasi `projects.0017` memetakan severity lama: low→2×2, medium→3×3, high→4×4, critical→5×5 (tingkat hasilnya sama). Aksi "Jadikan issue".
+- R7.2: `WorkPackage` (opsional, di dalam phase); `Task.work_package`; task mengikuti phase work package, detail mengikuti induk. Tab project "Struktur" menampilkan phase → work package → task → detail.
+- R7.3: `Task.progress_method` manual / berdasarkan status / dari detail. Persentase In Progress dan In Review diatur per project (`Project.progress_config`, default 50/80); Blocked mempertahankan nilai. Aturan override: activity yang punya detail selalu memakai metode detail (otomatis), manual+detail tidak mungkin terjadi; API progress menolak task bermetode status.
+- R7.4: `Project.weight_mode` otomatis/manual. Project baru dari form memakai otomatis (bagi rata, dihitung ulang saat task dibuat, dipindah, diarsipkan); project lama tetap manual agar progress tidak berubah. Aksi Bagi rata, Normalisasi ke 100%, dan Atur bobot (wajib total 100%) per kelompok sibling; ikut kontrol perubahan R6.1.
+- R7.5: `ProjectTemplate` (struktur JSON berversi, progress, aturan approval tanpa orang, field tambahan, mode bobot). Admin (`template.manage`) mengelola di `/templates/` dengan outline singkat; "Simpan sebagai template" dari project; form Buat project punya "Mulai dari template" yang menyalin phase, work package, task (dengan tanggal dari tanggal mulai), milestone, dan aturan. Project menyimpan `template` + `template_version`; mengubah template tidak mengubah project.
+- R7.6: `Project.project_type` (default Umum) di form, daftar, header, dan export; field tambahan sederhana (`custom_fields` + `custom_values`, jenis teks/angka/tanggal) diatur dari menu Lainnya → Field tambahan, tampil di header dan export.
 
 | ID | Item | Cakupan | Selesai bila |
 |---|---|---|---|
@@ -141,6 +155,13 @@ Status (5 November 2026): hanya baseline berversi yang dibangun (R5.1–R5.3). M
 
 ## Fase 8 — Dashboard, report, audit per role
 
+Status (8 November 2026): R8.1–R8.5 selesai.
+- R8.1: dashboard sesuai role aktif: PM/Admin (KPI issue terbuka dan menunggu persetujuan, task terlambat, terhambat, menunggu pemeriksaan, milestone, aktivitas), Member (task terbuka, terlambat, terhambat, sedang dikerjakan, menunggu pemeriksaan, akan datang, pembaruan), Owner (ditambah keputusan tertunda), Management (portfolio tanpa judul task), Client (project, milestone, deliverable, menunggu penerimaan, pembaruan).
+- R8.2: `portfolio_health()` menghitung distribusi health dan project yang butuh perhatian dari data; tampil di dashboard Management dan laporan Manajemen.
+- R8.3: `/reports/<jenis>/` untuk Executive Summary, Progress, Jadwal, Task, dan Manajemen; isi halaman sama dengan unduhan (PDF/Excel/CSV). Export kini mewajibkan `report.export`, memakai `visible_projects`, menolak dataset detail task untuk role Management, dan menolak dataset internal untuk role tanpa `project.view_internal`. Dataset baru juga: risiko dan deliverable.
+- R8.4: `/audit/` (permission baru `audit.view`, default Admin) menggabungkan ActivityEvent dan Revision: waktu, pelaku, role aktif, aksi, nilai lama → baru, alasan; filter project, jenis + ID entitas, pelaku, role, tanggal. `ActivityEvent` mendapat `entity_type`, `entity_id`, `reason`; Revision kini juga mencatat deliverable dan change request.
+- R8.5: `Decision.related_issue` (issue dari project yang sama) di form dan daftar catatan.
+
 | ID | Item | Cakupan | Selesai bila |
 |---|---|---|---|
 | R8.1 | Dashboard per role | PM, Member, Owner, Management, Client sesuai PRD bagian 21. | Management tidak melihat detail task teknis. |
@@ -148,6 +169,14 @@ Status (5 November 2026): hanya baseline berversi yang dibangun (R5.1–R5.3). M
 | R8.3 | Report | Executive Summary, Progress, Schedule, Task, Management; export CSV/Excel/PDF mengikuti `report.export`. | Export hanya memuat data yang boleh dilihat. |
 | R8.4 | Audit trail | Satukan `ActivityEvent` dan `Revision` dalam tampilan audit dengan actor, role aktif, nilai lama dan baru, alasan. | Admin dapat menelusuri satu entitas. |
 | R8.5 | Decision Log terhubung ke issue | Field `related_issue`. | Sesuai PRD 19.2. |
+
+### Sengaja tidak diimplementasikan (Fase 5–8)
+
+- "Perubahan dependency yang signifikan" sebagai perubahan major (PRD §17.2): "signifikan" tidak terdefinisi dan memblokirnya akan mematikan penyuntingan dependency di Gantt. Dependency tetap minor; perubahan tercatat di riwayat.
+- Workflow status task yang dapat dikonfigurasi lewat template (PRD §5.2, `workflow_config`): status task (PRD §9.3) dipakai mesin progress, Kanban, kontrol, dan laporan; mengubahnya per project bertentangan dengan aturan tetap itu. Kolom `workflow_config` disiapkan tetapi tidak dibaca.
+- Bukti deliverable sebagai unggahan berkas: dipakai teks/tautan agar tidak menambah penyimpanan dan aturan unduhan baru; lampiran tetap bisa lewat task terkait.
+- Permission "Conditional" PRD §25 untuk review task: `task.review` diberikan default ke PM, Member, dan Owner karena review hanya berlaku bila reviewer ditunjuk; tanpa itu alur review tidak bisa dipakai tanpa konfigurasi admin. `task.approve` tidak dipakai terpisah (otoritas = penunjukan + `task.review`).
+- Tab project sempat 13; sejak U6 (8 November 2026) menjadi tujuh tab dengan tampilan di dalamnya.
 
 ---
 
@@ -185,6 +214,15 @@ Berjalan paralel dengan fase di atas. Dasar visualnya (`DESIGN.md`: palet netral
 | U10 | Verifikasi | Tangkapan layar desktop, mobile 390 px, dan gelap untuk halaman utama sebelum dan sesudah; jalankan audit aksesibilitas yang ada (`tests/test_accessibility.py`). | Tidak ada regresi aksesibilitas; ada perbandingan sebelum dan sesudah. |
 
 Status (3 November 2026): U1–U5 selesai. Ringkasan project turun dari ~2980 px ke ~1630 px pada data demo; seluruh tes lulus. U6 dan seterusnya belum dikerjakan. Pada U1, halaman publik (`templates/public/`) sengaja belum diseragamkan karena `tests/test_public_project.py` masih mengacu ke teks "Actual".
+
+Status (8 November 2026): U6–U10 selesai (belum di-commit).
+- U6: tujuh tab project — Ringkasan, Pekerjaan (Daftar/Board/Jadwal/Struktur), Progress, Masalah & risiko, Milestone & deliverable, Catatan & keputusan, Aktivitas (Log, Riwayat, Persetujuan & perubahan, Kontrol). Pengaturan project (`/projects/<id>/settings/`: info, anggota, field, bobot, kolom, rencana AI, template, persetujuan, kontrol perubahan, tautan publik, integrasi, arsip) untuk PM. Semua URL lama tetap; `PROJECT_GROUPS` di `apps/projects/views.py`. Sidebar per role dua grup (Kerja, Pantau); Pengguna, Role, Template, Jejak audit, Integrasi pindah ke Pengaturan. Catatan semua project dan Pemeriksaan saya (PM) lewat Quick actions / halaman Persetujuan.
+- Pembuatan cepat: wizard Buat project tiga langkah (data inti → sumber rencana: kosong, tempel daftar task, template, import AI → tinjau) dengan Owner = pembuat bila boleh, tanggal akhir otomatis dari panjang rencana. Jadwal kosong menawarkan Tempel daftar task, Mulai dari template (`apply-template/`), Import rencana AI, Tambah phase; `paste/` menjadi cadangan form untuk layar kecil. Checklist Siap berjalan di Ringkasan (Owner, PM, task, baseline satu klik, rencana disetujui bila aktif) dengan tombol Mulai project.
+- U7: empty state dengan langkah berikutnya di Daftar task, Jadwal, Ringkasan, Catatan, Masalah, dashboard Member; Quick actions memuat aksi project (buat task cepat, tempel daftar, persetujuan, pengaturan).
+- U8: disclosure seragam "Opsi lanjutan"; label form kini benar-benar tampil (BoundField dibuat ulang setelah label diubah, `FieldList` di `apps/form_widgets.py`); baseline dan pengajuan rencana kembali ke halaman asal.
+- U9: tombol Ajukan perubahan hanya untuk yang berhak; Pengaturan project hanya untuk PM.
+- U10: tangkapan layar sebelum/sesudah (desktop 1440, mobile 390, gelap) untuk Dashboard, Ringkasan, Jadwal, Buat project; pytest, ruff, makemigrations --check, dan lima skrip `tests/browser/*.mjs` lulus pada database sementara. Diperbaiki sekalian: Gantt mobile (kolom grafik lebar 0 dan teks "null"), menu Panduan mobile yang tidak tertutup.
+- Ditunda: anggota dari template (template belum menyimpan anggota; perlu perubahan skema `ProjectTemplate`), uji kemudahan dengan pengguna (target 90%).
 
 Urutan yang disarankan: U1, U2, U3, U4, U5 dapat dikerjakan sekarang karena tidak bergantung pada Fase 1. U6 setelah U2. U8 dan U9 mengikuti Fase 1–2.
 

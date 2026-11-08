@@ -1,7 +1,16 @@
 from django.urls import path
 
-from . import control_views, planning_views, presentation_views, share_views, views
-from .exports import export_report
+from . import (
+    audit_views,
+    control_views,
+    planning_views,
+    presentation_views,
+    share_views,
+    structure_views,
+    template_views,
+    views,
+)
+from .exports import export_report, report_detail
 
 app_name = "projects"
 
@@ -56,14 +65,68 @@ urlpatterns = [
     path("projects/<int:pk>/export/json/", planning_views.plan_export, name="plan_export"),
     path("projects/<int:pk>/phases/<int:phase_id>/", views.phase_edit, name="phase_edit"),
     path("reports/export/", export_report, name="export_report"),
+    path("reports/<str:kind>/", report_detail, name="report_detail"),
     path("projects/<int:pk>/members/", views.project_members, name="project_members"),
     path("projects/<int:pk>/risks/new/", views.risk_edit, name="risk_create"),
     path("projects/<int:pk>/risks/<int:rid>/", views.risk_edit, name="risk_edit"),
+    path("projects/<int:pk>/risks/<int:rid>/convert/", views.risk_convert, name="risk_convert"),
     path(
         "projects/<int:pk>/timeline/baseline/",
         views.capture_timeline_baseline,
         name="capture_baseline",
     ),
+    # Struktur, bobot, metode progress (R7.2–R7.4)
+    path(
+        "projects/<int:pk>/structure/",
+        structure_views.project_structure,
+        name="project_structure",
+    ),
+    path(
+        "projects/<int:pk>/structure/packages/new/",
+        structure_views.work_package_edit,
+        name="work_package_create",
+    ),
+    path(
+        "projects/<int:pk>/structure/packages/<int:wp_id>/",
+        structure_views.work_package_edit,
+        name="work_package_edit",
+    ),
+    path(
+        "projects/<int:pk>/structure/packages/<int:wp_id>/delete/",
+        structure_views.work_package_delete,
+        name="work_package_delete",
+    ),
+    path(
+        "projects/<int:pk>/structure/weights/",
+        structure_views.weights_action,
+        name="weights_action",
+    ),
+    path(
+        "projects/<int:pk>/structure/weights/edit/",
+        structure_views.weights_edit,
+        name="weights_edit",
+    ),
+    path(
+        "projects/<int:pk>/structure/progress/",
+        structure_views.progress_settings,
+        name="progress_settings",
+    ),
+    # Template dan field tambahan (R7.5–R7.6)
+    path("templates/", template_views.template_list, name="template_list"),
+    path("templates/new/", template_views.template_edit, name="template_create"),
+    path("templates/<int:tid>/", template_views.template_edit, name="template_edit"),
+    path("templates/<int:tid>/delete/", template_views.template_delete, name="template_delete"),
+    path(
+        "projects/<int:pk>/save-template/",
+        template_views.project_save_template,
+        name="project_save_template",
+    ),
+    path(
+        "projects/<int:pk>/fields/",
+        template_views.project_custom_fields,
+        name="project_custom_fields",
+    ),
+    path("audit/", audit_views.audit_trail, name="audit_trail"),
     # Dashboard
     path("", views.dashboard, name="dashboard"),
     # Projects
@@ -89,6 +152,14 @@ urlpatterns = [
     path("tasks/<int:pk>/follow-up/", control_views.task_follow_up, name="task_follow_up"),
     path("projects/<int:pk>/", views.project_detail, name="project_detail"),
     path("projects/<int:pk>/edit/", views.project_edit, name="project_edit"),
+    path("projects/<int:pk>/settings/", views.project_settings, name="project_settings"),
+    path("projects/<int:pk>/start/", views.project_start, name="project_start"),
+    path(
+        "projects/<int:pk>/apply-template/",
+        views.project_apply_template,
+        name="project_apply_template",
+    ),
+    path("projects/<int:pk>/paste/", views.project_paste_tasks, name="project_paste_tasks"),
     # Project tabs
     path("projects/<int:pk>/progress/", views.project_progress, name="project_progress"),
     path("projects/<int:pk>/timeline/", views.project_timeline, name="project_timeline"),

@@ -1,71 +1,16 @@
 {% extends "base.html" %}
-{% load pcc_tags %}
 {% block title %}Timeline — Scope{% endblock %}
 {% block content %}
     <div>
         <h1 class="text-2xl font-normal tracking-tight">Jadwal semua project</h1>
-        <p class="mt-1 text-sm text-muted-foreground">Rentang waktu dan progress seluruh project.</p>
+        <p class="mt-1 text-sm text-muted-foreground">Rentang waktu, phase, milestone, dan progress {{ project_count }} project. Buka project untuk mengubah jadwal.</p>
     </div>
-    <div class="mt-6 overflow-hidden rounded-xl border bg-card text-card-foreground" data-fullscreen-panel="Jadwal semua project"><div class="pcc-section border-b flex flex-wrap items-center justify-between gap-3"><h2 class="text-lg">Timeline seluruh project</h2></div>
-        <div class="overflow-x-auto" tabindex="0" role="region" aria-label="Timeline seluruh project">
-            <table class="w-full text-sm">
-                <thead>
-                    <tr class="border-b bg-muted/40">
-                        <th class="h-10 px-6 text-left font-normal text-muted-foreground">Project</th>
-                        <th class="h-10 px-4 text-left font-normal text-muted-foreground">Timeline</th>
-                        <th class="h-10 px-4 text-left font-normal text-muted-foreground w-64">Progress</th>
-                        <th class="h-10 px-4 text-right font-normal text-muted-foreground">Rencana → Aktual</th>
-                        <th class="h-10 px-6 text-left font-normal text-muted-foreground">Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for row in rows %}
-                        {% with p=row.project %}
-                            <tr class="border-b transition-colors hover:bg-muted/40">
-                                <td class="px-6 py-3">
-                                    <a href="{% url 'projects:project_detail' p.pk %}"
-                                       class="font-normal hover:underline">{{ p.name }}</a>
-                                    <span class="ml-2 rounded-md bg-muted px-1.5 py-0.5 text-xs font-normal tabular-nums text-muted-foreground">{{ p.code }}</span>
-                                </td>
-                                <td class="px-4 py-3">
-                                    {% with pos=p|bar_position %}
-                                        <div class="relative h-7 w-44 overflow-hidden rounded-md bg-muted/70">
-                                            <div class="absolute inset-y-0.5 rounded-md bg-border"
-                                                 style="left: {{ pos.left }}%;
-                                                        width: {{ pos.width }}%"></div>
-                                            <span class="absolute inset-0 flex items-center justify-center text-xs font-normal tabular-nums mix-blend-multiply text-foreground">
-                                                {{ p.start_date|date:"d M" }} → {{ p.target_end_date|date:"d M Y" }}
-                                            </span>
-                                        </div>
-                                    {% endwith %}
-                                </td>
-                                <td class="px-4 py-3">
-                                    <div class="flex items-center gap-2">
-                                        <div class="relative h-2 flex-1 overflow-hidden rounded-sm bg-muted">
-                                            <div class="absolute inset-y-0 left-0 rounded-sm bg-foreground"
-                                                 style="width: {{ row.actual|default:0 }}%"></div>
-                                        </div>
-                                        <span class="w-12 text-right text-xs font-normal tabular-nums text-muted-foreground">{{ row.actual|pct }}</span>
-                                    </div>
-                                </td>
-                                <td class="px-4 py-3 text-right tabular-nums">
-                                    <span class="text-muted-foreground">{{ row.planned|pct }}</span>
-                                    <span class="mx-1 text-muted-foreground">→</span>
-                                    <span class="font-normal">{{ row.actual|pct }}</span>
-                                </td>
-                                <td class="px-6 py-3">
-                                    <span class="{{ p.lifecycle_status|lifecycle_style }}">{{ p.get_lifecycle_status_display }}</span>
-                                </td>
-                            </tr>
-                        {% endwith %}
-                    {% empty %}
-                        <tr>
-                            <td colspan="5"
-                                class="px-6 py-12 text-center text-sm text-muted-foreground">Belum ada project.</td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
+    <section class="pcc-panel mt-6" data-fullscreen-panel="Jadwal semua project">
+        <div class="pcc-section border-b visualization-toolbar"><h2 class="text-lg">Timeline seluruh project</h2><div data-visualization-actions></div></div>
+        {% if gantt.rows %}
+            {% include "projects/partials/_gantt.html" with gantt_id="portfolio-gantt" gantt_readonly=True gantt_scale="month" gantt_label="Daftar project" %}
+        {% else %}
+            <p class="pcc-section text-sm text-muted-foreground">Belum ada project yang dapat diakses.</p>
+        {% endif %}
+    </section>
 {% endblock %}

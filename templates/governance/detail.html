@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% load pcc_tags %}
+{% block title %}{{ approval.get_approval_type_display }} — Scope{% endblock %}
+{% block content %}
+<div class="pcc-form-surface mx-auto max-w-2xl">
+  <a class="pcc-form-back text-sm text-muted-foreground hover:underline" href="{% url 'governance:approval_inbox' %}">← Persetujuan</a>
+  <div class="pcc-panel mt-4">
+    <div class="pcc-section border-b">
+      <p class="text-sm text-muted-foreground">{{ approval.get_approval_type_display }} · {{ approval.project.code }}</p>
+      <h1 class="mt-1 text-2xl font-normal"><a class="hover:underline" href="{{ target_url }}">{{ approval.target_repr }}</a></h1>
+      <p class="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted-foreground"><span class="{{ approval.status|status_style }}" data-approval-status="{{ approval.status }}">{{ approval.get_status_display }}</span> Diajukan {{ approval.requested_by|person_name|default:"sistem" }} · {{ approval.created_at|date:"d M Y H:i" }} · {{ approval.get_mode_display }}{% if approval.allow_self_approval %} · self-approval diizinkan{% endif %}</p>
+      {% if approval.note %}<p class="mt-3 text-sm">{{ approval.note|linebreaksbr }}</p>{% endif %}
+    </div>
+    <ol class="overview-list" aria-label="Langkah persetujuan">
+      {% for step in steps %}<li><span class="{{ step.status|status_style }}">{{ step.get_status_display }}</span><div><span>{{ step.sequence }}. {{ step.approver|person_name }}</span>{% if step.reason %}<p>{{ step.reason }}</p>{% endif %}</div><span class="row-meta">{% if step.decided_at %}{{ step.decided_at|date:"d M Y H:i" }}{% if step.active_role %} · {{ step.active_role }}{% endif %}{% endif %}</span></li>{% endfor %}
+    </ol>
+    {% if my_step %}
+      {% if problem %}
+        <p class="pcc-section border-t text-sm" role="status">{{ problem }}</p>
+      {% else %}
+        <form method="post" class="pcc-section space-y-5 border-t" data-simple-form>{% csrf_token %}
+          {% include "partials/_form_fields.html" %}
+          <div class="form-actions"><a href="{% url 'governance:approval_inbox' %}" class="pcc-button pcc-button-secondary" data-panel-cancel>Batal</a><button type="submit" class="pcc-button">Simpan keputusan</button></div>
+        </form>
+      {% endif %}
+    {% endif %}
+    {% if can_cancel %}
+      <form method="post" action="{% url 'governance:approval_cancel' approval.pk %}" class="pcc-section border-t" data-confirm="Batalkan pengajuan ini? Riwayatnya tetap tersimpan.">{% csrf_token %}<button class="pcc-button pcc-button-secondary">Batalkan pengajuan</button></form>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

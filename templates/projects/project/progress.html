@@ -65,7 +65,7 @@
                 <div class="flex flex-col items-center gap-2 py-14 text-center">
                     <p class="text-sm text-muted-foreground">Belum ada baseline planned progress.</p>
                     {% if can_manage %}
-                        <p class="text-xs text-muted-foreground">Tambahkan titik baseline di bawah untuk membuat planned progress curve.</p>
+                        <p class="text-xs text-muted-foreground">Isi tanggal mulai dan due di task; kurva rencana terbentuk otomatis.</p>
                     {% endif %}
                 </div>
             {% endif %}
@@ -76,58 +76,13 @@
         <div class="lg:col-span-2 rounded-xl border bg-card text-card-foreground" data-fullscreen-panel="Rencana Baseline">
             <div class="border-b px-6 py-4 flex flex-wrap items-center justify-between gap-3"><div>
                 <h2 class="text-base font-normal">Rencana Baseline</h2>
-                <p class="text-sm text-muted-foreground">Titik rencana progress (PRD §11).</p></div>
+                <p class="text-sm text-muted-foreground">Kurva rencana otomatis dari jadwal task.</p></div>
             </div>
             <div class="p-6">
-                {% if can_manage %}
-                    <form method="post"
-                          action="{% url 'projects:baseline_add' project.pk %}"
-                          class="flex items-end gap-2">
-                        {% csrf_token %}
-                        <div class="grid flex-1 gap-2 sm:grid-cols-3">
-                            <div>
-                                <label for="baseline-date"
-                                       class="text-xs font-normal text-muted-foreground">Tanggal</label>
-                                <input id="baseline-date"
-                                       type="date"
-                                       name="date"
-                                       required
-                                       aria-required="true"
-                                       value="{{ baseline_form.date.value }}"
-                                       class="mt-1 flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
-                            </div>
-                            <div>
-                                <label for="baseline-planned"
-                                       class="text-xs font-normal text-muted-foreground">Rencana %</label>
-                                <input id="baseline-planned"
-                                       type="number"
-                                       name="planned_percent"
-                                       required
-                                       aria-required="true"
-                                       step="0.01"
-                                       min="0"
-                                       max="100"
-                                       placeholder="62.5"
-                                       class="mt-1 flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
-                            </div>
-                            <div>
-                                <label for="baseline-label"
-                                       class="text-xs font-normal text-muted-foreground">Label (opsional)</label>
-                                <input id="baseline-label"
-                                       type="text"
-                                       name="label"
-                                       placeholder="Kickoff"
-                                       class="mt-1 flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
-                            </div>
-                        </div>
-                        <button type="submit"
-                                class="pcc-button">
-                            <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-                            Tambah
-                        </button>
-                    </form>
-                {% endif %}
-                <div class="mt-4 divide-y">
+                <p class="rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">
+                    Titik dihitung otomatis dari tanggal mulai, due, dan bobot setiap task. Ubah jadwal di tab Task; kurva ikut berubah. Setelah baseline resmi disimpan, kurva dibekukan sebagai acuan deviasi.
+                </p>
+                <div class="mt-2 divide-y">
                     {% for point in baseline %}
                         <div class="flex items-center justify-between gap-3 py-2.5 text-sm">
                             <span class="flex items-center gap-2">
@@ -136,15 +91,6 @@
                             </span>
                             <span class="flex items-center gap-3">
                                 <span class="font-normal tabular-nums">{{ point.planned_percent }}%</span>
-                                {% if can_manage %}
-                                    <form method="post"
-                                          action="{% url 'projects:baseline_delete' project.pk point.pk %}"
-                                          data-confirm="Hapus baseline point ini?">
-                                        {% csrf_token %}
-                                        <button type="submit"
-                                                class="subtle-action">Hapus</button>
-                                    </form>
-                                {% endif %}
                             </span>
                         </div>
                     {% empty %}

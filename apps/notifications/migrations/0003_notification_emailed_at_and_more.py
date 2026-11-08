@@ -5,25 +5,24 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('notifications', '0002_subscription_subscriptionoptout'),
+        ("notifications", "0002_subscription_subscriptionoptout"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='notification',
-            name='emailed_at',
+            model_name="notification",
+            name="emailed_at",
             field=models.DateTimeField(blank=True, null=True),
         ),
         migrations.AddField(
-            model_name='notificationpreference',
-            name='digest_sent_at',
+            model_name="notificationpreference",
+            name="digest_sent_at",
             field=models.DateTimeField(blank=True, null=True),
         ),
         migrations.AddIndex(
-            model_name='notification',
-            index=models.Index(fields=['emailed_at', 'created_at'], name='notif_email_queue_idx'),
+            model_name="notification",
+            index=models.Index(fields=["emailed_at", "created_at"], name="notif_email_queue_idx"),
         ),
     ]

@@ -116,8 +116,10 @@ def progress_task(request):
     today = timezone.localdate()
     page = paginate(request, tasks, PER_PAGE)
     rows = [_row(task, today) for task in page.object_list]
-    people = User.objects.filter(assigned_tasks__project__in=projects).distinct().order_by(
-        "first_name", "username"
+    people = (
+        User.objects.filter(assigned_tasks__project__in=projects)
+        .distinct()
+        .order_by("first_name", "username")
     )
     query = params.copy()
     query.pop("page", None)
@@ -307,4 +309,3 @@ def task_follow_up(request, pk):
     )
     messages.success(request, "Tindak lanjut terkirim.")
     return redirect(_safe_next(request, fallback))
-

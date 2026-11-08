@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import views
+from . import gantt_views, views
 
 app_name = "work"
 
@@ -20,6 +20,15 @@ urlpatterns = [
     path("tasks/<int:pk>/edit/", views.task_update, name="task_update"),
     path("tasks/<int:pk>/status/", views.task_status, name="task_status"),
     path("tasks/<int:pk>/dates/", views.task_dates, name="task_dates"),
+    # Gantt (JSON)
+    path("gantt/<int:pk>/data/", gantt_views.gantt_data, name="gantt_data"),
+    path("gantt/<int:pk>/tasks/", gantt_views.gantt_create, name="gantt_create"),
+    path("gantt/<int:pk>/tasks/<int:task_pk>/", gantt_views.gantt_patch, name="gantt_patch"),
+    path("gantt/<int:pk>/duplicate/", gantt_views.gantt_duplicate, name="gantt_duplicate"),
+    path("gantt/<int:pk>/sequence/", gantt_views.gantt_sequence, name="gantt_sequence"),
+    path("gantt/<int:pk>/dates/", gantt_views.gantt_bulk_dates, name="gantt_bulk_dates"),
+    path("gantt/<int:pk>/dependencies/", gantt_views.gantt_dependency, name="gantt_dependency"),
+    path("gantt/<int:pk>/undo-create/", gantt_views.gantt_undo_create, name="gantt_undo_create"),
     # Issues
     path("issues/", views.issue_list, name="issue_list"),
     path("issues/new/", views.issue_create, name="issue_create"),

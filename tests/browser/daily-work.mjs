@@ -39,9 +39,9 @@ try {
     await evaluate(`document.querySelector('[data-fullscreen-panel="Plan vs actual"] [data-fullscreen-toggle]').click()`); await settle();
     await navigate('/my-tasks/');
     await evaluate(`document.querySelector('a[href*="mode=update"]').click()`); await settle();
-    assert.deepEqual(await evaluate(`[...document.querySelector('dialog form').elements].filter(x=>x.name && x.name!=='csrfmiddlewaretoken').map(x=>x.name)`), ['status','progress','blocked_reason','blocked_dependency']);
-    await evaluate(`document.querySelector('dialog [name=status]').value='blocked';document.querySelector('dialog [name=status]').dispatchEvent(new Event('change',{bubbles:true}))`);
-    assert.equal(await evaluate(`document.querySelector('dialog [data-form-field=blocked_reason]').hidden`), false);
+    assert.deepEqual(await evaluate(`[...document.querySelector('#project-action-panel form').elements].filter(x=>x.name && x.name!=='csrfmiddlewaretoken').map(x=>x.name)`), ['status','progress','blocked_reason','blocked_dependency']);
+    await evaluate(`document.querySelector('#project-action-panel [name=status]').value='blocked';document.querySelector('#project-action-panel [name=status]').dispatchEvent(new Event('change',{bubbles:true}))`);
+    assert.equal(await evaluate(`document.querySelector('#project-action-panel [data-form-field=blocked_reason]').hidden`), false);
     await evaluate(`document.querySelector('[data-panel-close]').click()`);
     for (const path of [`/projects/${project}/`, '/my-tasks/']) {
         await call('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });

@@ -1,0 +1,20 @@
+{% load pcc_tags %}
+<div class="overflow-x-auto" tabindex="0" role="region" aria-label="{{ caption }}">
+  <table class="pcc-table responsive-table">
+    <thead><tr><th>Pengajuan</th>{% if show_project %}<th>Project</th>{% endif %}<th>Diajukan oleh</th><th>Approver</th><th>Status</th><th class="text-right">Tanggal</th></tr></thead>
+    <tbody>
+    {% for row in items %}{% with r=row.request %}
+      <tr>
+        <td data-label="Pengajuan" class="control-task"><a href="{% url 'governance:approval_detail' r.pk %}">{{ r.target_repr }}</a><small>{{ r.get_approval_type_display }}</small></td>
+        {% if show_project %}<td data-label="Project"><a class="subtle-action" href="{% url 'projects:project_detail' r.project_id %}">{{ r.project.code }}</a></td>{% endif %}
+        <td data-label="Diajukan oleh">{{ r.requested_by|person_name|default:"—" }}</td>
+        <td data-label="Approver">{% for step in r.steps.all %}<span class="block text-sm">{{ step.sequence }}. {{ step.approver|person_name }} · <span class="text-muted-foreground">{{ step.get_status_display }}</span></span>{% endfor %}</td>
+        <td data-label="Status"><span class="{{ r.status|status_style }}">{{ r.get_status_display }}</span></td>
+        <td data-label="Tanggal" class="text-right tabular-nums">{{ r.created_at|date:"d M Y" }}</td>
+      </tr>
+    {% endwith %}{% empty %}
+      <tr><td colspan="6" class="control-empty">{{ empty }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>

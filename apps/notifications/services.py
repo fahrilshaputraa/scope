@@ -40,6 +40,9 @@ def _target_ref(target):
         return NotificationTarget.NOTE, target.pk
     if isinstance(target, Project):
         return NotificationTarget.PROJECT, target.pk
+    kind = getattr(target, "notification_target", "")
+    if kind:
+        return kind, target.pk
     return "", getattr(target, "pk", None)
 
 
@@ -49,6 +52,8 @@ def _target_users(target):
     from apps.work.models import Issue, Task
 
     users = []
+    if getattr(target, "notify_watchers", True) is False:
+        return users
     project = _target_project(target)
     if project is not None and project.manager_id:
         users.append(project.manager)
@@ -70,6 +75,8 @@ def _target_watchers(target):
     from apps.work.models import Task
 
     users = []
+    if getattr(target, "notify_watchers", True) is False:
+        return users
     if isinstance(target, Task):
         users.extend(watcher_users(SubscriptionTarget.TASK, target.pk))
     project = _target_project(target)
@@ -140,8 +147,7 @@ def notify(
     if not recipients:
         return []
     preferences = {
-        pref.user_id: pref
-        for pref in NotificationPreference.objects.filter(user__in=recipients)
+        pref.user_id: pref for pref in NotificationPreference.objects.filter(user__in=recipients)
     }
     created = []
     for user in recipients:

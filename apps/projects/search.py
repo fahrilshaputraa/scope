@@ -30,9 +30,7 @@ def search_workspace(user, query, limit=6):
     tasks = list(
         Task.objects.filter(project__in=scope)
         .filter(
-            Q(title__icontains=query)
-            | Q(description__icontains=query)
-            | Q(labels__icontains=query)
+            Q(title__icontains=query) | Q(description__icontains=query) | Q(labels__icontains=query)
         )
         .select_related("project")
         .order_by("title")[:limit]
@@ -45,9 +43,7 @@ def search_workspace(user, query, limit=6):
     )
     notes = list(
         Note.objects.filter(project__in=scope)
-        .filter(
-            Q(title__icontains=query) | Q(content__icontains=query) | Q(tags__icontains=query)
-        )
+        .filter(Q(title__icontains=query) | Q(content__icontains=query) | Q(tags__icontains=query))
         .select_related("project", "author")
         .order_by("-updated_at")[:limit]
     )
@@ -76,7 +72,6 @@ def search_workspace(user, query, limit=6):
         "milestones": milestones,
         "decisions": decisions,
         "total": sum(
-            len(group)
-            for group in (projects, tasks, issues, notes, milestones, decisions)
+            len(group) for group in (projects, tasks, issues, notes, milestones, decisions)
         ),
     }

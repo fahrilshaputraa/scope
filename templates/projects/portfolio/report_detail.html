@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% load pcc_tags %}
+{% block title %}Laporan {{ title }} — Scope{% endblock %}
+{% block content %}
+<div class="flex flex-wrap items-end justify-between gap-4">
+  <div><a class="text-sm text-muted-foreground hover:underline" href="{% url 'projects:reports' %}">← Laporan</a><h1 class="dashboard-page-title mt-2">Laporan {{ title }}</h1><p class="dashboard-page-subtitle">{{ description }}{% if selected %} · {{ selected.name }}{% endif %}</p></div>
+</div>
+<nav class="issue-filters mt-4 print-hidden" aria-label="Jenis laporan">{% for key, label in reports %}<a href="{% url 'projects:report_detail' key %}{% if selected %}?project={{ selected.pk }}{% endif %}" {% if key == kind %}aria-current="page"{% endif %}>{{ label }}</a>{% endfor %}</nav>
+<form method="get" class="pcc-panel pcc-section mt-4 flex flex-wrap items-end gap-4 print-hidden">
+  <label class="text-sm">Project<select class="pcc-field mt-1" name="project"><option value="">Seluruh project</option>{% for p in projects %}<option value="{{ p.pk }}" {% if selected and selected.pk == p.pk %}selected{% endif %}>{{ p.code }} — {{ p.name }}</option>{% endfor %}</select></label>
+  <button class="pcc-button pcc-button-secondary">Tampilkan</button>
+  {% if can_export %}<span class="flex flex-wrap gap-2" data-report-export><a class="pcc-button pcc-button-secondary" href="{% url 'projects:export_report' %}?dataset={{ kind }}&format=pdf{% if selected %}&project={{ selected.pk }}{% endif %}">PDF</a><a class="pcc-button pcc-button-secondary" href="{% url 'projects:export_report' %}?dataset={{ kind }}&format=xlsx{% if selected %}&project={{ selected.pk }}{% endif %}">Excel</a><a class="pcc-button pcc-button-secondary" href="{% url 'projects:export_report' %}?dataset={{ kind }}&format=csv{% if selected %}&project={{ selected.pk }}{% endif %}">CSV</a></span>{% endif %}
+</form>
+<section class="pcc-panel mt-4" data-report="{{ kind }}">
+  <div class="overflow-x-auto" tabindex="0" role="region" aria-label="Tabel laporan {{ title }}">
+    <table class="pcc-table responsive-table">
+      <thead><tr>{% for h in headers %}<th>{{ h }}</th>{% endfor %}</tr></thead>
+      <tbody>
+      {% for row in rows %}<tr>{% for cell in row %}<td data-label="{{ headers|slice:forloop.counter|last }}" class="tabular-nums">{% if cell is None %}—{% else %}{{ cell }}{% endif %}</td>{% endfor %}</tr>{% empty %}<tr><td colspan="{{ headers|length }}" class="control-empty">Belum ada data untuk laporan ini.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

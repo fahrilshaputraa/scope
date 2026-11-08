@@ -38,6 +38,18 @@ TASK_STATUS_LABELS = {
 }
 
 
+class ProgressMethod(models.TextChoices):
+    """Metode progress task (PRD §11.1)."""
+
+    MANUAL = "manual", "Manual (persentase)"
+    STATUS = "status", "Berdasarkan status"
+    SUBTASK = "subtask", "Dari detail activity"
+
+
+#: Persentase default metode status-based; In Progress dan In Review dapat diatur per project.
+STATUS_PROGRESS_DEFAULTS = {"backlog": 0, "todo": 0, "in_progress": 50, "review": 80, "done": 100}
+
+
 class Priority(models.TextChoices):
     CRITICAL = "critical", "Critical"
     HIGH = "high", "High"
@@ -78,6 +90,13 @@ class Task(ArchivableModel):
         on_delete=models.SET_NULL,
         related_name="tasks",
     )
+    work_package = models.ForeignKey(
+        "projects.WorkPackage",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="tasks",
+    )
     parent_task = models.ForeignKey(
         "self", null=True, blank=True, on_delete=models.CASCADE, related_name="subtasks"
     )
@@ -92,6 +111,14 @@ class Task(ArchivableModel):
     )
     collaborators = models.ManyToManyField(
         settings.AUTH_USER_MODEL, blank=True, related_name="collaborating_tasks"
+    )
+    reviewer = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="review_tasks",
+        help_text="Bila diisi, task harus diperiksa reviewer sebelum selesai.",
     )
     status = models.CharField(max_length=20, choices=TaskStatus.choices, default=TaskStatus.TODO)
     priority = models.CharField(max_length=20, choices=Priority.choices, default=Priority.MEDIUM)
@@ -115,6 +142,9 @@ class Task(ArchivableModel):
     )
     weight = models.DecimalField(
         max_digits=6, decimal_places=2, default=1, validators=[MinValueValidator(0)]
+    )
+    progress_method = models.CharField(
+        max_length=10, choices=ProgressMethod.choices, default=ProgressMethod.MANUAL
     )
     labels = models.CharField(max_length=200, blank=True, help_text="Comma-separated labels")
     order = models.PositiveIntegerField(default=0, help_text="Manual ordering untuk Next Up")
@@ -149,6 +179,12 @@ class Task(ArchivableModel):
         self._validate_hierarchy()
         self._validate_completion()
         self._validate_assignee(errors)
+        self._validate_review(errors)
+        self._validate_structure(errors)
+        if self.project_id and not errors:
+            from apps.governance.changes import guard_major_change
+
+            guard_major_change(self, "task", self.project)
         for name in ("phase", "milestone"):
             obj = getattr(self, name) if getattr(self, name + "_id") else None
             if obj and obj.project_id != self.project_id:
@@ -173,6 +209,44 @@ class Task(ArchivableModel):
         if problem:
             errors["assignee"] = problem
 
+    def _validate_structure(self, errors):
+        """Work package dari project yang sama; metode progress yang konsisten (PRD §11.1)."""
+        package = self.work_package if self.work_package_id else None
+        if package and package.project_id != self.project_id:
+            errors["work_package"] = "Pilih work package dari project yang sama."
+        self._apply_method_override()
+
+    def _apply_method_override(self):
+        """Aturan override metode progress: detail activity selalu menjadi sumber progress.
+
+        Activity yang punya detail memakai metode ``subtask``; metode ``subtask`` tanpa
+        detail kembali ke manual. Manual/status tidak pernah digabung dengan detail.
+        """
+        has_details = bool(self.pk and not self.parent_task_id and self.subtasks.exists())
+        if has_details:
+            self.progress_method = ProgressMethod.SUBTASK
+        elif self.progress_method == ProgressMethod.SUBTASK:
+            self.progress_method = ProgressMethod.MANUAL
+
+    def _validate_review(self, errors):
+        """Task yang perlu diperiksa hanya selesai lewat persetujuan reviewer (PRD §18.3)."""
+        if not self.project_id:
+            return
+        from apps.governance.services import reviewer_problem, task_needs_review
+
+        problem = reviewer_problem(self)
+        if problem:
+            errors["reviewer"] = problem
+        if self.status != TaskStatus.DONE:
+            return
+        previous = None
+        if self.pk:
+            previous = Task.all_objects.filter(pk=self.pk).values_list("status", flat=True).first()
+        if previous != TaskStatus.DONE and task_needs_review(self):
+            errors["status"] = (
+                "Task ini perlu diperiksa reviewer. Kirim untuk diperiksa, lalu tunggu persetujuan."
+            )
+
     def _validate_hierarchy(self):
         if not self.parent_task_id:
             return
@@ -188,6 +262,7 @@ class Task(ArchivableModel):
                 {"parent_task": "Activity yang memiliki detail tidak bisa menjadi detail."}
             )
         self.phase_id = parent.phase_id
+        self.work_package_id = parent.work_package_id
 
     def _validate_completion(self):
         if self.pk and not self.parent_task_id and self.status == TaskStatus.DONE:
@@ -203,6 +278,16 @@ class Task(ArchivableModel):
     def save(self, *args, **kwargs):
         self._validate_hierarchy()
         self._validate_completion()
+        if self.work_package_id and not self.parent_task_id:
+            if self.work_package.phase_id:
+                self.phase_id = self.work_package.phase_id
+        self._apply_method_override()
+        if self.progress_method == ProgressMethod.STATUS and self.project_id:
+            from .progress import status_progress
+
+            self.progress = status_progress(
+                self.status, self.project.progress_config, self.progress
+            )
         if self.status == TaskStatus.DONE:
             self.progress = 100
             self.completed_at = self.completed_at or timezone.now()
@@ -220,11 +305,21 @@ class Task(ArchivableModel):
                 "completed_at",
                 "actual_start",
                 "phase",
+                "work_package",
+                "progress_method",
             }
         super().save(*args, **kwargs)
+        if self.parent_task_id:
+            # Detail selalu menjadi sumber progress induknya (aturan override, PRD §11.1).
+            Task.objects.filter(pk=self.parent_task_id).exclude(
+                progress_method=ProgressMethod.SUBTASK
+            ).update(progress_method=ProgressMethod.SUBTASK)
         # Keep inherited grouping consistent when an activity moves to another phase.
         if not self.parent_task_id:
             self.subtasks.exclude(phase_id=self.phase_id).update(phase_id=self.phase_id)
+            self.subtasks.exclude(work_package_id=self.work_package_id).update(
+                work_package_id=self.work_package_id
+            )
         if self.parent_task_id and not self.is_done:
             Task.objects.filter(pk=self.parent_task_id, status=TaskStatus.DONE).update(
                 status=TaskStatus.IN_PROGRESS, completed_at=None, updated_at=timezone.now()
@@ -298,9 +393,10 @@ class Task(ArchivableModel):
         )
         from apps.projects.models import Phase
 
-        if self.phase_id and Phase.all_objects.filter(
-            pk=self.phase_id, archived_at__isnull=False
-        ).exists():
+        if (
+            self.phase_id
+            and Phase.all_objects.filter(pk=self.phase_id, archived_at__isnull=False).exists()
+        ):
             self.phase = None
             self.save(update_fields=["phase"])
         return True

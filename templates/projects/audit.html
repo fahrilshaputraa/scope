@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% load pcc_tags %}
+{% block title %}Jejak audit — Scope{% endblock %}
+{% block subnav %}{% include "identity/_settings_nav.html" with active_settings="audit" %}{% endblock %}
+{% block content %}
+<div><h1 class="dashboard-page-title">Jejak audit</h1><p class="dashboard-page-subtitle">Siapa melakukan apa, dengan role aktif apa, nilai lama dan baru, serta alasannya. Pilih jenis dan ID entitas untuk menelusuri satu data.</p></div>
+<form method="get" class="pcc-panel pcc-section mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4" aria-label="Filter audit">
+  <label class="text-sm">Project<select class="pcc-field mt-1" name="project"><option value="">Semua</option>{% for p in projects %}<option value="{{ p.pk }}" {% if filters.project == p.pk %}selected{% endif %}>{{ p.code }}</option>{% endfor %}</select></label>
+  <label class="text-sm">Jenis entitas<select class="pcc-field mt-1" name="entity"><option value="">Semua</option>{% for value, label in entities %}<option value="{{ value }}" {% if filters.entity == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+  <label class="text-sm">ID entitas<input class="pcc-field mt-1" name="id" inputmode="numeric" value="{{ filters.id }}"></label>
+  <label class="text-sm">Pelaku<select class="pcc-field mt-1" name="actor"><option value="">Semua</option>{% for u in actors %}<option value="{{ u.pk }}" {% if filters.actor == u.pk %}selected{% endif %}>{{ u|person_name }}</option>{% endfor %}</select></label>
+  <label class="text-sm">Role aktif<select class="pcc-field mt-1" name="role"><option value="">Semua</option>{% for code, label in roles %}<option value="{{ code }}" {% if filters.role == code %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+  <label class="text-sm">Dari<input class="pcc-field mt-1" type="date" name="from" value="{{ filters.from }}"></label>
+  <label class="text-sm">Sampai<input class="pcc-field mt-1" type="date" name="to" value="{{ filters.to }}"></label>
+  <div class="flex items-end gap-2"><button class="pcc-button">Terapkan</button><a class="pcc-button pcc-button-secondary" href="{% url 'projects:audit_trail' %}">Reset</a></div>
+</form>
+<section class="pcc-panel mt-6" data-audit-trail>
+  <div class="overflow-x-auto" tabindex="0" role="region" aria-label="Catatan audit">
+    <table class="pcc-table responsive-table">
+      <thead><tr><th>Waktu</th><th>Pelaku · role</th><th>Entitas</th><th>Aksi</th><th>Nilai lama → baru</th><th>Alasan</th></tr></thead>
+      <tbody>
+      {% for row in rows %}
+        <tr data-audit-kind="{{ row.kind }}">
+          <td data-label="Waktu" class="whitespace-nowrap tabular-nums">{{ row.at|date:"d M Y H:i" }}</td>
+          <td data-label="Pelaku">{{ row.actor|person_name|default:"Sistem" }}<small class="block text-xs text-muted-foreground">{{ role_labels|dict_get:row.role|default:"—" }}</small></td>
+          <td data-label="Entitas"><span>{{ row.label|default:"—" }}</span><small class="block text-xs text-muted-foreground">{{ row.project.code }}{% if row.entity %} · {% if row.entity_id %}<a class="underline" href="?entity={{ row.entity }}&id={{ row.entity_id }}">{{ row.entity }} #{{ row.entity_id }}</a>{% else %}{{ row.entity }}{% endif %}{% endif %}</small></td>
+          <td data-label="Aksi">{{ row.action }}<small class="block text-xs text-muted-foreground">{{ row.message }}</small></td>
+          <td data-label="Perubahan">{% for c in row.changes %}<span class="block text-sm">{{ c.label }}: <span class="text-muted-foreground">{{ c.old }}</span> → {{ c.new }}</span>{% empty %}—{% endfor %}</td>
+          <td data-label="Alasan">{{ row.reason|default:"—" }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="6" class="control-empty">Tidak ada catatan untuk filter ini.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if truncated %}<p class="pcc-section border-t text-xs text-muted-foreground">Menampilkan 200 catatan terbaru. Persempit filter untuk melihat lebih jauh.</p>{% endif %}
+</section>
+{% endblock %}

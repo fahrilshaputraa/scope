@@ -12,9 +12,7 @@ def copy_members_to_memberships(apps, schema_editor):
     Workspace = apps.get_model("identity", "Workspace")
     old = Project.members.through
     for row in old.objects.all():
-        ProjectMembership.objects.get_or_create(
-            project_id=row.project_id, user_id=row.user_id
-        )
+        ProjectMembership.objects.get_or_create(project_id=row.project_id, user_id=row.user_id)
     workspace = Workspace.objects.filter(code="default").first()
     if workspace is not None:
         Project.objects.filter(workspace__isnull=True).update(workspace=workspace)
@@ -25,51 +23,91 @@ def noop(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('identity', '0003_remove_userprofile_role'),
-        ('projects', '0008_alter_activityevent_action'),
+        ("identity", "0003_remove_userprofile_role"),
+        ("projects", "0008_alter_activityevent_action"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='activityevent',
-            name='active_role',
-            field=models.CharField(blank=True, default='', max_length=20),
+            model_name="activityevent",
+            name="active_role",
+            field=models.CharField(blank=True, default="", max_length=20),
         ),
         migrations.AddField(
-            model_name='project',
-            name='owner',
-            field=models.ForeignKey(blank=True, help_text='Penanggung jawab outcome project (Project Owner).', null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='owned_projects', to=settings.AUTH_USER_MODEL),
+            model_name="project",
+            name="owner",
+            field=models.ForeignKey(
+                blank=True,
+                help_text="Penanggung jawab outcome project (Project Owner).",
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                related_name="owned_projects",
+                to=settings.AUTH_USER_MODEL,
+            ),
         ),
         migrations.AddField(
-            model_name='project',
-            name='workspace',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='projects', to='identity.workspace'),
+            model_name="project",
+            name="workspace",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                related_name="projects",
+                to="identity.workspace",
+            ),
         ),
         migrations.AddField(
-            model_name='revision',
-            name='active_role',
-            field=models.CharField(blank=True, default='', max_length=20),
+            model_name="revision",
+            name="active_role",
+            field=models.CharField(blank=True, default="", max_length=20),
         ),
         migrations.CreateModel(
-            name='ProjectMembership',
+            name="ProjectMembership",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('project_role', models.CharField(choices=[('member', 'Anggota'), ('client', 'Client / Stakeholder')], default='member', max_length=20)),
-                ('status', models.CharField(default='active', max_length=20)),
-                ('joined_at', models.DateTimeField(auto_now_add=True)),
-                ('project', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='memberships', to='projects.project')),
-                ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='project_memberships', to=settings.AUTH_USER_MODEL)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True, primary_key=True, serialize=False, verbose_name="ID"
+                    ),
+                ),
+                (
+                    "project_role",
+                    models.CharField(
+                        choices=[("member", "Anggota"), ("client", "Client / Stakeholder")],
+                        default="member",
+                        max_length=20,
+                    ),
+                ),
+                ("status", models.CharField(default="active", max_length=20)),
+                ("joined_at", models.DateTimeField(auto_now_add=True)),
+                (
+                    "project",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="memberships",
+                        to="projects.project",
+                    ),
+                ),
+                (
+                    "user",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="project_memberships",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
             options={
-                'ordering': ['joined_at', 'pk'],
+                "ordering": ["joined_at", "pk"],
             },
         ),
         migrations.AddConstraint(
-            model_name='projectmembership',
-            constraint=models.UniqueConstraint(fields=('project', 'user'), name='unique_project_member'),
+            model_name="projectmembership",
+            constraint=models.UniqueConstraint(
+                fields=("project", "user"), name="unique_project_member"
+            ),
         ),
         migrations.RunPython(copy_members_to_memberships, noop),
     ]

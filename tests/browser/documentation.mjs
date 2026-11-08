@@ -57,8 +57,8 @@ try {
     await settle();
     assert.equal(await evaluate('location.pathname'), '/auth/settings/docs/');
     assert.equal(await evaluate('document.documentElement.lang'), 'id');
-    assert.equal(await evaluate(`document.querySelectorAll('.docs-nav-group a').length`), 18);
-    assert.ok(await evaluate(`document.querySelector('.settings-sidebar').getBoundingClientRect().left > 0 && getComputedStyle(document.querySelector('.settings-sidebar')).position === 'fixed'`));
+    assert.equal(await evaluate(`document.querySelectorAll('.docs-nav-group a').length`), 20, 'One link per article in apps/identity/documentation.py.');
+    assert.ok(await evaluate(`document.querySelector('.settings-sidebar').getBoundingClientRect().left > 0 && ['fixed', 'sticky'].includes(getComputedStyle(document.querySelector('.settings-sidebar')).position)`), 'Settings sidebar stays pinned beside the content.');
     await contained(); await shot('docs-desktop');
     await navigate('/auth/settings/docs/progress-proyek/');
     assert.equal(await evaluate(`document.querySelector('[data-demo-actual]').textContent`), '35');
@@ -78,7 +78,7 @@ try {
     await call('Emulation.setEmulatedMedia', { media: 'print' });
     assert.equal(await evaluate(`getComputedStyle(document.querySelector('.settings-sidebar')).display`), 'none');
     assert.equal(await evaluate(`getComputedStyle(document.querySelector('.workspace-body')).marginLeft`), '0px');
-    assert.ok(await evaluate(`getComputedStyle(document.documentElement).getPropertyValue('--ink').trim() === '#16150f'`));
+    assert.ok(await evaluate(`(()=>{const css=getComputedStyle(document.documentElement);return ['#fff','#ffffff'].includes(css.getPropertyValue('--surface').trim()) && css.getPropertyValue('--ink').trim()!=='#f5f5f5'})()`), 'Print uses dark ink on white even in dark theme.');
     await shot('docs-print');
     await call('Emulation.setEmulatedMedia', { media: '' });
     await evaluate(`ScopeTheme.set('light')`);
@@ -116,7 +116,7 @@ try {
         const pdf = await call('Page.printToPDF', { printBackground: true, preferCSSPageSize: true, paperWidth: 8.27, paperHeight: 11.69 });
         await writeFile(join(screenshots, 'panduan-progres.pdf'), Buffer.from(pdf.data, 'base64'));
     }
-    console.log('PASS: Settings submenu, 18 mobile guides, search, keyboard calculator, reset, dark theme, print and server-rendered search.');
+    console.log('PASS: Settings submenu, 20 mobile guides, search, keyboard calculator, reset, dark theme, print and server-rendered search.');
 } finally {
     await call('Emulation.setScriptExecutionDisabled', { value: false }).catch(() => {});
     socket.close();

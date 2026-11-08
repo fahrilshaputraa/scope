@@ -64,21 +64,71 @@ ARTICLES = (
                     "headers": ["Menu aplikasi", "Kegunaan"],
                     "rows": [
                         [
-                            "Dashboard",
-                            "Ringkasan proyek yang dapat Anda akses dan kondisi portofolio.",
+                            "Kerja → Dashboard",
+                            "Hal yang perlu Anda tangani hari ini, lalu kondisi semua proyek.",
                         ],
-                        ["Projects", "Cari proyek berdasarkan nama/kode dan buka ruang kerjanya."],
-                        ["Laporan", "Bandingkan proyek dan unduh data laporan."],
+                        ["Kerja → Project", "Cari proyek dan buka ruang kerjanya."],
                         [
-                            "Pekerjaan saya",
+                            "Kerja → Pekerjaan saya",
                             "Task yang ditugaskan kepada Anda sebagai orang pertama atau rekan.",
                         ],
-                        ["Masalah", "Telusuri masalah pada proyek yang dapat Anda akses."],
-                        ["Jadwal", "Lihat rentang waktu beberapa proyek."],
-                        ["Catatan", "Cari informasi tertulis lintas proyek yang dapat diakses."],
-                        ["Pengaturan", "Perbarui akun dan buka dokumentasi ini."],
+                        [
+                            "Kerja → Persetujuan",
+                            "Keputusan yang menunggu Anda, termasuk pemeriksaan task.",
+                        ],
+                        [
+                            "Pantau → Progress task, Kontrol project",
+                            "Task lintas proyek dan pengecualian yang perlu ditindaklanjuti PM.",
+                        ],
+                        ["Pantau → Masalah", "Masalah pada proyek yang dapat Anda akses."],
+                        ["Pantau → Jadwal semua project", "Rentang waktu beberapa proyek."],
+                        ["Pantau → Laporan", "Bandingkan proyek dan unduh data laporan."],
+                        [
+                            "Pengaturan",
+                            "Akun, pengguna, role, template, jejak audit, integrasi, dan "
+                            "panduan ini. Item admin hanya tampil bila Anda berhak.",
+                        ],
                     ],
                 },
+                callout=(
+                    "Menu menyesuaikan peran aktif",
+                    "Setiap peran hanya melihat menu yang dipakainya. Tekan Ctrl K untuk "
+                    "Quick actions: buat task cepat, tempel daftar task, buka persetujuan, "
+                    "catatan semua proyek, dan halaman lain.",
+                ),
+            ),
+            section(
+                "tab-proyek",
+                "Tujuh tab di dalam proyek",
+                "Setiap proyek punya tujuh tab tetap. Tab yang memuat beberapa tampilan "
+                "menampilkan pilihan tampilan di atas isinya; alamat lama setiap tampilan "
+                "tetap berlaku.",
+                table={
+                    "headers": ["Tab", "Isi"],
+                    "rows": [
+                        [
+                            "Ringkasan",
+                            "Kondisi proyek, rencana vs aktual, hal yang perlu dilakukan "
+                            "sekarang, milestone berikutnya, dan checklist Siap berjalan.",
+                        ],
+                        ["Pekerjaan", "Tampilan Daftar, Board, Jadwal (Gantt), dan Struktur."],
+                        ["Progress", "Kurva rencana, snapshot, dan baseline progres."],
+                        ["Masalah & risiko", "Masalah yang terjadi dan risiko yang diwaspadai."],
+                        ["Milestone & deliverable", "Titik capaian dan output yang diserahkan."],
+                        ["Catatan & keputusan", "Feed catatan dan keputusan bertanggal."],
+                        [
+                            "Aktivitas",
+                            "Log aktivitas, Riwayat perubahan, Persetujuan & perubahan "
+                            "(change request), dan Kontrol.",
+                        ],
+                    ],
+                },
+                bullets=[
+                    "Header proyek hanya menampilkan satu tombol utama; aksi lain ada di Lainnya.",
+                    "Pengaturan proyek (anggota, persetujuan, kolom board, tautan publik, "
+                    "integrasi, template, field tambahan) ada di tab Pengaturan atau "
+                    "Lainnya → Pengaturan project, khusus PM.",
+                ],
             ),
             section(
                 "cara-membaca",
@@ -104,14 +154,13 @@ ARTICLES = (
                 "alur-pertama",
                 "Untuk manajer proyek",
                 steps=[
-                    "Buka Projects, pilih Buat project, lalu isi nama, target selesai, "
-                    "dan anggota tim.",
-                    "Buka proyek yang dibuat. Pilih Tambah task untuk membagi "
-                    "pekerjaan menjadi hasil yang jelas.",
-                    "Tetapkan penanggung jawab, tanggal mulai, tanggal selesai, dan "
-                    "bobot task utama.",
-                    "Buka Jadwal → Phase project → Simpan baseline jadwal setelah "
-                    "tanggal semua task utama terisi.",
+                    "Pilih Buat project. Langkah 1: nama, tanggal, PM, dan Project Owner.",
+                    "Langkah 2: pilih sumber rencana. Tempel daftar task (satu per baris) "
+                    "membuat jadwal berurutan sekaligus; template dan import AI juga tersedia.",
+                    "Langkah 3: tinjau, lalu Buat project. Jadwal langsung terbuka.",
+                    "Tetapkan pelaksana task di Pekerjaan → Jadwal, lalu di Ringkasan pilih "
+                    "Buat baseline dari jadwal pada checklist Siap berjalan.",
+                    "Setelah semua syarat tercentang, pilih Mulai project.",
                     "Minta tim memperbarui pekerjaannya. Tinjau Ringkasan, Progress, "
                     "dan Masalah secara berkala.",
                     "Gunakan Presentasi untuk rapat atau Laporan untuk mengunduh data.",
@@ -245,15 +294,14 @@ ARTICLES = (
                 "buat",
                 "Buat proyek pertama",
                 steps=[
-                    "Buka menu Projects. Pilih Buat project; tombol ini juga tersedia "
-                    "dari Dashboard untuk PM.",
-                    "Isi nama proyek dengan hasil yang ingin dicapai, misalnya "
-                    "Peluncuran portal pelanggan.",
-                    "Periksa target selesai dan pilih anggota tim yang akan mengerjakan proyek.",
-                    "Buka Detail tambahan untuk informasi seperti kode, deskripsi, PM, "
-                    "tim, tanggal mulai, dan status.",
-                    "Pilih Simpan. Proyek akan terbuka dan siap diisi task, tahap, "
-                    "milestone, serta catatan.",
+                    "Pilih Buat project dari Dashboard atau menu Project.",
+                    "Langkah 1 — Data project: isi nama; tanggal mulai, target selesai, PM, "
+                    "dan Project Owner sudah terisi otomatis bila memungkinkan. Kode, jenis, "
+                    "tim, anggota, dan deskripsi ada di Opsi lanjutan.",
+                    "Langkah 2 — Sumber rencana: Mulai kosong, Tempel daftar task, Dari "
+                    "template, atau Import rencana dari AI. Target selesai menyesuaikan "
+                    "panjang rencana.",
+                    "Langkah 3 — Tinjau, lalu pilih Buat project.",
                 ],
                 visual="project-form",
                 caption="Contoh informasi awal proyek. Kode dibuat otomatis jika dikosongkan.",
@@ -295,7 +343,7 @@ ARTICLES = (
             section(
                 "ubah",
                 "Ubah informasi proyek",
-                "Buka proyek → Lainnya → Edit informasi project. Perbarui isian, lalu simpan. "
+                "Buka proyek → Pengaturan → Informasi project → Edit. Perbarui isian, lalu simpan. "
                 "Tanggal target tidak boleh lebih awal daripada tanggal mulai.",
                 "Status proyek dipilih PM untuk menggambarkan kondisi keseluruhan. Status tersebut "
                 "berbeda dari label deviasi yang dihitung dari rencana dan aktual.",
@@ -337,7 +385,7 @@ ARTICLES = (
                 "Tambahkan anggota proyek",
                 steps=[
                     "Buka proyek yang Anda kelola.",
-                    "Pilih Lainnya → Atur anggota tim.",
+                    "Pilih Pengaturan → Anggota.",
                     "Cari nama atau nama pengguna, lalu centang anggota yang diperlukan.",
                     "Periksa jumlah dan daftar pilihan sebelum menyimpan.",
                 ],
@@ -398,7 +446,7 @@ ARTICLES = (
                     "rancangan halaman masuk.",
                     "Pilih orang pertama, rekan jika perlu, dan tanggal selesai. Task "
                     "juga boleh dibuat tanpa penanggung jawab.",
-                    "Buka Detail tambahan untuk tanggal mulai, tahap, milestone, "
+                    "Buka Opsi lanjutan untuk tanggal mulai, tahap, milestone, "
                     "prioritas, bobot, label, dan dependensi.",
                     "Simpan. Task muncul pada alur kerja proyek sesuai statusnya.",
                 ],
@@ -542,8 +590,8 @@ ARTICLES = (
                 steps=[
                     "Isi tanggal mulai dan selesai semua task utama. Total bobotnya "
                     "harus lebih besar dari nol.",
-                    "Buka Jadwal → Phase project.",
-                    "Pilih Simpan baseline jadwal, lalu baca konfirmasi sebelum menyetujui.",
+                    "Pilih Buat baseline dari jadwal: di checklist Siap berjalan pada "
+                    "Ringkasan, di pesan di atas Jadwal, atau di Jadwal → Phase dan baseline.",
                     "Scope menyimpan tanggal pembanding dan menyusun kurva progres "
                     "rencana berbobot.",
                     "Buka Progress untuk melihat perbandingan rencana dan aktual.",
@@ -578,7 +626,7 @@ ARTICLES = (
                 "titik secara bertahap.",
                 "Titik kurva manual tidak membekukan tanggal setiap task. Untuk "
                 "membandingkan tanggal "
-                "task, gunakan Simpan baseline jadwal.",
+                "task, gunakan Buat baseline dari jadwal.",
             ),
         ],
         related=["task-kanban", "progress-proyek", "tahap-milestone"],
@@ -728,9 +776,13 @@ ARTICLES = (
                 "risiko",
                 "Kelola risiko sebelum menjadi masalah",
                 "Buka Masalah proyek → Risiko project → Tambah risiko. PM mencatat judul, "
-                "tingkat keparahan, pemilik, target, dan mitigasi. Perbarui status "
-                "ketika risiko ditangani "
-                "atau ditutup. Risiko dan masalah merupakan catatan terpisah.",
+                "kemungkinan terjadi dan dampak (skala 1–5), penanggung jawab, rencana "
+                "mitigasi, dan tanggal tinjau. Ketiganya wajib diisi.",
+                "Skor risiko adalah kemungkinan × dampak (1–25). Tingkatnya dihitung otomatis: "
+                "1–4 rendah, 5–9 sedang, 10–16 tinggi, 17–25 kritis. Risiko lama yang hanya "
+                "punya tingkat keparahan dipetakan ke 2×2, 3×3, 4×4, atau 5×5.",
+                "Bila risiko benar-benar terjadi, pilih Jadikan issue. Issue baru dibuat dengan "
+                "pemilik dan tingkat yang sama, dan risiko ditandai Menjadi masalah.",
             ),
         ],
         related=["pembaruan-harian", "catatan-keputusan"],
@@ -747,10 +799,11 @@ ARTICLES = (
                 "Susun tahap proyek",
                 "Tahap (phase) mengelompokkan task, misalnya Persiapan, Pengembangan, "
                 "dan Pengujian. "
-                "PM membuka proyek → Lainnya → Tambah tahap project, kemudian mengisi "
+                "PM membuka Pekerjaan → Jadwal → Phase dan baseline → Tambah phase, "
+                "kemudian mengisi "
                 "nama, urutan, "
                 "rentang tanggal, dan status. Tahap juga dapat dikelola dari Jadwal → "
-                "Phase project.",
+                "Phase dan baseline.",
                 "Urutan tahap harus unik dalam proyek. Pilih tahap pada form task "
                 "untuk menghubungkan "
                 "pekerjaan dengannya. PM dapat memilih tahap aktif melalui informasi proyek; "
@@ -764,7 +817,7 @@ ARTICLES = (
                 "milestone",
                 "Tambahkan milestone",
                 steps=[
-                    "Buka proyek → Lainnya → Tambah milestone, atau buka bagian Milestones.",
+                    "Buka proyek → Lainnya → Tambah milestone, atau tab Milestone & deliverable.",
                     "Tulis nama hasil penting, tanggal target, pemilik, status, dan "
                     "penjelasan jika perlu.",
                     "Simpan, lalu hubungkan task melalui pilihan milestone di form "
@@ -1146,8 +1199,7 @@ ARTICLES = (
                 "akun-baru",
                 "Kelola akun pengguna",
                 steps=[
-                    "Buka Pengaturan → Pengguna. Halaman ini hanya tersedia untuk "
-                    "administrator.",
+                    "Buka Pengaturan → Pengguna. Halaman ini hanya tersedia untuk administrator.",
                     "Pilih Buat akun lokal, isi identitas, peran, dan kata sandi awal, "
                     "lalu simpan.",
                     "Gunakan Edit untuk mengubah nama, peran, atau status akun.",
@@ -1173,6 +1225,110 @@ ARTICLES = (
         ],
         related=["akun-dan-akses", "anggota-tim", "bantuan-istilah"],
         action=("identity:settings", "Buka pengaturan akun"),
+    ),
+    article(
+        "persetujuan-perubahan",
+        "Persetujuan, change request, dan deliverable",
+        "Kendalikan proyek",
+        "Atur siapa yang harus menyetujui rencana, baseline, task, deliverable, perubahan, "
+        "dan penutupan proyek.",
+        [
+            section(
+                "aturan",
+                "Aktifkan persetujuan bila dibutuhkan",
+                "Semua persetujuan mati secara default sehingga pekerjaan berjalan seperti biasa. "
+                "PM membuka tab Persetujuan pada proyek, lalu memilih Atur pada jenis yang perlu: "
+                "rencana, baseline, pemeriksaan task, penerimaan deliverable, change request, "
+                "atau penutupan proyek.",
+                bullets=[
+                    "Berurutan: approver 1 memutuskan dulu, lalu approver 2, dan seterusnya.",
+                    "Paralel: semua approver memutuskan; satu penolakan menolak pengajuan.",
+                    "Self-approval dilarang kecuali dicentang. Penolakan selalu wajib beralasan.",
+                    "Tanpa approver, Project Owner menjadi approver (task: reviewer atau PM).",
+                ],
+            ),
+            section(
+                "review-task",
+                "Pemeriksaan task",
+                "Isi Reviewer pada task bila hasilnya perlu diperiksa. Pelaksana memilih Kirim "
+                "untuk diperiksa; task menjadi In Review dan muncul di Pemeriksaan saya milik "
+                "reviewer. Disetujui berarti task selesai. Ditolak mengembalikan task ke Sedang "
+                "dikerjakan dengan alasan sebagai komentar.",
+            ),
+            section(
+                "change-request",
+                "Change request dan kontrol perubahan",
+                "Perubahan minor (teks, label, informasi tambahan) boleh langsung. Perubahan major "
+                "(deadline proyek, tanggal milestone, bobot task, deliverable) dicatat di "
+                "aktivitas. Bila Kontrol perubahan aktif dan baseline sudah berlaku, perubahan "
+                "major hanya bisa dilakukan setelah ada change request yang disetujui.",
+                steps=[
+                    "Tab Persetujuan → Ajukan perubahan: tulis alasan dan penilaian dampak.",
+                    "Simpan draf, lalu Ajukan. Approver dapat menandai Mulai tinjau.",
+                    "Setelah disetujui, PM menyesuaikan rencana lalu memilih Terapkan.",
+                    "Terapkan membuat versi baseline baru; versi lama tetap tersimpan.",
+                ],
+                callout=["Change request yang ditolak tidak dapat diterapkan."],
+            ),
+            section(
+                "deliverable",
+                "Deliverable",
+                "Deliverable adalah output yang diserahkan, berbeda dari milestone. PM menambahkan "
+                "deliverable beserta kriteria penerimaan, pemilik, dan penerima. Pemilik mengisi "
+                "bukti lalu mengajukan penerimaan; Project Owner atau client yang ditunjuk "
+                "menerima atau menolak dengan alasan.",
+            ),
+        ],
+        keywords="approval persetujuan review reviewer change request deliverable baseline",
+        related=["jadwal-baseline", "task-kanban"],
+        action=("governance:approval_inbox", "Buka Persetujuan"),
+    ),
+    article(
+        "struktur-template",
+        "Struktur, bobot, dan template proyek",
+        "Mulai di sini",
+        "Susun phase, work package, task, dan detail dengan cepat, lalu pakai ulang sebagai "
+        "template.",
+        [
+            section(
+                "struktur",
+                "Struktur proyek",
+                "Tab Struktur menampilkan phase → work package → task → detail activity. Work "
+                "package opsional; task yang dimasukkan ke work package mengikuti phase-nya.",
+            ),
+            section(
+                "progress",
+                "Metode progress",
+                bullets=[
+                    "Manual: pelaksana mengisi persentase.",
+                    "Berdasarkan status: To Do 0%, Sedang dikerjakan dan Menunggu pemeriksaan "
+                    "sesuai pengaturan proyek, Selesai 100%, Terhambat mempertahankan nilai.",
+                    "Dari detail: activity yang punya detail selalu dihitung dari detailnya.",
+                ],
+            ),
+            section(
+                "bobot",
+                "Bobot kelompok 100%",
+                "Bobot dihitung per kelompok: task utama proyek, atau detail dari satu activity. "
+                "Proyek baru memakai bobot otomatis dibagi rata. Gunakan Bagi rata, Normalisasi ke "
+                "100%, atau Atur bobot (total harus 100%) di tab Struktur.",
+            ),
+            section(
+                "template",
+                "Template proyek",
+                "Admin membuat template di Pengaturan → Template, atau memilih Simpan sebagai "
+                "template di Pengaturan project. Saat membuat proyek, pilih Dari template: "
+                "phase, "
+                "work package, task, milestone, aturan persetujuan, dan field tambahan disalin "
+                "dengan tanggal dihitung dari tanggal mulai. Mengubah template tidak mengubah "
+                "proyek yang sudah dibuat.",
+                "Outline template: baris biasa = phase, '+' work package, '- Task | 5' task lima "
+                "hari, '-- Detail | 2' detail, '* Milestone | 30' milestone hari ke-30.",
+            ),
+        ],
+        keywords="struktur work package bobot template outline progress metode custom field",
+        related=["membuat-proyek", "progress-proyek"],
+        action=("projects:project_list", "Buka Project"),
     ),
     article(
         "bantuan-istilah",

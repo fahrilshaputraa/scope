@@ -1,0 +1,34 @@
+{% load static %}{# One Gantt for every schedule view (G9). Context: gantt (payload), gantt_id; optional gantt_readonly, gantt_scale, gantt_label. #}
+{{ gantt|json_script:gantt_id }}
+<div class="gantt" id="{{ gantt_id }}-root" data-gantt data-gantt-source="{{ gantt_id }}"{% if gantt_readonly %} data-gantt-readonly{% endif %}{% if gantt_scale %} data-gantt-scale="{{ gantt_scale }}"{% endif %}>
+    <div class="gantt-toolbar" data-gantt-toolbar></div>
+    <div class="gantt-legend">
+        {% if gantt.mode == "portfolio" %}
+            <span><i class="tone-todo"></i>Perencanaan</span>
+            <span><i class="tone-active"></i>Berjalan</span>
+            <span><i class="tone-warn"></i>Ditunda</span>
+            <span><i class="tone-ok"></i>Selesai</span>
+            <span><i class="lg-fill"></i>Isi bar: progress aktual</span>
+        {% else %}
+            <span><i class="tone-neutral"></i>Belum dijadwalkan</span>
+            <span><i class="tone-todo"></i>Siap dikerjakan</span>
+            <span><i class="tone-active"></i>Sedang dikerjakan</span>
+            <span><i class="tone-info"></i>Pemeriksaan</span>
+            <span><i class="tone-danger"></i>Terhambat</span>
+            <span><i class="tone-ok"></i>Selesai</span>
+            <span><i class="lg-baseline"></i>Baseline</span>
+            <span><i class="lg-link"></i>Dependency</span>
+        {% endif %}
+        <span><i class="lg-ms"></i>Milestone</span>
+        <span><i class="lg-today"></i>Hari ini</span>
+    </div>
+    <div class="gantt-body" data-gantt-body>
+        <div class="gantt-tree" data-gantt-tree role="treegrid" aria-label="{{ gantt_label|default:'Daftar task' }}"{% if gantt_readonly or not gantt.editable %} aria-readonly="true"{% endif %}></div>
+        <div class="gantt-splitter" data-gantt-splitter role="separator" tabindex="0" aria-orientation="vertical" aria-label="Ubah lebar daftar" aria-valuemin="160" aria-valuemax="1200" aria-valuenow="380"></div>
+        <div class="gantt-chart" data-gantt-chart role="region" tabindex="0" aria-label="Grafik jadwal, geser untuk melihat tanggal lain"></div>
+    </div>
+    <p class="gantt-fallback" data-gantt-fallback>Memuat jadwal…</p>
+    <p class="sr-only" aria-live="polite" data-gantt-live></p>
+    <div class="gantt-toast" data-gantt-toast hidden></div>
+</div>
+<script src="{% static 'js/gantt.js' %}" defer></script>

@@ -34,9 +34,7 @@ def dispatch_activity(event, target=None, dedupe_token=""):
             "project.updated",
             target,
             title=f"Project diperbarui: {target.name}",
-            body=(
-                f"{actor_name} memperbarui detail atau jadwal {_project_code(target)}."
-            ),
+            body=(f"{actor_name} memperbarui detail atau jadwal {_project_code(target)}."),
             url=reverse("projects:project_detail", args=[target.pk]),
             dedupe_suffix=f"updated:{today}",
         )
@@ -48,7 +46,7 @@ def dispatch_activity(event, target=None, dedupe_token=""):
             "task.created",
             target,
             title=f"Tugas baru: {target.title}",
-            body=f'{actor_name} menambahkan tugas di {_project_code(project)}.',
+            body=f"{actor_name} menambahkan tugas di {_project_code(project)}.",
             url=reverse("work:task_detail", args=[target.pk]),
             dedupe_suffix=f"created:{target.pk}",
         )
@@ -109,7 +107,7 @@ def dispatch_activity(event, target=None, dedupe_token=""):
             target,
             title=f"Issue baru: {target.title}",
             body=(
-                f'{actor_name} melaporkan issue di {_project_code(target.project)} '
+                f"{actor_name} melaporkan issue di {_project_code(target.project)} "
                 f"({target.get_severity_display()})."
             ),
             url=reverse("work:issue_update", args=[target.pk]),
@@ -146,7 +144,7 @@ def dispatch_activity(event, target=None, dedupe_token=""):
             "milestone.completed",
             target,
             title=f"Milestone selesai: {target.name}",
-            body=f'{_project_code(target.project)} · {target.date.isoformat()}.',
+            body=f"{_project_code(target.project)} · {target.date.isoformat()}.",
             url=reverse("projects:project_milestones", args=[target.project_id]),
             dedupe_suffix=f"completed:{target.pk}",
         )

@@ -1,8 +1,11 @@
-"""Navigasi sidebar per role (PRD §6.1).
+"""Navigasi sidebar per role (PRD §6.1, U6).
 
-Hanya halaman yang sudah ada yang ditampilkan. Item untuk fitur yang belum
-dibangun (Progress Task, Project Control, Approvals, Deliverables, ...) akan
-ditambahkan ke ``ROLE_NAV`` saat halamannya tersedia.
+Sidebar hanya memuat halaman kerja harian, dikelompokkan menjadi "Kerja" (mulai
+dari sini) dan "Pantau" (lintas project). Halaman administrasi yang jarang dibuka
+(pengguna, role, template, jejak audit, integrasi) ada di Pengaturan
+(``SETTINGS_ITEMS``); catatan semua project dan pemeriksaan ada di Quick actions
+dan di halaman Persetujuan. Label memakai bahasa Indonesia seragam
+(``docs/ux-glossary.md``).
 """
 
 from django.urls import reverse
@@ -43,7 +46,7 @@ ITEMS = {
         '<path d="m12 3 10 18H2zM12 9v5M12 17v1"/>',
     ),
     "timeline": (
-        "Jadwal",
+        "Jadwal semua project",
         "projects:timeline_global",
         ("/timeline",),
         '<path d="M3 5h12M8 12h13M3 19h10M3 3v4M8 10v4M3 17v4"/>',
@@ -55,18 +58,43 @@ ITEMS = {
         '<path d="M6 3h14v18H6zM3 7h5M3 12h5M3 17h5M11 8h5M11 12h5"/>',
     ),
     "progress_task": (
-        "Progress Task",
+        "Progress task",
         "projects:progress_task",
         ("/progress-task",),
         '<path d="M4 6h16M4 12h10M4 18h6"/><path d="m16 15 2 2 3-4"/>',
     ),
     "control": (
-        "Project Control",
+        "Kontrol project",
         "projects:control_index",
         ("/control",),
         '<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12"/>'
         '<circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/>'
         '<circle cx="18" cy="18" r="2"/>',
+    ),
+    "approvals": (
+        "Persetujuan",
+        "governance:approval_inbox",
+        ("/approvals", "/reviews"),
+        '<path d="M9 11l3 3 8-8"/>'
+        '<path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/>',
+    ),
+    "reviews": (
+        "Pemeriksaan saya",
+        "governance:my_reviews",
+        ("/reviews",),
+        '<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3M8 11l2 2 4-4"/>',
+    ),
+    "templates": (
+        "Template",
+        "projects:template_list",
+        ("/templates",),
+        '<path d="M8 3h11v14H8zM5 7v14h11"/>',
+    ),
+    "audit": (
+        "Jejak audit",
+        "projects:audit_trail",
+        ("/audit",),
+        '<path d="M9 3h6l1 2h3v16H5V5h3zM9 12l2 2 4-4"/>',
     ),
     "users": (
         "Pengguna",
@@ -74,6 +102,12 @@ ITEMS = {
         ("/auth/users",),
         '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>'
         '<path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',
+    ),
+    "integrations": (
+        "Integrasi",
+        "integrations:index",
+        ("/integrations",),
+        '<path d="M9 7V3M15 7V3M7 7h10v4a5 5 0 0 1-10 0zM12 16v5"/>',
     ),
     "roles": (
         "Role & permission",
@@ -83,37 +117,66 @@ ITEMS = {
     ),
 }
 
-MAIN = "Menu utama"
-WORK = "Pekerjaan tim"
-ADMIN = "Administrasi"
+WORK = "Kerja"
+MONITOR = "Pantau"
 
 # role -> daftar (judul grup, [key atau (key, label khusus)])
 ROLE_NAV = {
     "admin": [
-        (MAIN, ["dashboard", "projects", "progress_task", "control", "reports"]),
-        (ADMIN, ["users", "roles"]),
+        (WORK, ["dashboard", "projects", "approvals"]),
+        (MONITOR, ["progress_task", "control", "reports"]),
     ],
     "pm": [
-        (MAIN, ["dashboard", "projects", "reports"]),
-        (WORK, ["progress_task", "control", "issues", "timeline", "notes"]),
+        (WORK, ["dashboard", "projects", "approvals"]),
+        (MONITOR, ["progress_task", "control", "issues", "timeline", "reports"]),
     ],
     "member": [
-        (MAIN, ["dashboard", "projects"]),
-        (WORK, ["my_tasks", "issues", "timeline"]),
+        (WORK, ["dashboard", "my_tasks", "reviews", "projects"]),
+        (MONITOR, ["issues", "timeline"]),
     ],
     "owner": [
-        (MAIN, ["dashboard", "projects", "reports"]),
-        (WORK, ["issues", "timeline"]),
+        (WORK, ["dashboard", "projects", "approvals"]),
+        (MONITOR, ["issues", "timeline", "reports"]),
     ],
     "management": [
-        (MAIN, [("dashboard", "Portfolio"), "projects", "reports"]),
-        (WORK, ["timeline"]),
+        (WORK, [("dashboard", "Portfolio"), "projects"]),
+        (MONITOR, ["timeline", "reports"]),
     ],
     "client": [
-        (MAIN, ["dashboard", "projects"]),
-        (WORK, ["timeline"]),
+        (WORK, ["dashboard", "projects", ("approvals", "Penerimaan")]),
+        (MONITOR, ["timeline"]),
     ],
 }
+
+# Item yang dipindah ke Pengaturan: key -> permission yang dibutuhkan (None = semua).
+SETTINGS_ITEMS = [
+    ("users", "user.manage"),
+    ("roles", "user.manage"),
+    ("templates", "template.manage"),
+    ("audit", "audit.view"),
+    ("integrations", None),
+]
+
+
+def settings_links(user, active: str = "") -> list[dict]:
+    """Tautan administrasi di Pengaturan sesuai permission user aktif."""
+    from .roles import has_perm
+
+    links = []
+    for key, perm in SETTINGS_ITEMS:
+        if perm and not has_perm(user, perm):
+            continue
+        label, url_name, _prefixes, icon = ITEMS[key]
+        links.append(
+            {
+                "key": key,
+                "label": label,
+                "url": reverse(url_name),
+                "icon": icon,
+                "active": key == active,
+            }
+        )
+    return links
 
 
 def _is_active(path: str, prefixes) -> bool:

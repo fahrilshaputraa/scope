@@ -55,6 +55,12 @@ def tick() -> int:
             )
     except Exception:
         logger.exception("Notification email tick failed; snapshot result is kept.")
+    try:
+        from apps.integrations.tick import run_teams_tick
+
+        run_teams_tick()
+    except Exception:
+        logger.exception("Teams notification tick failed; snapshot result is kept.")
     return count
 
 

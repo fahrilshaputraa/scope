@@ -1,0 +1,34 @@
+{% extends "projects/_base.html" %}
+{% load pcc_tags %}
+{% block project_content %}
+<div class="mt-4 visualization-toolbar">
+  <nav class="issue-filters" aria-label="Filter task">{% for key, label, count in filters %}<a href="?view=list&amp;filter={{ key }}"{% if key == selected_filter %} aria-current="page"{% endif %}>{{ label }} <span class="tabular-nums">({{ count }})</span></a>{% endfor %}</nav>
+  {% if can_manage %}<a class="subtle-action" href="{% url 'projects:project_timeline' project.pk %}?action=paste">Tempel daftar task</a>{% endif %}
+</div>
+<section class="pcc-panel mt-4" aria-label="Daftar task" data-task-list>
+  {% if task_rows %}
+  <ul class="task-list">
+    {% for task in task_rows %}
+    <li class="task-list-row">
+      <span class="task-list-status"><span class="{% if task.is_late %}{{ 'delayed'|status_style }}{% else %}{{ task.status|status_style }}{% endif %}">{% if task.is_late %}Terlambat{% else %}{{ status_labels|get_item:task.status }}{% endif %}</span></span>
+      <div class="task-list-main">
+        <a href="{% url 'work:task_detail' task.pk %}">{{ task.title }}</a>
+        <p>{{ task.phase.name|default:"Tanpa phase" }}{% if task.subtasks.all %} · {{ task.subtasks.all|length }} detail{% endif %} · {{ task.assignee_names|default:"Belum ditugaskan" }}</p>
+      </div>
+      <span class="task-list-date tabular-nums">{% if task.due_date %}{{ task.start_date|date:"d M"|default:"—" }} – {{ task.due_date|date:"d M" }}{% else %}Belum dijadwalkan{% endif %}</span>
+      <span class="task-list-progress tabular-nums"><progress class="pcc-progress" value="{{ task.display_progress }}" max="100" aria-hidden="true"></progress>{{ task.display_progress|floatformat:0 }}%</span>
+      <span class="task-list-action">{% if task.can_edit or can_manage %}<a data-project-action class="subtle-action" href="{% url 'work:task_update' task.pk %}" aria-label="Perbarui {{ task.title }}">Perbarui</a>{% endif %}</span>
+    </li>
+    {% endfor %}
+  </ul>
+  {% elif selected_filter == 'all' %}
+  <div class="empty-state">
+    <h2>Belum ada task di project ini</h2>
+    <p>Susun jadwal dengan menempel daftar task sekaligus, memakai template, atau import rencana dari AI.</p>
+    {% if can_manage %}<div class="empty-state-actions"><a class="pcc-button" href="{% url 'projects:project_timeline' project.pk %}?action=paste">Tempel daftar task</a><a data-project-action class="pcc-button pcc-button-secondary" href="{% url 'work:task_create' %}?project={{ project.pk }}">Tambah satu task</a></div>{% endif %}
+  </div>
+  {% else %}
+  <div class="empty-state"><h2>Tidak ada task untuk filter ini</h2><p><a class="underline" href="?view=list">Tampilkan semua task</a></p></div>
+  {% endif %}
+</section>
+{% endblock %}

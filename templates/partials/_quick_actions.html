@@ -11,7 +11,7 @@
             {% regroup quick_actions by group as quick_groups %}
             {% for group in quick_groups %}
             <li class="quick-group" role="presentation" data-quick-group>{{ group.grouper }}</li>
-            {% for action in group.list %}<li data-quick-item data-label="{{ action.label|lower }}"><a href="{{ action.url }}">{{ action.label }}</a></li>
+            {% for action in group.list %}<li data-quick-item data-label="{{ action.label|lower }}"><a href="{{ action.url }}"{% if action.drawer %} data-project-action{% endif %}>{{ action.label }}</a></li>
             {% endfor %}{% endfor %}
         </ul>
         <p class="quick-empty" data-quick-empty hidden>Tidak ada yang cocok. Tekan Enter untuk mencari di workspace.</p>

@@ -3,8 +3,8 @@
 {% block project_content %}
     <div class="mt-6 flex flex-wrap items-center justify-between gap-3">
         <div>
-            <h2 class="text-lg font-normal tracking-tight">Milestones</h2>
-            <p class="text-sm text-muted-foreground">Titik penting capaian project (PRD §13).</p>
+            <h2 class="text-lg font-normal tracking-tight">Milestone</h2>
+            <p class="text-sm text-muted-foreground">Titik capaian penting project. Output yang diserahkan ada di Deliverable.</p>
         </div>
         {% if can_manage %}
             <a data-project-action href="{% url 'projects:milestone_create' project.pk %}"
@@ -17,7 +17,7 @@
                      stroke-linecap="round">
                     <path d="M12 5v14M5 12h14" />
                 </svg>
-                New Milestone
+                Tambah milestone
             </a>
         {% endif %}
     </div>
@@ -104,7 +104,7 @@
                         <p class="mt-1 text-sm text-muted-foreground">Buat milestone pertama untuk project ini.</p>
                         <a data-project-action href="{% url 'projects:milestone_create' project.pk %}"
                            class="pcc-button mt-3">
-                            New Milestone
+                            Tambah milestone
                         </a>
                     {% endif %}
                 </div>

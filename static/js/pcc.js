@@ -484,3 +484,33 @@ PCC.initNavSearch = function(root = document) {
 };
 PCC.initNavSearch();
 PCC.initMentions();
+
+/* Schedule shortcuts (empty state, menu "Tempel daftar task"): open the Gantt's own
+   dialog when the chart is editable, otherwise fall back to the plain form page. */
+PCC.ganttCall = function(method, targetId, fallback) {
+    const gantt = document.getElementById(targetId)?.gantt;
+    if (gantt && gantt.canEdit && typeof gantt[method] === 'function') { gantt[method](); return true; }
+    if (fallback) location.href = fallback;
+    return false;
+};
+document.addEventListener('click', event => {
+    const trigger = event.target.closest('[data-gantt-call]');
+    if (!trigger) return;
+    event.preventDefault();
+    PCC.ganttCall(trigger.dataset.ganttCall, trigger.dataset.ganttTarget, trigger.dataset.fallback);
+});
+window.addEventListener('load', () => {
+    const params = new URLSearchParams(location.search);
+    const host = document.querySelector('[data-paste-url]');
+    if (params.get('action') === 'paste' && host) {
+        params.delete('action');
+        history.replaceState(null, '', location.pathname + (params.size ? `?${params}` : '') + location.hash);
+        PCC.ganttCall('pasteDialog', 'project-gantt-root', host.dataset.pasteUrl);
+    }
+    /* Keep the active project tab visible in the horizontal mobile tab strip. */
+    const active = document.querySelector('[data-project-tabs] .is-active');
+    const strip = active?.parentElement;
+    if (active && strip && strip.scrollWidth > strip.clientWidth) {
+        strip.scrollLeft = active.offsetLeft - (strip.clientWidth - active.offsetWidth) / 2;
+    }
+});

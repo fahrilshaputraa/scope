@@ -160,6 +160,9 @@ def planning_requirements(project) -> list[str]:
             unmet.append("belum ada task")
         if not project.baseline_points.exists():
             unmet.append("baseline progress belum dibuat")
+        from apps.governance.services import planning_gate
+
+        unmet.extend(planning_gate(project))
     else:
         unmet.append("rencana project belum dibuat")
     return unmet
@@ -229,9 +232,7 @@ def with_project_metrics(queryset):
             ),
             to_attr="open_issues_cache",
         ),
-        Prefetch(
-            "risks", queryset=Risk.objects.filter(status="open"), to_attr="open_risks_cache"
-        ),
+        Prefetch("risks", queryset=Risk.objects.filter(status="open"), to_attr="open_risks_cache"),
     )
 
 
@@ -263,9 +264,7 @@ def projects_due_for_snapshot(on_date: date | None = None):
     """
     on_date = on_date or timezone.localdate()
     existing = ProgressSnapshot.objects.filter(date=on_date).values("project_id")
-    return Project.objects.exclude(
-        lifecycle_status__in=CLOSED_LIFECYCLE
-    ).exclude(pk__in=existing)
+    return Project.objects.exclude(lifecycle_status__in=CLOSED_LIFECYCLE).exclude(pk__in=existing)
 
 
 def snapshot_due_projects(on_date: date | None = None) -> int:
@@ -290,6 +289,8 @@ def record_activity(
     object_repr: str = "",
     target=None,
     dedupe_token: str = "",
+    reason: str = "",
+    entity=None,
 ):
     """Catat activity log project (PRD §25) dan fan-out notifikasi terpusat.
 
@@ -300,6 +301,7 @@ def record_activity(
         raise ValueError(f"Unknown activity action: {action}")
     from apps.identity.roles import active_role
 
+    subject = entity if entity is not None else target
     event = ActivityEvent.objects.create(
         project=project,
         actor=actor,
@@ -307,12 +309,34 @@ def record_activity(
         action=action,
         message=message[:300],
         object_repr=object_repr[:200],
+        entity_type=entity_type_of(subject),
+        entity_id=getattr(subject, "pk", None) if subject is not None else None,
+        reason=reason or "",
     )
     if target is not None:
         from apps.notifications.activity import dispatch_activity
 
         dispatch_activity(event, target=target, dedupe_token=dedupe_token)
     return event
+
+
+def entity_type_of(obj) -> str:
+    """Nama entitas audit untuk objek (sama dengan ``Revision.entity`` bila ada)."""
+    if obj is None:
+        return ""
+    return {
+        "Project": "project",
+        "Task": "task",
+        "Milestone": "milestone",
+        "Issue": "issue",
+        "Risk": "risk",
+        "Deliverable": "deliverable",
+        "ChangeRequest": "change_request",
+        "ApprovalRequest": "approval",
+        "Baseline": "baseline",
+        "Decision": "decision",
+        "WorkPackage": "work_package",
+    }.get(type(obj).__name__, type(obj).__name__.lower()[:30])
 
 
 def timeline_data(project):
@@ -497,6 +521,45 @@ def build_baseline_data(project) -> dict:
     }
 
 
+def condense_curve(curve):
+    """Buang titik kurva yang segaris; interpolasi linear tetap sama persis.
+
+    ``curve`` = daftar [tanggal_iso, persen_str]. Titik pertama, terakhir, dan setiap
+    perubahan kemiringan (awal/akhir task) dipertahankan.
+    """
+    if len(curve) <= 2:
+        return curve
+    kept = [curve[0]]
+    for prev, cur, nxt in zip(curve, curve[1:], curve[2:], strict=False):
+        d0, d1, d2 = (date.fromisoformat(x[0]) for x in (prev, cur, nxt))
+        v0, v1, v2 = (Decimal(x[1]) for x in (prev, cur, nxt))
+        slope_a = (v1 - v0) / (d1 - d0).days
+        slope_b = (v2 - v1) / (d2 - d1).days
+        if abs(slope_a - slope_b) > Decimal("0.02"):
+            kept.append(cur)
+    kept.append(curve[-1])
+    return kept
+
+
+def sync_plan_curve(project):
+    """Kurva rencana otomatis dari start/due/bobot task, selama belum ada baseline resmi."""
+    from .models import ProgressBaselinePoint
+
+    if project.baselines.exists():
+        return
+    try:
+        data = build_baseline_data(project)
+    except Exception:  # noqa: BLE001 - jadwal belum lengkap: biarkan kurva apa adanya
+        return
+    project.baseline_points.all().delete()
+    ProgressBaselinePoint.objects.bulk_create(
+        ProgressBaselinePoint(
+            project=project, date=date.fromisoformat(d), planned_percent=Decimal(v)
+        )
+        for d, v in condense_curve(data["curve"])
+    )
+
+
 def current_baseline(project):
     """Versi baseline yang sedang berlaku, atau None."""
     from .models import BaselineStatus
@@ -504,31 +567,76 @@ def current_baseline(project):
     return project.baselines.filter(status=BaselineStatus.ACTIVE).order_by("-version").first()
 
 
-def capture_baseline(project, actor, note=""):
-    """Buat versi baseline baru dari jadwal saat ini dan langsung berlakukan.
+def capture_baseline(project, actor, note="", change_request=None):
+    """Buat versi baseline baru dari jadwal saat ini.
 
-    Versi lama tidak dihapus; statusnya menjadi ``superseded``.
+    Bila persetujuan baseline aktif (dan bukan hasil change request yang sudah
+    disetujui), versi baru menunggu persetujuan dan belum berlaku. Selain itu versi
+    baru langsung berlaku. Versi lama tidak dihapus; statusnya menjadi ``superseded``.
     """
     from django.db import transaction
     from django.db.models import Max
 
-    from apps.work.models import Task
+    from apps.governance.models import ApprovalType
+    from apps.governance.services import is_enabled, request_approval
 
-    from .models import Baseline, BaselineStatus, ProgressBaselinePoint
+    from .models import Baseline, BaselineStatus
 
     with transaction.atomic():
+        pending = project.baselines.filter(status=BaselineStatus.PENDING).first()
+        needs_approval = change_request is None and is_enabled(project, ApprovalType.BASELINE)
+        if pending is not None and needs_approval:
+            raise _plan_error(
+                f"Baseline v{pending.version} masih menunggu persetujuan. "
+                "Tunggu keputusan approver sebelum menyimpan versi baru."
+            )
         data = build_baseline_data(project)
         version = (project.baselines.aggregate(top=Max("version"))["top"] or 0) + 1
-        project.baselines.filter(status=BaselineStatus.ACTIVE).update(
-            status=BaselineStatus.SUPERSEDED
-        )
         baseline = Baseline.objects.create(
             project=project,
             version=version,
+            status=BaselineStatus.PENDING,
             created_by=actor,
             note=note[:300],
             baseline_data=data,
         )
+        if change_request is not None:
+            change_request.applied_baseline = baseline
+            change_request.save(update_fields=["applied_baseline"])
+        if needs_approval:
+            request_approval(
+                project, ApprovalType.BASELINE, baseline, actor, note or "Baseline jadwal baru."
+            )
+            record_activity(
+                project,
+                actor,
+                ActivityAction.BASELINE_UPDATED,
+                f"Baseline v{version} diajukan; berlaku setelah disetujui.",
+            )
+            return baseline
+        activate_baseline(baseline, actor, approved=change_request is not None)
+    return baseline
+
+
+def activate_baseline(baseline, actor, approved=True):
+    """Berlakukan versi baseline: tanggal baseline task, kurva planned, snapshot."""
+    from django.db import transaction
+
+    from apps.work.models import Task
+
+    from .models import BaselineStatus, ProgressBaselinePoint
+
+    project = baseline.project
+    data = baseline.baseline_data
+    with transaction.atomic():
+        project.baselines.filter(status=BaselineStatus.ACTIVE).exclude(pk=baseline.pk).update(
+            status=BaselineStatus.SUPERSEDED
+        )
+        baseline.status = BaselineStatus.ACTIVE
+        if approved:
+            baseline.approved_by = actor
+            baseline.approved_at = timezone.now()
+        baseline.save(update_fields=["status", "approved_by", "approved_at"])
         by_id = {t["id"]: t for t in data["tasks"]}
         tasks = list(project.tasks.filter(pk__in=by_id))
         for task in tasks:
@@ -541,7 +649,7 @@ def capture_baseline(project, actor, note=""):
             ProgressBaselinePoint(
                 project=project, date=date.fromisoformat(day), planned_percent=Decimal(value)
             )
-            for day, value in data["curve"]
+            for day, value in condense_curve(data["curve"])
         )
         project._prefetched_objects_cache = {}
         record_snapshot(project)
@@ -549,6 +657,6 @@ def capture_baseline(project, actor, note=""):
             project,
             actor,
             ActivityAction.BASELINE_UPDATED,
-            f"Baseline v{version} berlaku; planned progress dihitung dari versi ini.",
+            f"Baseline v{baseline.version} berlaku; planned progress dihitung dari versi ini.",
         )
     return baseline

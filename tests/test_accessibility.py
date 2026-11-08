@@ -228,7 +228,7 @@ def test_horizontal_scroll_regions_are_focusable_and_labelled(client, workspace,
         for element in page.find()
         if any(
             token in element["attrs"].get("class", "")
-            for token in ("overflow-x-auto", "task-timeline-scroll", "portfolio-map-scroll")
+            for token in ("overflow-x-auto", "gantt-chart")
         )
     ]
     assert regions, f"{page_name}: expected at least one horizontal scroll region"

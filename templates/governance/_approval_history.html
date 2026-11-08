@@ -1,0 +1,7 @@
+{% load pcc_tags %}
+<section class="pcc-panel mt-6" aria-labelledby="approval-history">
+  <div class="pcc-section border-b"><h2 id="approval-history">Riwayat persetujuan</h2></div>
+  <ul class="overview-list">
+    {% for r in approvals %}<li><span class="{{ r.status|status_style }}">{{ r.get_status_display }}</span><div><a href="{% url 'governance:approval_detail' r.pk %}">Diajukan {{ r.requested_by|person_name|default:"—" }} · {{ r.created_at|date:"d M Y H:i" }}</a>{% for step in r.steps.all %}<p>{{ step.sequence }}. {{ step.approver|person_name }} — {{ step.get_status_display }}{% if step.reason %}: {{ step.reason }}{% endif %}</p>{% endfor %}</div><span class="row-meta">{{ r.get_mode_display }}</span></li>{% empty %}<li class="overview-empty">Belum pernah diajukan.</li>{% endfor %}
+  </ul>
+</section>

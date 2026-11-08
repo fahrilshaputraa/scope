@@ -1,3 +1,8 @@
+import hashlib
+import logging
+
+import requests
+from authlib.integrations.base_client import OAuthError
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import login as django_login
@@ -6,6 +11,7 @@ from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import AuthenticationForm, PasswordChangeForm
 from django.contrib.auth.models import User
+from django.core.cache import cache
 from django.core.exceptions import PermissionDenied
 from django.db.models import Q
 from django.http import HttpRequest, HttpResponse
@@ -27,6 +33,8 @@ from .permission_catalog import ALL_PERMISSIONS, PERMISSIONS, ROLE_LABELS, ROLE_
 from .roles import SESSION_KEY, get_role, has_perm, set_active_role
 from .services import upsert_user_from_claims
 
+logger = logging.getLogger(__name__)
+
 
 def _safe_next(request, default="projects:dashboard") -> str:
     next_url = request.GET.get("next") or request.POST.get("next") or ""
@@ -37,19 +45,73 @@ def _safe_next(request, default="projects:dashboard") -> str:
     return reverse(default)
 
 
+def _client_ip(request: HttpRequest) -> str:
+    return request.META.get("REMOTE_ADDR", "") or "unknown"
+
+
+def _lock_keys(request: HttpRequest, username: str) -> tuple[str, str]:
+    ident = f"{username.strip().lower()[:150]}|{_client_ip(request)}"
+    digest = hashlib.sha256(ident.encode()).hexdigest()
+    return f"login-fail:{digest}", f"login-lock:{digest}"
+
+
+def login_locked(request: HttpRequest, username: str) -> bool:
+    return bool(cache.get(_lock_keys(request, username)[1]))
+
+
+def register_login_failure(request: HttpRequest, username: str) -> bool:
+    """Catat kegagalan; kembalikan True bila akun+IP kini terkunci."""
+    fail_key, lock_key = _lock_keys(request, username)
+    window = settings.LOGIN_LOCKOUT_SECONDS
+    cache.add(fail_key, 0, window)
+    try:
+        count = cache.incr(fail_key)
+    except ValueError:
+        cache.set(fail_key, 1, window)
+        count = 1
+    if count >= settings.LOGIN_MAX_FAILURES:
+        cache.set(lock_key, 1, window)
+        cache.delete(fail_key)
+        return True
+    return False
+
+
+def clear_login_failures(request: HttpRequest, username: str) -> None:
+    fail_key, lock_key = _lock_keys(request, username)
+    cache.delete_many([fail_key, lock_key])
+
+
 @never_cache
 def login_view(request: HttpRequest) -> HttpResponse:
     if request.user.is_authenticated:
         return redirect("projects:dashboard")
-    form = AuthenticationForm(request, data=request.POST or None)
-    if request.method == "POST" and form.is_valid():
-        django_login(request, form.get_user())
-        return redirect(_safe_next(request))
+    locked = False
+    if request.method == "POST":
+        username = request.POST.get("username", "")
+        if login_locked(request, username):
+            locked = True
+            form = AuthenticationForm(request)
+        else:
+            form = AuthenticationForm(request, data=request.POST)
+            if form.is_valid():
+                clear_login_failures(request, username)
+                django_login(request, form.get_user())
+                return redirect(_safe_next(request))
+            locked = register_login_failure(request, username)
+    else:
+        form = AuthenticationForm(request)
+    if locked:
+        minutes = max(settings.LOGIN_LOCKOUT_SECONDS // 60, 1)
+        messages.error(
+            request,
+            f"Terlalu banyak percobaan masuk yang gagal. Coba lagi dalam {minutes} menit.",
+        )
     return render(
         request,
         "identity/login.html",
         {
             "form": form,
+            "locked": locked,
             "entra_enabled": settings.AZURE_ENABLED,
             "next": request.GET.get("next") or request.POST.get("next", ""),
         },
@@ -72,17 +134,28 @@ def authorize_view(request: HttpRequest) -> HttpResponse:
 
 @never_cache
 def callback_view(request: HttpRequest) -> HttpResponse:
-    client = get_entra_client()
-    token = client.authorize_access_token(request)
-    metadata = client.load_server_metadata()
-    userinfo_endpoint = metadata.get("userinfo_endpoint")
-    if userinfo_endpoint:
-        claims = client.get(userinfo_endpoint, token=token).json()
-    else:  # pragma: no cover - fallback bila metadata tanpa userinfo
-        claims = token.get("userinfo") or {}
-    user = upsert_user_from_claims(claims)
+    if not settings.AZURE_ENABLED:
+        return redirect("identity:login")
+    if request.GET.get("error"):
+        logger.warning("SSO dibatalkan/ditolak penyedia: %s", request.GET.get("error"))
+        messages.error(request, "Login Microsoft dibatalkan atau ditolak. Silakan coba lagi.")
+        return redirect("identity:login")
+    try:
+        client = get_entra_client()
+        token = client.authorize_access_token(request)
+        metadata = client.load_server_metadata()
+        userinfo_endpoint = metadata.get("userinfo_endpoint")
+        if userinfo_endpoint:
+            claims = client.get(userinfo_endpoint, token=token).json()
+        else:  # pragma: no cover - fallback bila metadata tanpa userinfo
+            claims = token.get("userinfo") or {}
+        user = upsert_user_from_claims(claims)
+    except (OAuthError, requests.RequestException, ValueError, KeyError):
+        logger.exception("Callback SSO gagal.")
+        messages.error(request, "Login Microsoft gagal. Silakan coba lagi atau gunakan akun lokal.")
+        return redirect("identity:login")
     django_login(request, user, backend="django.contrib.auth.backends.ModelBackend")
-    messages.success(request, f"Signed in as {user.username}")
+    messages.success(request, f"Masuk sebagai {user.username}")
     next_url = request.session.pop("pcc_login_next", "") or reverse("projects:dashboard")
     if not url_has_allowed_host_and_scheme(
         next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()
@@ -91,6 +164,7 @@ def callback_view(request: HttpRequest) -> HttpResponse:
     return redirect(next_url)
 
 
+@require_POST
 def logout_view(request: HttpRequest) -> HttpResponse:
     django_logout(request)
     return redirect("identity:login")

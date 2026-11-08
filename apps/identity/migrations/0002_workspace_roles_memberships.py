@@ -41,9 +41,7 @@ def seed_roles_and_memberships(apps, schema_editor):
             codes.add("admin")
         for code in codes:
             if code in roles:
-                Membership.objects.get_or_create(
-                    user=user, workspace=workspace, role=roles[code]
-                )
+                Membership.objects.get_or_create(user=user, workspace=workspace, role=roles[code])
 
 
 def restore_legacy_role(apps, schema_editor):
@@ -62,55 +60,131 @@ def restore_legacy_role(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('identity', '0001_initial'),
+        ("identity", "0001_initial"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='RoleDefinition',
+            name="RoleDefinition",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('code', models.CharField(choices=[('admin', 'Workspace Admin'), ('pm', 'Project Manager'), ('member', 'Project Member'), ('owner', 'Project Owner'), ('client', 'Client / Stakeholder'), ('management', 'Management')], max_length=20, unique=True)),
-                ('name', models.CharField(max_length=100)),
-                ('description', models.TextField(blank=True)),
-                ('scope', models.CharField(choices=[('workspace', 'Workspace'), ('project', 'Project')], default='workspace', max_length=20)),
-                ('permissions', models.JSONField(blank=True, default=list)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True, primary_key=True, serialize=False, verbose_name="ID"
+                    ),
+                ),
+                (
+                    "code",
+                    models.CharField(
+                        choices=[
+                            ("admin", "Workspace Admin"),
+                            ("pm", "Project Manager"),
+                            ("member", "Project Member"),
+                            ("owner", "Project Owner"),
+                            ("client", "Client / Stakeholder"),
+                            ("management", "Management"),
+                        ],
+                        max_length=20,
+                        unique=True,
+                    ),
+                ),
+                ("name", models.CharField(max_length=100)),
+                ("description", models.TextField(blank=True)),
+                (
+                    "scope",
+                    models.CharField(
+                        choices=[("workspace", "Workspace"), ("project", "Project")],
+                        default="workspace",
+                        max_length=20,
+                    ),
+                ),
+                ("permissions", models.JSONField(blank=True, default=list)),
             ],
             options={
-                'ordering': ['code'],
+                "ordering": ["code"],
             },
         ),
         migrations.CreateModel(
-            name='Workspace',
+            name="Workspace",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(max_length=200)),
-                ('code', models.CharField(max_length=40, unique=True)),
-                ('description', models.TextField(blank=True)),
-                ('status', models.CharField(default='active', max_length=20)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True, primary_key=True, serialize=False, verbose_name="ID"
+                    ),
+                ),
+                ("name", models.CharField(max_length=200)),
+                ("code", models.CharField(max_length=40, unique=True)),
+                ("description", models.TextField(blank=True)),
+                ("status", models.CharField(default="active", max_length=20)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
             ],
             options={
-                'ordering': ['name'],
+                "ordering": ["name"],
             },
         ),
         migrations.CreateModel(
-            name='Membership',
+            name="Membership",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('status', models.CharField(choices=[('active', 'Aktif'), ('inactive', 'Nonaktif')], default='active', max_length=20)),
-                ('assigned_at', models.DateTimeField(auto_now_add=True)),
-                ('assigned_by', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='+', to=settings.AUTH_USER_MODEL)),
-                ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='memberships', to=settings.AUTH_USER_MODEL)),
-                ('role', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='memberships', to='identity.roledefinition')),
-                ('workspace', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='memberships', to='identity.workspace')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True, primary_key=True, serialize=False, verbose_name="ID"
+                    ),
+                ),
+                (
+                    "status",
+                    models.CharField(
+                        choices=[("active", "Aktif"), ("inactive", "Nonaktif")],
+                        default="active",
+                        max_length=20,
+                    ),
+                ),
+                ("assigned_at", models.DateTimeField(auto_now_add=True)),
+                (
+                    "assigned_by",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="+",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
+                (
+                    "user",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="memberships",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
+                (
+                    "role",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.PROTECT,
+                        related_name="memberships",
+                        to="identity.roledefinition",
+                    ),
+                ),
+                (
+                    "workspace",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="memberships",
+                        to="identity.workspace",
+                    ),
+                ),
             ],
             options={
-                'ordering': ['user_id', 'role__code'],
-                'constraints': [models.UniqueConstraint(fields=('user', 'workspace', 'role'), name='unique_user_workspace_role')],
+                "ordering": ["user_id", "role__code"],
+                "constraints": [
+                    models.UniqueConstraint(
+                        fields=("user", "workspace", "role"), name="unique_user_workspace_role"
+                    )
+                ],
             },
         ),
         migrations.RunPython(seed_roles_and_memberships, restore_legacy_role),

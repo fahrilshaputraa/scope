@@ -4,15 +4,25 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('work', '0008_comment_commentmention_and_more'),
+        ("work", "0008_comment_commentmention_and_more"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='task',
-            name='status',
-            field=models.CharField(choices=[('backlog', 'Backlog'), ('todo', 'To Do'), ('in_progress', 'In Progress'), ('review', 'In Review'), ('blocked', 'Blocked'), ('done', 'Done')], default='todo', max_length=20),
+            model_name="task",
+            name="status",
+            field=models.CharField(
+                choices=[
+                    ("backlog", "Backlog"),
+                    ("todo", "To Do"),
+                    ("in_progress", "In Progress"),
+                    ("review", "In Review"),
+                    ("blocked", "Blocked"),
+                    ("done", "Done"),
+                ],
+                default="todo",
+                max_length=20,
+            ),
         ),
     ]

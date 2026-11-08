@@ -11,6 +11,12 @@
   <span><strong>{{ late }}</strong> terlambat atau kritis</span>
 </nav>
 
+<section class="pcc-panel mt-6" aria-labelledby="own-decisions" data-pending-decisions>
+  <div class="panel-heading"><h2 id="own-decisions">Keputusan tertunda · {{ decisions|length }}</h2><a class="subtle-action" href="{% url 'governance:approval_inbox' %}">Semua persetujuan</a></div>
+  <ul class="overview-list">
+    {% for step in decisions %}<li><span class="pcc-status pcc-status-info">{{ step.request.get_approval_type_display }}</span><div><a href="{% url 'governance:approval_detail' step.request_id %}">{{ step.request.target_repr }}</a><p>{{ step.request.project.code }} · diajukan {{ step.request.requested_by|person_name|default:"—" }} · {{ step.request.created_at|date:"d M" }}</p></div><span class="row-meta">Tahap {{ step.sequence }}</span></li>{% empty %}<li class="overview-empty">Tidak ada keputusan yang menunggu Anda.</li>{% endfor %}
+  </ul>
+</section>
 <section class="pcc-panel project-register mt-6" aria-labelledby="owned-title">
   <div class="panel-heading"><h2 id="owned-title">Project milik saya</h2><a class="subtle-action" href="{% url 'projects:project_list' %}">Semua project</a></div>
   <div class="overflow-x-auto" tabindex="0" role="region" aria-label="Daftar project milik Anda">
@@ -36,17 +42,18 @@
   </div>
 </section>
 
+
 <div class="overview-pair mt-6">
   <section class="pcc-panel min-w-0" aria-labelledby="own-issues">
-    <div class="pcc-section border-b"><h2 id="own-issues">Issue besar</h2></div>
+    <div class="pcc-section border-b"><h2 id="own-issues">Masalah besar</h2></div>
     <ul class="overview-list">
-      {% for issue in issues %}<li><span class="issue-severity" data-severity="{{ issue.severity }}">{{ issue.severity|severity_label }}</span><div><a href="{% url 'work:issue_update' issue.pk %}">{{ issue.title }}</a><p>{{ issue.project.code }} · {{ issue.status|status_label }}{% if issue.due_date %} · target {{ issue.due_date|date:"d M" }}{% endif %}</p></div><span class="row-meta">{{ issue.owner|person_name|default:"Belum ada penanggung jawab" }}</span></li>{% empty %}<li class="overview-empty">Tidak ada issue kritis atau tinggi yang terbuka.</li>{% endfor %}
+      {% for issue in issues %}<li><span class="issue-severity" data-severity="{{ issue.severity }}">{{ issue.severity|severity_label }}</span><div><a href="{% url 'work:issue_update' issue.pk %}">{{ issue.title }}</a><p>{{ issue.project.code }} · {{ issue.status|status_label }}{% if issue.due_date %} · target {{ issue.due_date|date:"d M" }}{% endif %}</p></div><span class="row-meta">{{ issue.owner|person_name|default:"Belum ada penanggung jawab" }}</span></li>{% empty %}<li class="overview-empty">Tidak ada masalah kritis atau tinggi yang terbuka.</li>{% endfor %}
     </ul>
   </section>
   <section class="pcc-panel min-w-0" aria-labelledby="own-risks">
     <div class="pcc-section border-b"><h2 id="own-risks">Risiko besar</h2></div>
     <ul class="overview-list">
-      {% for risk in risks %}<li><span class="issue-severity" data-severity="{{ risk.severity }}">{{ risk.severity|severity_label }}</span><div><span>{{ risk.title }}</span><p>{{ risk.project.code }}{% if risk.due_date %} · tinjau {{ risk.due_date|date:"d M" }}{% endif %}</p></div><span class="row-meta">{{ risk.owner|person_name|default:"Belum ada pemilik" }}</span></li>{% empty %}<li class="overview-empty">Tidak ada risiko tinggi yang terbuka.</li>{% endfor %}
+      {% for risk in risks %}<li><span class="issue-severity" data-severity="{{ risk.severity }}">{{ risk.severity|severity_label }}</span><div><span>{{ risk.title }}</span><p>{{ risk.project.code }}· skor {{ risk.score }}{% if risk.review_date %} · tinjau {{ risk.review_date|date:"d M" }}{% endif %}</p></div><span class="row-meta">{{ risk.owner|person_name|default:"Belum ada pemilik" }}</span></li>{% empty %}<li class="overview-empty">Tidak ada risiko tinggi yang terbuka.</li>{% endfor %}
     </ul>
   </section>
 </div>
