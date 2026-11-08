@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}{% if webhook %}Edit webhook Teams{% else %}Tambah webhook Teams{% endif %} — Scope{% endblock %}
+{% block subnav %}{% include "identity/_settings_nav.html" with active_settings="integrations" %}{% endblock %}
+{% block content %}
+    <div class="mx-auto max-w-2xl">
+        <a href="{% url 'integrations:index' %}" class="text-sm text-muted-foreground hover:text-foreground">← Integrasi</a>
+        <h1 class="mt-2 text-2xl font-normal tracking-tight">
+            {% if webhook %}Edit webhook Teams{% else %}Tambah webhook Teams{% endif %}
+        </h1>
+        <p class="mt-1 text-sm text-muted-foreground">
+            Buat webhook di Teams lewat <strong>Workflows → Post to a channel when a webhook request is received</strong>,
+            lalu tempel URL-nya di sini.
+        </p>
+        <form method="post" class="pcc-panel mt-6 space-y-4 p-6">
+            {% csrf_token %}
+            {% if form.non_field_errors %}
+                <div role="alert" class="rounded-md border border-border bg-muted px-3 py-2 text-sm text-foreground">
+                    {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+                </div>
+            {% endif %}
+            {% for field in form %}
+                {% if field.name == "events" %}
+                    <fieldset class="grid gap-2" aria-describedby="{% if field.errors %}error-events{% endif %}">
+                        <legend class="text-sm font-normal">{{ field.label }} <span aria-hidden="true">*</span><span class="sr-only"> (wajib)</span></legend>
+                        <div class="grid gap-2 sm:grid-cols-2">
+                            {% for choice in field %}
+                                <label class="flex items-center gap-2 text-sm">
+                                    {{ choice.tag }}
+                                    {{ choice.choice_label }}
+                                </label>
+                            {% endfor %}
+                        </div>
+                        {% for error in field.errors %}<p {% if forloop.first %}id="error-events"{% endif %} role="alert" class="text-xs text-foreground">{{ error }}</p>{% endfor %}
+                    </fieldset>
+                {% elif field.name == "is_active" %}
+                    <label class="flex items-center gap-2 text-sm">
+                        {{ field }}
+                        {{ field.label }}
+                    </label>
+                {% else %}
+                    <div class="grid gap-2" data-form-field="{{ field.name }}">
+                        <label for="{{ field.id_for_label }}" class="text-sm font-normal leading-none">
+                            {{ field.label }}
+                            {% if field.field.required %}<span aria-hidden="true">*</span><span class="sr-only"> (wajib)</span>{% endif %}
+                        </label>
+                        {{ field }}
+                        {% if field.help_text %}<p id="help-{{ field.name }}" class="text-xs text-muted-foreground">{{ field.help_text }}</p>{% endif %}
+                        {% for error in field.errors %}<p role="alert" class="text-xs text-foreground">{{ error }}</p>{% endfor %}
+                    </div>
+                {% endif %}
+            {% endfor %}
+            <div class="flex flex-wrap gap-2 pt-2">
+                <button type="submit" class="pcc-button">
+                    <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="m5 12 4 4L19 6" />
+                    </svg>
+                    Simpan webhook
+                </button>
+                <a href="{% url 'integrations:index' %}" class="pcc-button pcc-button-secondary">Batal</a>
+            </div>
+        </form>
+    </div>
+{% endblock %}

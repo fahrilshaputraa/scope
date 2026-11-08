@@ -1,0 +1,320 @@
+{% extends "base.html" %}
+{% block title %}Integrasi — Scope{% endblock %}
+{% block subnav %}{% include "identity/_settings_nav.html" with active_settings="integrations" %}{% endblock %}
+{% block content %}
+    <div class="mx-auto max-w-3xl">
+        <h1 class="text-2xl font-normal tracking-tight">Integrasi</h1>
+        <p class="mt-1 text-sm text-muted-foreground">
+            Hubungkan Scope dengan Microsoft Teams dan kalender Outlook atau Google.
+            Pesan Teams dikirim dari antrean, bukan saat halaman dimuat.
+        </p>
+
+        {# ------------------------------------------------------- Kalender #}
+        <section class="pcc-panel mt-6 p-6" aria-labelledby="calendar-heading">
+            <div class="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                    <h2 id="calendar-heading" class="font-normal">Langganan kalender (.ics)</h2>
+                    <p class="mt-1 text-sm text-muted-foreground">
+                        Task yang ditugaskan kepada Anda, milestone project yang bisa Anda lihat,
+                        dan issue yang Anda tangani. Berfungsi di Outlook dan Google Calendar tanpa login Microsoft.
+                    </p>
+                </div>
+                {% if feed.last_accessed_at %}
+                    <span class="pcc-status pcc-status-success">Dibaca {{ feed.last_accessed_at|timesince }} lalu</span>
+                {% else %}
+                    <span class="pcc-status pcc-status-neutral">Belum dilanggan</span>
+                {% endif %}
+            </div>
+            <div class="mt-4 grid gap-2"
+                 x-data="{ copied: false, copy() { navigator.clipboard.writeText(this.$refs.url.value).then(() => { this.copied = true; setTimeout(() => this.copied = false, 2000) }) } }">
+                <label for="feed-url" class="text-sm font-normal">Tautan rahasia</label>
+                <div class="flex flex-wrap gap-2">
+                    <input id="feed-url"
+                           x-ref="url"
+                           class="pcc-field min-w-0 flex-1"
+                           type="text"
+                           readonly
+                           value="{{ feed_url }}"
+                           aria-describedby="feed-help"
+                           @focus="$el.select()">
+                    <button type="button" class="pcc-button pcc-button-secondary" @click="copy()">
+                        <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <rect x="9" y="9" width="13" height="13" rx="2" />
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                        </svg>
+                        <span x-text="copied ? 'Tersalin' : 'Salin'">Salin</span>
+                    </button>
+                </div>
+                <p id="feed-help" class="text-xs text-muted-foreground">
+                    Siapa pun yang memegang tautan ini dapat melihat jadwal Anda. Jangan bagikan; reset bila tersebar.
+                </p>
+                <span class="sr-only" aria-live="polite" x-text="copied ? 'Tautan disalin' : ''"></span>
+            </div>
+            <div class="mt-4 flex flex-wrap gap-2">
+                <a class="pcc-button" href="{{ webcal_url }}">
+                    <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <rect x="3" y="5" width="18" height="16" rx="2" />
+                        <path d="M3 10h18M8 3v4M16 3v4" />
+                    </svg>
+                    Buka di aplikasi kalender
+                </a>
+                <form method="post"
+                      action="{% url 'integrations:feed_reset' %}"
+                      data-confirm="Ganti tautan kalender? Langganan yang memakai tautan lama akan berhenti bekerja.">
+                    {% csrf_token %}
+                    <button type="submit" class="pcc-button pcc-button-secondary">
+                        <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
+                            <path d="M3 3v5h5" />
+                        </svg>
+                        Reset tautan
+                    </button>
+                </form>
+            </div>
+            <details class="mt-4 text-sm">
+                <summary class="cursor-pointer">Langkah berlangganan</summary>
+                <div class="mt-3 grid gap-4 sm:grid-cols-2">
+                    <div>
+                        <p class="font-normal">Outlook (web atau desktop baru)</p>
+                        <ol class="mt-1 list-decimal space-y-1 pl-5 text-muted-foreground">
+                            <li>Buka Kalender, pilih <strong>Tambahkan kalender</strong>.</li>
+                            <li>Pilih <strong>Berlangganan dari web</strong>.</li>
+                            <li>Tempel tautan di atas, beri nama "Scope", lalu <strong>Impor</strong>.</li>
+                        </ol>
+                    </div>
+                    <div>
+                        <p class="font-normal">Google Calendar</p>
+                        <ol class="mt-1 list-decimal space-y-1 pl-5 text-muted-foreground">
+                            <li>Di panel kiri, klik <strong>+</strong> di samping <em>Kalender lain</em>.</li>
+                            <li>Pilih <strong>Dari URL</strong>.</li>
+                            <li>Tempel tautan di atas, lalu <strong>Tambahkan kalender</strong>.</li>
+                        </ol>
+                    </div>
+                </div>
+                <p class="mt-3 text-xs text-muted-foreground">
+                    Outlook dan Google memperbarui langganan secara berkala (beberapa jam hingga 24 jam), bukan seketika.
+                </p>
+            </details>
+            <form method="get"
+                  action="{% url 'integrations:project_calendar_pick' %}"
+                  class="mt-6 border-t pt-4">
+                <label for="calendar-project" class="text-sm font-normal">Unduh kalender satu project</label>
+                <div class="mt-2 flex flex-wrap gap-2">
+                    <select id="calendar-project" name="project" class="pcc-field min-w-0 flex-1" required>
+                        <option value="">Pilih project</option>
+                        {% for project in calendar_projects %}
+                            <option value="{{ project.pk }}">{{ project.code }} · {{ project.name }}</option>
+                        {% endfor %}
+                    </select>
+                    <button type="submit" class="pcc-button pcc-button-secondary">
+                        <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M12 3v12m0 0-4-4m4 4 4-4M4 21h16" />
+                        </svg>
+                        Unduh .ics
+                    </button>
+                </div>
+            </form>
+        </section>
+
+        {# ---------------------------------------------------------- Teams #}
+        <section class="pcc-panel mt-6 p-6" aria-labelledby="teams-heading">
+            <div class="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                    <h2 id="teams-heading" class="font-normal">Microsoft Teams</h2>
+                    <p class="mt-1 text-sm text-muted-foreground">
+                        Kirim kartu ke channel Teams saat task terlambat atau blocked, milestone mendekat atau terlewat,
+                        issue kritis muncul, health project berubah, ada mention, dan ringkasan harian.
+                    </p>
+                </div>
+                {% if can_configure_teams and webhooks %}
+                    <a class="pcc-button" href="{% url 'integrations:webhook_create' %}">
+                        <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                            <path d="M12 5v14M5 12h14" />
+                        </svg>
+                        Tambah webhook
+                    </a>
+                {% endif %}
+            </div>
+            {% if not teams_enabled %}
+                <p role="status" class="mt-4 rounded-md border bg-muted px-3 py-2 text-sm">
+                    Pengiriman Teams dimatikan oleh admin (TEAMS_NOTIFICATIONS_ENABLED=false). Konfigurasi tetap tersimpan.
+                </p>
+            {% endif %}
+            {% if not can_configure_teams %}
+                <p class="mt-4 text-sm text-muted-foreground">
+                    Webhook Teams diatur oleh Project Manager untuk project yang dikelolanya, atau oleh admin untuk seluruh workspace.
+                </p>
+            {% elif webhooks %}
+                <div class="mt-4 overflow-x-auto rounded-md border" tabindex="0" role="region" aria-label="Daftar webhook Teams">
+                    <table class="pcc-table responsive-table">
+                        <thead>
+                            <tr class="border-b bg-muted/40">
+                                <th class="h-10 px-4 text-left font-normal text-muted-foreground">Webhook</th>
+                                <th class="h-10 px-4 text-left font-normal text-muted-foreground">Pengiriman terakhir</th>
+                                <th class="h-10 px-4 text-right font-normal text-muted-foreground">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for hook in webhooks %}
+                                <tr class="border-b">
+                                    <td data-label="Webhook" class="px-4 py-3">
+                                        <p class="font-normal">
+                                            {{ hook.name }}
+                                            {% if not hook.is_active %}<span class="pcc-status pcc-status-neutral ml-1">Nonaktif</span>{% endif %}
+                                        </p>
+                                        <p class="text-xs text-muted-foreground">
+                                            {% if hook.project %}{{ hook.project.code }} · {{ hook.project.name }}{% else %}Global · semua project{% endif %}
+                                            · <span class="font-mono">{{ hook.url_hint }}</span>
+                                        </p>
+                                        <p class="mt-1 text-xs text-muted-foreground">{{ hook.event_labels|join:", "|default:"Belum ada event dipilih" }}</p>
+                                    </td>
+                                    <td data-label="Pengiriman terakhir" class="px-4 py-3 whitespace-nowrap">
+                                        {% if hook.last_status == "sent" %}
+                                            <span class="pcc-status pcc-status-success">Terkirim</span>
+                                        {% elif hook.last_status == "failed" %}
+                                            <span class="pcc-status pcc-status-danger" title="{{ hook.last_error }}">Gagal</span>
+                                        {% else %}
+                                            <span class="pcc-status pcc-status-neutral">Belum pernah</span>
+                                        {% endif %}
+                                        {% if hook.last_delivery_at %}
+                                            <span class="mt-1 block text-xs text-muted-foreground">{{ hook.last_delivery_at|date:"d M Y H:i" }}</span>
+                                        {% endif %}
+                                        {% if hook.last_status == "failed" and hook.last_error %}
+                                            <span class="mt-1 block max-w-56 truncate text-xs text-muted-foreground">{{ hook.last_error }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td data-label="Aksi" class="px-4 py-3 whitespace-nowrap">
+                                        <div class="flex items-center justify-end gap-2">
+                                            <form method="post" action="{% url 'integrations:webhook_test' hook.pk %}" class="inline">
+                                                {% csrf_token %}
+                                                <button type="submit" class="subtle-action" {% if not hook.is_active %}disabled aria-disabled="true"{% endif %}>Kirim tes</button>
+                                            </form>
+                                            <a href="{% url 'integrations:webhook_edit' hook.pk %}" class="subtle-action">Edit</a>
+                                            <form method="post"
+                                                  action="{% url 'integrations:webhook_delete' hook.pk %}"
+                                                  class="inline"
+                                                  data-confirm="Hapus webhook {{ hook.name }}? Riwayat pengirimannya ikut terhapus.">
+                                                {% csrf_token %}
+                                                <button type="submit" class="subtle-action">Hapus</button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% if logs %}
+                    <details class="mt-4 text-sm">
+                        <summary class="cursor-pointer">Riwayat pengiriman terbaru</summary>
+                        <ul class="mt-2 divide-y rounded-md border">
+                            {% for log in logs %}
+                                <li class="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
+                                    <span class="min-w-0">
+                                        <span class="block truncate">{{ log.title }}</span>
+                                        <span class="block text-xs text-muted-foreground">{{ log.webhook.name }} · {{ log.created_at|date:"d M H:i" }}{% if log.error %} · {{ log.error }}{% endif %}</span>
+                                    </span>
+                                    <span class="pcc-status {% if log.status == 'sent' %}pcc-status-success{% elif log.status == 'failed' %}pcc-status-danger{% elif log.status == 'pending' or log.status == 'sending' %}pcc-status-warning{% else %}pcc-status-neutral{% endif %}">{{ log.get_status_display }}</span>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    </details>
+                {% endif %}
+            {% else %}
+                <div class="mt-4 rounded-md border border-dashed p-5">
+                    <p class="font-normal">Belum ada webhook Teams</p>
+                    <ol class="mt-2 list-decimal space-y-1 pl-5 text-sm text-muted-foreground">
+                        <li>Di Teams, buka channel tujuan, pilih <strong>⋯ → Workflows</strong>.</li>
+                        <li>Pilih templat <strong>Post to a channel when a webhook request is received</strong>, lalu ikuti langkahnya.</li>
+                        <li>Salin URL webhook yang muncul (domain <span class="font-mono">logic.azure.com</span> atau <span class="font-mono">powerplatform.com</span>).</li>
+                        <li>Tambahkan webhook di sini, pilih event, lalu klik <strong>Kirim tes</strong>.</li>
+                    </ol>
+                    <p class="mt-2 text-xs text-muted-foreground">
+                        Incoming Webhook lama (<span class="font-mono">webhook.office.com</span>) juga didukung selama masih aktif di tenant Anda.
+                    </p>
+                    <a class="pcc-button mt-4" href="{% url 'integrations:webhook_create' %}">
+                        <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                            <path d="M12 5v14M5 12h14" />
+                        </svg>
+                        Tambah webhook
+                    </a>
+                </div>
+            {% endif %}
+        </section>
+
+        {# -------------------------------------------------------- Outlook #}
+        <section class="pcc-panel mt-6 p-6" aria-labelledby="outlook-heading">
+            <div class="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                    <h2 id="outlook-heading" class="font-normal">Kalender Outlook (Microsoft 365)</h2>
+                    <p class="mt-1 text-sm text-muted-foreground">
+                        Opsional: buat event langsung di kalender Outlook Anda untuk task dan milestone tertentu.
+                    </p>
+                </div>
+                {% if not graph_enabled %}
+                    <span class="pcc-status pcc-status-neutral">Belum dikonfigurasi</span>
+                {% elif outlook %}
+                    <span class="pcc-status pcc-status-success">Terhubung</span>
+                {% else %}
+                    <span class="pcc-status pcc-status-warning">Belum terhubung</span>
+                {% endif %}
+            </div>
+            {% if not graph_enabled %}
+                <p class="mt-4 text-sm text-muted-foreground">
+                    {% if not azure_enabled %}
+                        Admin perlu mengisi konfigurasi Microsoft Entra ID (AZURE_CLIENT_ID dan AZURE_CLIENT_SECRET),
+                        menambahkan permission delegated <span class="font-mono">Calendars.ReadWrite</span>, lalu mengaktifkan
+                        <span class="font-mono">OUTLOOK_GRAPH_ENABLED</span>.
+                    {% else %}
+                        Admin perlu menyetujui permission <span class="font-mono">Calendars.ReadWrite</span> di Azure lalu mengaktifkan
+                        <span class="font-mono">OUTLOOK_GRAPH_ENABLED</span>. Sementara itu, gunakan langganan .ics di atas.
+                    {% endif %}
+                </p>
+            {% elif outlook %}
+                <p class="mt-4 text-sm text-muted-foreground">
+                    {% if outlook.account_email %}Akun {{ outlook.account_email }} · {% endif %}terhubung sejak {{ outlook.connected_at|date:"d M Y" }}.
+                </p>
+                {% if upcoming_tasks or upcoming_milestones %}
+                    <ul class="mt-4 divide-y rounded-md border text-sm">
+                        {% for task in upcoming_tasks %}
+                            <li class="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
+                                <span class="min-w-0">
+                                    <span class="block truncate">{{ task.title }}</span>
+                                    <span class="block text-xs text-muted-foreground">Task · {{ task.project.code }} · {{ task.due_date|date:"d M Y" }}</span>
+                                </span>
+                                <form method="post" action="{% url 'integrations:outlook_add' 'task' task.pk %}">
+                                    {% csrf_token %}
+                                    <button type="submit" class="subtle-action">{% if task.in_outlook %}Perbarui di Outlook{% else %}Tambahkan ke kalender Outlook{% endif %}</button>
+                                </form>
+                            </li>
+                        {% endfor %}
+                        {% for milestone in upcoming_milestones %}
+                            <li class="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
+                                <span class="min-w-0">
+                                    <span class="block truncate">{{ milestone.name }}</span>
+                                    <span class="block text-xs text-muted-foreground">Milestone · {{ milestone.project.code }} · {{ milestone.date|date:"d M Y" }}</span>
+                                </span>
+                                <form method="post" action="{% url 'integrations:outlook_add' 'milestone' milestone.pk %}">
+                                    {% csrf_token %}
+                                    <button type="submit" class="subtle-action">{% if milestone.in_outlook %}Perbarui di Outlook{% else %}Tambahkan ke kalender Outlook{% endif %}</button>
+                                </form>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="mt-4 text-sm text-muted-foreground">Tidak ada task atau milestone dalam 30 hari ke depan.</p>
+                {% endif %}
+                <form method="post" action="{% url 'integrations:outlook_disconnect' %}" class="mt-4">
+                    {% csrf_token %}
+                    <button type="submit" class="pcc-button pcc-button-secondary">Putuskan Outlook</button>
+                </form>
+            {% else %}
+                <p class="mt-4 text-sm text-muted-foreground">
+                    Anda akan diminta masuk ke Microsoft dan menyetujui akses kalender. Scope hanya membuat atau
+                    memperbarui event yang Anda pilih.
+                </p>
+                <a class="pcc-button mt-4" href="{% url 'integrations:outlook_connect' %}">Hubungkan Outlook</a>
+            {% endif %}
+        </section>
+    </div>
+{% endblock %}
