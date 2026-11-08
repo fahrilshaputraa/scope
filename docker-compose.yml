@@ -1,0 +1,46 @@
+x-app: &app
+  build: .
+  env_file: .env
+  environment:
+    DATABASE_URL: postgres://scope:${POSTGRES_PASSWORD:-scope}@db:5432/scope
+  depends_on:
+    db:
+      condition: service_healthy
+  volumes:
+    - media:/app/media
+
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: scope
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-scope}
+      POSTGRES_DB: scope
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U scope"]
+      interval: 5s
+      retries: 10
+
+  web:
+    <<: *app
+    command: >
+      sh -c "python manage.py migrate --noinput &&
+             gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3 --access-logfile -"
+    ports:
+      - "8000:8000"
+
+  scheduler:
+    <<: *app
+    # Snapshot progress (snapshot_progress --due) dan email notifikasi, tiap 5 menit.
+    command: python manage.py run_scheduler --interval 300
+    depends_on:
+      web:
+        condition: service_started
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+  media:

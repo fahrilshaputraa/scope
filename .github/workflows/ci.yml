@@ -1,0 +1,26 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync --frozen
+      - run: uv run ruff check .
+      - run: uv run pytest -q -W ignore
+      - name: Migrasi tidak ketinggalan
+        run: uv run python manage.py makemigrations --check --dry-run
+      - name: Deploy check (env produksi)
+        env:
+          DJANGO_SETTINGS_MODULE: config.settings.production
+          DJANGO_SECRET_KEY: ci-only-secret-key-0123456789-abcdefghijklmnopqrstuvwxyz-ABCDEFG
+          DJANGO_ALLOWED_HOSTS: scope.example.com
+          DJANGO_SECURE_PROXY_SSL_HEADER: HTTP_X_FORWARDED_PROTO,https
+          DATABASE_URL: postgres://scope:scope@localhost:5432/scope
+        run: uv run python manage.py check --deploy --fail-level WARNING

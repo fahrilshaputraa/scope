@@ -5,6 +5,43 @@ tanpa bergantung pada cron manual. Pilih **salah satu** opsi: scheduler internal
 atau timer eksternal. Keduanya memanggil service yang sama dan idempoten per
 project per hari, sehingga aman dijalankan berulang atau dari beberapa worker.
 
+## Produksi dengan Docker
+
+`Dockerfile` membangun CSS, menjalankan `collectstatic`, dan menjalankan gunicorn
+sebagai user non-root dengan `config.settings.production`.
+`docker-compose.yml` berisi tiga service: `db` (PostgreSQL), `web` (migrate +
+gunicorn), dan `scheduler` (`manage.py run_scheduler`, tiap 5 menit menjalankan
+snapshot `--due`, email notifikasi, dan digest).
+
+```bash
+cp .env.example .env     # isi DJANGO_SECRET_KEY, DJANGO_ALLOWED_HOSTS, SITE_URL, dst.
+docker compose up -d --build
+docker compose exec web python manage.py create_local_user admin --role admin --staff
+```
+
+Saat memakai service `scheduler`, biarkan `SCOPE_SCHEDULER_ENABLED=false`
+agar tidak ada dua pemicu.
+
+## Pengaturan produksi
+
+- `config.settings.production` mengaktifkan `SECURE_SSL_REDIRECT`, cookie sesi dan
+  CSRF `Secure`, HSTS, nosniff, dan log ke console. Semuanya bisa diubah lewat
+  env `DJANGO_SECURE_*` (lihat `.env.example`).
+- Di belakang reverse proxy TLS, set
+  `DJANGO_SECURE_PROXY_SSL_HEADER=HTTP_X_FORWARDED_PROTO,https` dan pastikan proxy
+  meneruskan header tersebut.
+- `DJANGO_SECRET_KEY` wajib: aplikasi menolak start bila `DJANGO_DEBUG=false`
+  dan nilainya kosong.
+- Login dikunci 10 menit setelah 5 kegagalan per username+IP (cache Django;
+  default per proses. Untuk banyak worker, konfigurasikan cache bersama seperti
+  Redis/Memcached). `PCC_LOGIN_MAX_FAILURES` dan `PCC_LOGIN_LOCKOUT_SECONDS`
+  mengatur batasnya.
+- Tautan publik project punya opsi masa berlaku, kata sandi, dan sembunyikan
+  judul task (tab Bagikan).
+- CI (`.github/workflows/ci.yml`) menjalankan ruff, pytest, `makemigrations --check`,
+  dan `check --deploy`.
+- Volume `media` menyimpan lampiran; sertakan dalam backup bersama database.
+
 ## Cara kerja snapshot
 
 - `record_snapshot(project)` melakukan upsert pada `(project, date)`, sehingga

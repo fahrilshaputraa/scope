@@ -10,6 +10,7 @@ htmlcov/
 
 # Django
 db.sqlite3
+*.sqlite3
 media/
 staticfiles/
 *.log
@@ -32,3 +33,4 @@ static/css/output.css
 .impeccable/
 .playwright-mcp/
 /*.png
+media/

@@ -447,6 +447,7 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "authlib" },
+    { name = "cryptography" },
     { name = "django" },
     { name = "gunicorn" },
     { name = "nh3" },
@@ -467,6 +468,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "authlib", specifier = ">=1.8,<2" },
+    { name = "cryptography", specifier = ">=43" },
     { name = "django", specifier = ">=6.1,<6.2" },
     { name = "gunicorn", specifier = ">=23,<24" },
     { name = "nh3", specifier = ">=0.3.7" },

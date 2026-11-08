@@ -4,8 +4,17 @@ from urllib.parse import urlparse
 
 BASE_DIR = Path(__file__).resolve().parents[2]
 
-SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "dev-only-unsafe-secret")
 DEBUG = os.getenv("DJANGO_DEBUG", "false").lower() == "true"
+SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "")
+if not SECRET_KEY:
+    if DEBUG or os.getenv("DJANGO_SETTINGS_MODULE", "").endswith((".development", ".test")):
+        SECRET_KEY = "dev-only-unsafe-secret"
+    else:
+        from django.core.exceptions import ImproperlyConfigured
+
+        raise ImproperlyConfigured(
+            "DJANGO_SECRET_KEY wajib diisi saat DJANGO_DEBUG=false (produksi)."
+        )
 ALLOWED_HOSTS = [
     host for host in os.getenv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if host
 ]
@@ -24,6 +33,8 @@ INSTALLED_APPS = [
     "apps.projects.apps.ProjectsConfig",
     "apps.work.apps.WorkConfig",
     "apps.notifications.apps.NotificationsConfig",
+    "apps.integrations.apps.IntegrationsConfig",
+    "apps.governance.apps.GovernanceConfig",
 ]
 
 MIDDLEWARE = [
@@ -79,8 +90,16 @@ def database_config():
 
 DATABASES = {"default": database_config()}
 
-AUTH_PASSWORD_VALIDATORS = []
-LANGUAGE_CODE = "en-us"
+AUTH_PASSWORD_VALIDATORS = [
+    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
+    {
+        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
+        "OPTIONS": {"min_length": 10},
+    },
+    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
+    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
+]
+LANGUAGE_CODE = "id"
 TIME_ZONE = "Asia/Jakarta"
 USE_I18N = True
 USE_TZ = True
@@ -102,6 +121,11 @@ LOGIN_URL = "identity:login"
 LOGIN_REDIRECT_URL = "projects:dashboard"
 LOGOUT_REDIRECT_URL = "identity:login"
 SESSION_COOKIE_HTTPONLY = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+
+# --- Login lockout (cache-based, per username+IP) ---
+LOGIN_MAX_FAILURES = int(os.getenv("PCC_LOGIN_MAX_FAILURES", "5"))
+LOGIN_LOCKOUT_SECONDS = int(os.getenv("PCC_LOGIN_LOCKOUT_SECONDS", "600"))
 X_FRAME_OPTIONS = "DENY"
 
 # --- Microsoft Entra ID (OIDC via Authlib) ---
@@ -162,3 +186,33 @@ EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "false").strip().lower() in {
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "Scope <no-reply@localhost>")
 # URL publik tanpa request; dipakai untuk deep link absolut di email.
 SITE_URL = os.getenv("SITE_URL", "http://localhost:8000").rstrip("/")
+
+# --- Integrasi Microsoft Teams & Outlook (docs/integrations.md) ---
+# Kunci Fernet untuk URL webhook dan token Graph; kosong = diturunkan dari SECRET_KEY.
+INTEGRATIONS_ENCRYPTION_KEY = os.getenv("INTEGRATIONS_ENCRYPTION_KEY", "")
+TEAMS_NOTIFICATIONS_ENABLED = os.getenv("TEAMS_NOTIFICATIONS_ENABLED", "true").strip().lower() in {
+    "1", "true", "yes", "on",
+}
+TEAMS_REQUEST_TIMEOUT = float(os.getenv("TEAMS_REQUEST_TIMEOUT", "10"))
+TEAMS_DAILY_SUMMARY_HOUR = int(os.getenv("TEAMS_DAILY_SUMMARY_HOUR", "8"))
+TEAMS_MILESTONE_DUE_DAYS = int(os.getenv("TEAMS_MILESTONE_DUE_DAYS", "3"))
+# Microsoft Graph (Calendars.ReadWrite) hanya aktif bila AZURE_ENABLED dan flag ini true.
+OUTLOOK_GRAPH_ENABLED = os.getenv("OUTLOOK_GRAPH_ENABLED", "false").strip().lower() in {
+    "1", "true", "yes", "on",
+}
+
+
+def env_bool(name, default=False):
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
+
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {"plain": {"format": "%(asctime)s %(levelname)s %(name)s: %(message)s"}},
+    "handlers": {"console": {"class": "logging.StreamHandler", "formatter": "plain"}},
+    "root": {"handlers": ["console"], "level": os.getenv("DJANGO_LOG_LEVEL", "INFO")},
+}
